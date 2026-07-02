@@ -47,7 +47,7 @@ async def create_user(
     token_obj = await generate_activation_token(db, user.id)
 
     # 3. create link
-    activation_link = f"http://localhost:3000/create-password?token={token_obj.token}"
+    activation_link = f"http://localhost:5173/create-password?token={token_obj.token}"
 
     # 4. send email (Mailtrap later)
     await send_activation_email(user.email, activation_link)
