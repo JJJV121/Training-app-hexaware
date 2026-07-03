@@ -12,8 +12,6 @@ router = APIRouter(
     tags=["Authentication"]
 )
 
-
-
 @router.post(
     "/users",
     response_model=UserResponse
@@ -115,6 +113,7 @@ async def reset_password_api(
             detail=str(e)
         )
     
+
 
 '''@router.post("/request-activation")
 async def request_activation_api(

@@ -261,6 +261,7 @@ async def reset_password(
     return {"message": "Password reset successful"}
 
 
+
 '''async def request_activation(db, email: str):
 
     # 1. find user

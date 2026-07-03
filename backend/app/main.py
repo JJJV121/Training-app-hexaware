@@ -8,8 +8,12 @@ from app.routers.course import router as course_router
 from app.routers.progress import router as progress_router
 from app.routers.schedule import router as schedule_router
 from app.routers.dashboard_router import router as dashboard_router
+from app.routers.profile import router as profile_router
 
-app = FastAPI()
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,15 +26,21 @@ app.add_middleware(
 app.mount(
     "/uploads",
     StaticFiles(directory="app/uploads"),
-    name="uploads"
+    name="uploads",
 )
 
+# Register routers
 app.include_router(auth_router)
+app.include_router(profile_router)
 app.include_router(course_router)
 app.include_router(progress_router)
 app.include_router(schedule_router)
 app.include_router(dashboard_router)
 
+
 @app.get("/")
 async def health_check():
-    return {"status": "running"}
+    return {
+        "status": "running",
+        "message": "Training App API is running successfully"
+    }
