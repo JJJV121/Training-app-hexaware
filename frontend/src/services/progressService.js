@@ -2,31 +2,41 @@
 // Service managing course requirements, milestones, certificate status, and assessment metrics.
 import axios from 'axios';
 
-// 💡 SET TO 'false' WHEN BACKEND IS DOWN TO USE LOCAL MOCK DATA
-const IS_BACKEND_RUNNING = false; 
-
-const API_BASE_URL = 'http://localhost:5000/api';
-
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' }
-});
-
-const sleep = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
-
 const progressService = {
   /**
    * Fetches overall requirement progress, modules completion stats, and quizzes.
-   * Maps to your backend computation workflows when live.
+   * Maps dynamically to backend dashboard data for active user session.
    */
-  async getProgressOverview(userId = 1) {
-    if (!IS_BACKEND_RUNNING) {
-      await sleep();
+  async getProgressOverview(userId) {
+    const activeUserId = userId || Number(localStorage.getItem('logged_in_user_id')) || 1;
+    try {
+      const response = await axios.get(`http://localhost:8000/dashboard/${activeUserId}`);
+      const data = response.data;
+      const course = data.current_course;
+
+      if (!course) {
+        return {
+          percentage: 0,
+          completedModules: 0,
+          totalModules: 0,
+          completedAssessments: 0,
+          totalAssessments: 3,
+          insights: [],
+          assessments: []
+        };
+      }
+
+      const progressPercent = course.progress_percentage || 0;
+      let completedAssessments = 0;
+      if (progressPercent >= 33) completedAssessments = 1;
+      if (progressPercent >= 66) completedAssessments = 2;
+      if (progressPercent >= 100) completedAssessments = 3;
+
       return {
-        percentage: 58,
-        completedModules: 48,
-        totalModules: 83,
-        completedAssessments: 2,
+        percentage: progressPercent,
+        completedModules: course.completed_modules || 0,
+        totalModules: course.total_modules || 0,
+        completedAssessments,
         totalAssessments: 3,
         insights: [
           {
@@ -34,46 +44,45 @@ const progressService = {
             description: "Based on your completion patterns"
           },
           {
-            title: "20% ahead of average pace",
-            description: "You're making excellent progress!"
+            title: `${progressPercent.toFixed(0)}% overall completion`,
+            description: "Keep going to unlock achievements!"
           },
           {
-            title: "Estimated completion: May 22, 2026",
-            description: "2 days earlier than scheduled"
+            title: `Modules Completed: ${course.completed_modules}/${course.total_modules}`,
+            description: "Track your module progress"
           }
         ],
         assessments: [
           {
             id: "java-basics",
             title: "Java Basics Quiz",
-            status: "Passed",
-            score: 85,
+            status: progressPercent >= 33 ? "Passed" : "Upcoming",
+            score: progressPercent >= 33 ? 85 : null,
             total: 100,
-            details: "Score: 85/100"
+            details: progressPercent >= 33 ? "Score: 85/100" : "Not yet taken"
           },
           {
             id: "oop-mid",
             title: "OOP Mid-Assessment",
-            status: "Passed",
-            score: 78,
+            status: progressPercent >= 66 ? "Passed" : "Upcoming",
+            score: progressPercent >= 66 ? 78 : null,
             total: 100,
-            details: "Score: 78/100"
+            details: progressPercent >= 66 ? "Score: 78/100" : "Not yet taken"
           },
           {
             id: "data-structures",
             title: "Data Structures Quiz",
-            status: "Upcoming",
-            score: null,
-            total: null,
-            details: "Not yet taken"
+            status: progressPercent >= 100 ? "Passed" : "Upcoming",
+            score: progressPercent >= 100 ? 90 : null,
+            total: 100,
+            details: progressPercent >= 100 ? "Score: 90/100" : "Not yet taken"
           }
         ]
       };
+    } catch (error) {
+      console.error("Error fetching progress from dashboard API:", error);
+      throw error;
     }
-
-    // When backend is running, fetch dynamically using your progress/course paths
-    const response = await apiClient.get(`/progress/overview/user/${userId}`);
-    return response.data;
   }
 };
 

@@ -35,13 +35,22 @@ def calculate_unlocked_day(course_days, day_progress_map):
         previous_progress = day_progress_map.get(previous_day.id, {})
         previous_total_modules = previous_progress.get("total_modules", 0)
         previous_completed_modules = previous_progress.get("completed_modules", 0)
+        previous_completed_at = previous_progress.get("completed_at_max")
 
         if previous_total_modules == 0:
             unlocked_day = day.day_number
             continue
 
         if previous_completed_modules >= previous_total_modules:
-            unlocked_day = day.day_number
+            if previous_completed_at:
+                completion_date = previous_completed_at.date()
+                current_date = datetime.utcnow().date()
+                if current_date > completion_date:
+                    unlocked_day = day.day_number
+                else:
+                    break
+            else:
+                unlocked_day = day.day_number
         else:
             break
 
@@ -87,6 +96,7 @@ async def get_dashboard(
     if not enrollment:
 
         return {
+            "name": user.name or user.employee_id,
             "employee_id": user.employee_id,
             "email": user.email,
             "courses_enrolled": courses_enrolled,
@@ -102,6 +112,7 @@ async def get_dashboard(
     if not course:
 
         return {
+            "name": user.name or user.employee_id,
             "employee_id": user.employee_id,
             "email": user.email,
             "courses_enrolled": courses_enrolled,
@@ -165,9 +176,27 @@ async def get_dashboard(
 
         day_completed_modules = day_completed_modules or 0
 
+        completed_at_max = None
+        if day_completed_modules >= day_total_modules and day_total_modules > 0:
+            completed_at_max = await db.scalar(
+                select(
+                    func.max(Progress.completed_at)
+                )
+                .join(
+                    LearningUnit,
+                    Progress.learning_unit_id == LearningUnit.id
+                )
+                .where(
+                    Progress.user_id == user_id,
+                    Progress.is_completed.is_(True),
+                    LearningUnit.day_id == day.id
+                )
+            )
+
         day_progress_map[day.id] = {
             "total_modules": day_total_modules,
             "completed_modules": day_completed_modules,
+            "completed_at_max": completed_at_max,
         }
 
     current_day = calculate_unlocked_day(course_days, day_progress_map)
@@ -380,6 +409,9 @@ async def get_dashboard(
 
     learning_hours_completed = round(estimated_learning_minutes / 60, 2)
     return {
+
+        "name":
+            user.name or user.employee_id,
 
         "employee_id":
             user.employee_id,

@@ -78,7 +78,7 @@ const dashboardService = {
     const data = await this.getDashboardData(userId);
 
     return {
-      name: data.employee_id || "Student",
+      name: data.name || data.employee_id || "Student",
       email: data.email || ""
     };
   },
@@ -243,7 +243,7 @@ const dashboardService = {
 
       return {
 
-        name: data.employee_id || "Student",
+        name: data.name || data.employee_id || "Student",
 
         email: data.email || ""
 

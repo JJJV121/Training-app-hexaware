@@ -171,7 +171,8 @@ async def login_user(
         "user": {
             "id": user.id,
             "email": user.email,
-            "employee_id": user.employee_id
+            "employee_id": user.employee_id,
+            "name": user.name
         }
     }
 

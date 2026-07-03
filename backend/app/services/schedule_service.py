@@ -68,8 +68,7 @@ async def get_user_schedule(
     total_modules = 0
 
     schedule = []
-
-    current_day = 1
+    day_progress_map = {}
 
     for day in course_days:
 
@@ -96,6 +95,7 @@ async def get_user_schedule(
         sessions = []
 
         completed_count = 0
+        completed_dates = []
 
         for index, unit in enumerate(units):
 
@@ -110,6 +110,8 @@ async def get_user_schedule(
 
             if progress:
                 completed_count += 1
+                if progress.completed_at:
+                    completed_dates.append(progress.completed_at)
 
             slot_index = min(
                 index,
@@ -133,6 +135,12 @@ async def get_user_schedule(
                         progress is not None
                 }
             )
+
+        day_progress_map[day.id] = {
+            "total_modules": len(units),
+            "completed_modules": completed_count,
+            "completed_at_max": max(completed_dates) if completed_dates else None
+        }
 
         status = "upcoming"
 
@@ -165,6 +173,9 @@ async def get_user_schedule(
                     sessions
             }
         )
+
+    from app.services.dashboard_service import calculate_unlocked_day
+    current_day = calculate_unlocked_day(course_days, day_progress_map)
 
     total_hours = round(
         (

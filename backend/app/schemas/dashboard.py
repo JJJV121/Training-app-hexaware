@@ -43,6 +43,8 @@ class CurrentCourseResponse(BaseModel):
 
 class DashboardResponse(BaseModel):
 
+    name: str | None = None
+
     employee_id: str
 
     email: str
