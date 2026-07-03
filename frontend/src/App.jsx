@@ -3,7 +3,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './App.css';
 import CreatePasswordScreen from './pages/CreatePassword';
-import SignUp from './pages/SignUp';
 import LoginScreen from './pages/LoginScreen';
 import RegisterCourse from './pages/RegisterCourse';
 import ForgotPassword from './pages/ForgotPassword';
@@ -29,7 +28,6 @@ function AppRoutes() {
         
         {/* Specific paths for each of your screens */}
         <Route path="/login" element={<LoginScreen />} />
-        <Route path="/signup" element={<SignUp />} />
         <Route path="/create-password" element={<CreatePasswordScreen />} />
         <Route path="/register-course" element={<RegisterCourse />} />
         <Route path="/forgot-password" element={<ForgotPassword/>}/>
