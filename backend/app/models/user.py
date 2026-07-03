@@ -1,9 +1,11 @@
 from datetime import datetime
-
-from sqlalchemy import Boolean, DateTime, Integer, String
+from enum import Enum as PyEnum
+from sqlalchemy import Boolean, DateTime, Integer, String ,Enum
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import ForeignKey
 from app.database.base import Base
+
+
 
 
 class User(Base):
@@ -57,3 +59,8 @@ class User(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow
     )
+
+    role: Mapped[str] = mapped_column(
+    String(20),
+    nullable=True
+)
