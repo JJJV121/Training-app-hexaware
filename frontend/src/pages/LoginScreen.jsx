@@ -212,16 +212,6 @@ export default function LoginScreen() {
                 {isLoading ? 'Signing In...' : 'Sign In'}
               </button>
 
-              {/* NEW SIGNUP LINK SECTION */}
-              <div className="text-center mt-2">
-                <span className="text-sm text-gray-600 font-medium select-none">
-                  New User?{' '}
-                </span>
-                <Link to="/signup" className="text-sm font-semibold text-[#0061FE] hover:underline transition-all">
-                  Sign up
-                </Link>
-              </div>
-
             </form>
           </div>
         </div>

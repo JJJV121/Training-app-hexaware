@@ -4,6 +4,7 @@ import dashboardService from '../services/dashboardService';
 import Icon from '../components/Icon';
 import '../styles/Course.css';
 import Assignment from '../components/Assignment.jsx'
+import { useRef } from "react";
 
 // 🌟 Prop Injection: Accept courseId dynamically from DashBoard parent component shell
 export default function Course({ courseId }) {
@@ -15,11 +16,13 @@ export default function Course({ courseId }) {
   const [rawCourseData, setRawCourseData] = useState(null); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
+  const [maxWatchedTime, setMaxWatchedTime] = useState(0);
   // Dynamic User Tracking States
   const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
   const [currentUnlockedDay, setCurrentUnlockedDay] = useState(1); 
   const [expandedDay, setExpandedDay] = useState(1); 
+  const lastValidTime = useRef(0);
+  const isSeekingRef = useRef(false);
 
   // Layout Sub-Views Controllers
   const [activeMainTab, setActiveMainTab] = useState('Content'); 
@@ -220,6 +223,7 @@ setCompletedLessons(prev => {
 console.log("Normalized URL:", normalizeVideoUrl(videos[0].video_url || videos[0].url));
 
       if (videos && videos.length > 0) {
+        setMaxWatchedTime(0);
         setCurrentVideoUrl(
           normalizeVideoUrl(videos[0].video_url || videos[0].url)
         );
@@ -231,6 +235,7 @@ console.log("Normalized URL:", normalizeVideoUrl(videos[0].video_url || videos[0
 
   // Unified click/select video mechanism 
   const handleSelectVideo = (targetUrl) => {
+    setMaxWatchedTime(0);
     const normalizedUrl = normalizeVideoUrl(targetUrl);
 
     if (currentVideoUrl === normalizedUrl) {
@@ -243,6 +248,17 @@ console.log("Normalized URL:", normalizeVideoUrl(videos[0].video_url || videos[0
       setCurrentVideoUrl(normalizedUrl);
     }
   };
+const handleTimeUpdate = (e) => {
+    if (!e.target.seeking) {
+        lastValidTime.current = e.target.currentTime;
+    }
+};
+
+const handleSeeking = (e) => {
+    if (e.target.currentTime > lastValidTime.current + 1) {
+        e.target.currentTime = lastValidTime.current;
+    }
+};
 
   // Video End Handler / manual complete handler
   const handleVideoComplete = async () => {
@@ -513,13 +529,17 @@ console.log("Normalized URL:", normalizeVideoUrl(videos[0].video_url || videos[0
         <div className="video-media-frame-wrapper">
           <div className="video-playback-screen-canvas">
             {currentVideoUrl ? (
-              <video 
-                key={currentVideoUrl} 
-                controls 
-                className="dashboard-active-video-element"
-                autoPlay
-                onEnded={handleVideoComplete} 
-                style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
+              <video
+              key={currentVideoUrl}
+              controls
+              className="dashboard-active-video-element"
+              autoPlay
+              onEnded={handleVideoComplete}
+              onTimeUpdate={handleTimeUpdate}
+              onSeeking={handleSeeking}
+              controlsList="nodownload"
+              disablePictureInPicture
+              style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
               >
                 <source src={currentVideoUrl} type="video/mp4" />
                 Your browser does not support the video tag.
@@ -531,22 +551,7 @@ console.log("Normalized URL:", normalizeVideoUrl(videos[0].video_url || videos[0
             )}
           </div>
 
-          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={handleVideoComplete}
-              style={{
-                background: '#2563eb',
-                color: '#fff',
-                border: 'none',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600'
-              }}
-            >
-              Mark Video as Completed
-            </button>
-          </div>
+          
         </div>
 
         <div className="video-content-horizontal-nav-row">
