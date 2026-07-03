@@ -47,7 +47,7 @@ async def create_user(
     token_obj = await generate_activation_token(db, user.id)
 
     # 3. create link
-    activation_link = f"http://localhost:3000/create-password?token={token_obj.token}"
+    activation_link = f"http://localhost:5173/create-password?token={token_obj.token}"
 
     # 4. send email (Mailtrap later)
     await send_activation_email(user.email, activation_link)
@@ -171,7 +171,8 @@ async def login_user(
         "user": {
             "id": user.id,
             "email": user.email,
-            "employee_id": user.employee_id
+            "employee_id": user.employee_id,
+            "name": user.name
         }
     }
 
@@ -258,6 +259,7 @@ async def reset_password(
     await db.commit()
 
     return {"message": "Password reset successful"}
+
 
 
 '''async def request_activation(db, email: str):

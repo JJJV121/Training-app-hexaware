@@ -127,17 +127,21 @@ const normalizeVideoUrl = (url) => {
       setCourse(mappedCourse);
       setProgressPercentage(progressData?.progress_percentage || progressData?.percentage || 0); 
 
-if (Array.isArray(progressData?.completed_units)) {
+if (Array.isArray(progressData?.completed_learning_units)) {
+  setCompletedLessons(
+    new Set(progressData.completed_learning_units.map(id => String(id)))
+  );
+} else if (Array.isArray(progressData?.completed_units)) {
   setCompletedLessons(
     new Set(progressData.completed_units.map(id => String(id)))
   );
-} else if (progressData?.completed_units) {
+} else if (progressData?.completed_learning_units) {
+  setCompletedLessons(
+    new Set([String(progressData.completed_learning_units)])
+  );
+} else if (progressData?.completed_units && typeof progressData.completed_units !== 'number') {
   setCompletedLessons(
     new Set([String(progressData.completed_units)])
-  );
-} else if (Array.isArray(progressData?.completed_learning_units)) {
-  setCompletedLessons(
-    new Set(progressData.completed_learning_units.map(id => String(id)))
   );
 } else {
   setCompletedLessons(new Set());
@@ -330,7 +334,7 @@ const handleSeeking = (e) => {
         <div className="course-workspace-scroll-area">
           {activeMainTab === 'Content' ? (
             course.modules.map(module => {
-              const isLocked = module.id > currentUnlockedDay;
+              const isLocked = Number(module.id) !== Number(currentUnlockedDay);
               const isExpanded = expandedDay === module.id;
 
               return (
