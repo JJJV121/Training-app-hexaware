@@ -63,17 +63,23 @@ async def get_learning_units_by_day(
     return result.all()
 
 
-async def get_content_by_learning_unit(
-    db: AsyncSession,
-    learning_unit_id: int
-):
-    result = await db.scalars(
+async def get_content_by_learning_unit(db:AsyncSession, learning_unit_id):
+    result = await db.execute(
         select(Content).where(
             Content.learning_unit_id == learning_unit_id
         )
     )
 
-    return result.all()
+    content = result.scalar_one_or_none()
+
+    if content is None:
+        return None
+
+    return {
+        "id": content.id,
+        "learning_unit_id": content.learning_unit_id,
+        "content_text": content.content_text
+    }
 
 
 async def get_videos_by_learning_unit(

@@ -26,7 +26,9 @@ import {
   Sun,
   Bell,
   Edit3,
-  Plus
+  Plus,
+  Menu,
+  X
 } from 'lucide-react';
 
 const iconMap = {
@@ -57,7 +59,9 @@ const iconMap = {
   'sun': Sun,
   'bell': Bell,
   'edit-3': Edit3,
-  'plus': Plus
+  'plus': Plus,
+  'menu': Menu,
+  'x': X
 };
 
 export default function Icon({ name, ...props }) {

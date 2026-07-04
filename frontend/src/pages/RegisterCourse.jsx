@@ -98,12 +98,16 @@ export default function RegisterCourse() {
               width: '100%',
               maxWidth: '480px',
               backgroundColor: '#FFFFFF',
-              boxShadow: '0 24px 60px rgba(0,0,0,0.04)',
+              boxShadow: '0 25px 70px rgba(0,0,0,0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.8)',
               borderRadius: '32px',
               padding: '40px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '32px'
+              gap: '32px',
+              backdropFilter: 'blur(10px)',
+              transition: 'all 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+              hoverShadow: '0 30px 80px rgba(0,0,0,0.08)'
             }}
           >
             {/* Header Title inside Card */}

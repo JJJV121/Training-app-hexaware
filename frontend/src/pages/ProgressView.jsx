@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import dashboardService from '../services/progressService';
+import progressService from '../services/progressService';
 import Icon from '../components/Icon';
 
 export default function ProgressView() {
@@ -14,8 +14,8 @@ export default function ProgressView() {
         setError(null);
 
         let data = null;
-        if (typeof dashboardService.getProgressOverview === 'function') {
-          data = await dashboardService.getProgressOverview();
+        if (typeof progressService.getProgressOverview === 'function') {
+          data = await progressService.getProgressOverview();
         }
 
         if (!data) {
@@ -85,13 +85,14 @@ export default function ProgressView() {
       <div 
         className="progress-banner-header"
         style={{
-          backgroundColor: '#2563eb',
+          background: 'linear-gradient(135deg, #3563e9 0%, #254dd0 100%)',
           borderRadius: '20px',
           padding: '32px 40px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          boxShadow: '0 4px 20px rgba(37, 99, 235, 0.15)'
+          boxShadow: '0 12px 40px rgba(53, 99, 233, 0.25)',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -140,46 +141,49 @@ export default function ProgressView() {
         <div 
           className="progress-card progress-cert-card"
           style={{ 
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--bg-sidebar)',
             borderRadius: '20px',
             padding: '28px',
-            border: '1px solid #edf2f7',
+            border: '1px solid var(--border-color)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            gap: '24px'
+            gap: '24px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
+            transition: 'all 300ms ease-out',
+            hoverShadow: '0 12px 32px rgba(0,0,0,0.08)'
           }}
         >
           <div>
             <div className="progress-card-header" style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '4px' }}>
-              <div style={{ backgroundColor: '#2563eb', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ backgroundColor: 'var(--primary-blue)', borderRadius: '50%', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name="file-text" style={{ color: '#ffffff', width: '20px', height: '20px' }} />
               </div>
               <div className="progress-card-header-text">
-                <h3 style={{ margin: '0 0 2px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>Course Certificate</h3>
-                <span style={{ color: '#64748b', fontSize: '13px' }}>Complete all modules to unlock</span>
+                <h3 style={{ margin: '0 0 2px 0', fontSize: '18px', fontWeight: '700', color: 'var(--text-dark)' }}>Course Certificate</h3>
+                <span style={{ color: 'var(--text-medium)', fontSize: '13px' }}>Complete all modules to unlock</span>
               </div>
             </div>
 
-            <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '14px', border: '1px solid #f1f5f9' }}>
+            <div style={{ backgroundColor: 'var(--bg-main)', padding: '20px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ color: '#475569', fontWeight: '600', fontSize: '13px' }}>Requirements Progress</span>
-                <span style={{ color: '#1e293b', fontWeight: '700', fontSize: '14px' }}>{progressData.percentage}%</span>
+                <span style={{ color: 'var(--text-medium)', fontWeight: '600', fontSize: '13px' }}>Requirements Progress</span>
+                <span style={{ color: 'var(--text-dark)', fontWeight: '700', fontSize: '14px' }}>{progressData.percentage}%</span>
               </div>
               
-              <div style={{ width: '100%', backgroundColor: '#e2e8f0', borderRadius: '9999px', height: '8px', overflow: 'hidden', marginBottom: '20px' }}>
-                <div style={{ width: `${progressData.percentage}%`, height: '100%', backgroundColor: '#2563eb', borderRadius: '9999px' }}></div>
+              <div style={{ width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '9999px', height: '8px', overflow: 'hidden', marginBottom: '20px' }}>
+                <div style={{ width: `${progressData.percentage}%`, height: '100%', backgroundColor: 'var(--primary-blue)', borderRadius: '9999px' }}></div>
               </div>
               
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#334155', fontWeight: '500' }}>
-                  <span style={{ backgroundColor: '#dcfce7', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon name="check" style={{ color: '#16a34a', width: '12px', height: '12px', strokeWidth: '3' }} />
+                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-medium)', fontWeight: '500' }}>
+                  <span style={{ backgroundColor: 'var(--accent-green-light)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name="check" style={{ color: 'var(--accent-green)', width: '12px', height: '12px', strokeWidth: '3' }} />
                   </span>
                   <span>Complete all {progressData.totalModules} modules</span>
                 </li>
-                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#334155', fontWeight: '500' }}>
-                  <span style={{ border: '2px solid #cbd5e1', borderRadius: '50%', width: '18px', height: '18px', display: 'block', boxSizing: 'border-box', flexShrink: 0, backgroundColor: '#ffffff' }}></span>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-medium)', fontWeight: '500' }}>
+                  <span style={{ border: '2px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'block', boxSizing: 'border-box', flexShrink: 0, backgroundColor: 'var(--bg-sidebar)' }}></span>
                   <span>Pass all assessments ({progressData.completedAssessments}/{progressData.totalAssessments} completed)</span>
                 </li>
               </ul>
@@ -193,8 +197,8 @@ export default function ProgressView() {
               padding: '14px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: isCertificateUnlocked ? '#2563eb' : '#e2e8f0',
-              color: isCertificateUnlocked ? '#ffffff' : '#94a3b8',
+              backgroundColor: isCertificateUnlocked ? 'var(--primary-blue)' : 'var(--border-color)',
+              color: isCertificateUnlocked ? '#ffffff' : 'var(--text-light)',
               fontWeight: '600',
               fontSize: '14px',
               display: 'flex',
@@ -213,18 +217,18 @@ export default function ProgressView() {
         <div 
           className="progress-card progress-insights-card" 
           style={{ 
-            backgroundColor: '#eff6ff', 
+            backgroundColor: 'var(--primary-blue-light)', 
             borderRadius: '20px', 
             padding: '28px',
-            border: '1px solid #e0f2fe',
+            border: '1px solid var(--border-color)',
             display: 'flex',
             flexDirection: 'column',
             gap: '20px'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Icon name="info" style={{ color: '#2563eb', width: '20px', height: '20px' }} />
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>Learning Insights</h3>
+            <Icon name="info" style={{ color: 'var(--primary-blue)', width: '20px', height: '20px' }} />
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--text-dark)' }}>Learning Insights</h3>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexGrow: 1, justifyContent: 'space-between' }}>
@@ -232,18 +236,18 @@ export default function ProgressView() {
               <div 
                 key={idx} 
                 style={{ 
-                  backgroundColor: '#ffffff', 
+                  backgroundColor: 'var(--bg-sidebar)', 
                   padding: '16px 20px', 
                   borderRadius: '14px',
-                  border: '1px solid #f1f5f9',
+                  border: '1px solid var(--border-color)',
                   flexGrow: 1,
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center'
                 }}
               >
-                <div style={{ fontWeight: '700', color: '#1e293b', fontSize: '14px', marginBottom: '2px' }}>{insight.title}</div>
-                <div style={{ color: '#64748b', fontSize: '12px', fontWeight: '500' }}>{insight.description}</div>
+                <div style={{ fontWeight: '700', color: 'var(--text-dark)', fontSize: '14px', marginBottom: '2px' }}>{insight.title}</div>
+                <div style={{ color: 'var(--text-medium)', fontSize: '12px', fontWeight: '500' }}>{insight.description}</div>
               </div>
             ))}
           </div>
@@ -254,13 +258,13 @@ export default function ProgressView() {
       <div 
         className="progress-card progress-assessment-card" 
         style={{ 
-          backgroundColor: '#ffffff', 
+          backgroundColor: 'var(--bg-sidebar)', 
           borderRadius: '20px', 
           padding: '28px',
-          border: '1px solid #edf2f7'
+          border: '1px solid var(--border-color)'
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>Assessment Results</h3>
+        <h3 style={{ marginTop: 0, marginBottom: '24px', fontSize: '18px', fontWeight: '700', color: 'var(--text-dark)' }}>Assessment Results</h3>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {progressData.assessments && progressData.assessments.map(item => (
@@ -271,20 +275,20 @@ export default function ProgressView() {
                 flexDirection: 'column', 
                 gap: '12px',
                 padding: '20px',
-                backgroundColor: '#f8fafc',
+                backgroundColor: 'var(--bg-main)',
                 borderRadius: '16px',
-                border: '1px solid #f1f5f9'
+                border: '1px solid var(--border-color)'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h4 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>{item.title}</h4>
-                  <span style={{ color: '#64748b', fontSize: '12px', fontWeight: '500' }}>{item.details}</span>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)' }}>{item.title}</h4>
+                  <span style={{ color: 'var(--text-medium)', fontSize: '12px', fontWeight: '500' }}>{item.details}</span>
                 </div>
                 <span 
                   style={{ 
-                    backgroundColor: item.status === 'Passed' ? '#dcfce7' : '#f1f5f9', 
-                    color: item.status === 'Passed' ? '#16a34a' : '#64748b', 
+                    backgroundColor: item.status === 'Passed' ? 'var(--accent-green-light)' : 'var(--border-color)', 
+                    color: item.status === 'Passed' ? 'var(--accent-green)' : 'var(--text-medium)', 
                     padding: '6px 14px', 
                     borderRadius: '20px', 
                     fontSize: '12px', 
@@ -295,8 +299,8 @@ export default function ProgressView() {
                 </span>
               </div>
               {item.status === 'Passed' && item.score !== null && (
-                <div style={{ width: '100%', backgroundColor: '#e2e8f0', borderRadius: '9999px', height: '6px', overflow: 'hidden' }}>
-                  <div style={{ width: `${item.score}%`, height: '100%', backgroundColor: '#2563eb', borderRadius: '9999px' }}></div>
+                <div style={{ width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '9999px', height: '6px', overflow: 'hidden' }}>
+                  <div style={{ width: `${item.score}%`, height: '100%', backgroundColor: 'var(--primary-blue)', borderRadius: '9999px' }}></div>
                 </div>
               )}
             </div>

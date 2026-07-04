@@ -9,6 +9,7 @@ from app.services.progress_service import (
     get_course_progress,
     mark_learning_unit_completed,
     mark_learning_unit_incomplete,
+    mark_video_completed,
     get_learning_timeline_data
 )
 
@@ -60,6 +61,21 @@ async def incomplete_unit(
         db,
         user_id,
         learning_unit_id
+    )
+
+
+@router.post(
+    "/{user_id}/video/{video_id}/complete"
+)
+async def complete_video(
+    user_id: int,
+    video_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    return await mark_video_completed(
+        db,
+        user_id,
+        video_id
     )
 
 @router.get(

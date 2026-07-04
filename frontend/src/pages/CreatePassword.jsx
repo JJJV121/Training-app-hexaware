@@ -134,7 +134,7 @@ export default function CreatePasswordScreen() {
         {/* RIGHT SIDE: White Login Card */}
         <div style={{ display: 'flex', justifyContent: 'center' }} className="w-full">
           <div 
-            className="w-full bg-white shadow-[0_20px_50px_rgba(0,0,0,0.03)]"
+            className="w-full bg-white shadow-[0_25px_70px_rgba(0,0,0,0.06)] border border-white/80 hover:shadow-[0_30px_80px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all duration-300"
             style={{
               maxWidth: '500px',
               borderRadius: '32px',
@@ -190,7 +190,7 @@ export default function CreatePasswordScreen() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading || !token}
-                    className="w-full bg-[#F1F5F9] border border-transparent rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-blue-400 transition-all"
+                    className="w-full bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-[#E2E8F0] rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-[#3563e9] focus:ring-2 focus:ring-[#3563e9]/10 transition-all duration-200"
                     style={{
                       paddingTop: '16px',
                       paddingBottom: '16px',
@@ -239,7 +239,7 @@ export default function CreatePasswordScreen() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={isLoading || !token}
-                    className="w-full bg-[#F1F5F9] border border-transparent rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-blue-400 transition-all"
+                    className="w-full bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-[#E2E8F0] rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-[#3563e9] focus:ring-2 focus:ring-[#3563e9]/10 transition-all duration-200"
                     style={{
                       paddingTop: '16px',
                       paddingBottom: '16px',
@@ -272,7 +272,7 @@ export default function CreatePasswordScreen() {
               <button 
                 type="submit" 
                 disabled={isLoading || !token}
-                className="w-full bg-[#0061FE] hover:bg-[#0052CC] text-white text-base font-semibold shadow-md shadow-blue-100 transition-all tracking-wide"
+                className="w-full bg-gradient-to-r from-[#3563e9] to-[#254dd0] hover:from-[#254dd0] hover:to-[#1d4ed8] text-white text-base font-semibold shadow-lg shadow-blue-200 hover:shadow-blue-300 transition-all duration-200 tracking-wide"
                 style={{
                   paddingTop: '16px',
                   paddingBottom: '16px',

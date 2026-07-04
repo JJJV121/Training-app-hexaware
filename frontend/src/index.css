@@ -5,6 +5,7 @@
 @import "./styles/course.css";
 @import "./styles/schedule.css";
 @import "./styles/StudyNotes.css";
+@import "./styles/loginscreen.css";
 @import "tailwindcss";
 /* Add your custom background animations here */
 @keyframes floatSlow {
@@ -15,4 +16,269 @@
 @keyframes floatReverse {
   0%, 100% { transform: translate(0px, 0px) scale(1); }
   50% { transform: translate(-15px, 15px) scale(0.95); }
+}
+
+/* --- DARK THEME OVERRIDES --- */
+.app-container.dark-theme {
+  --primary-blue: #5b8def;
+  --primary-blue-hover: #4a7ce0;
+  --primary-blue-active: #3b6cd9;
+  --primary-blue-light: #1e2a4a;
+  
+  --text-dark: #f8fafc;
+  --text-medium: #cbd5e1;
+  --text-light: #94a3b8;
+  
+  --bg-sidebar: #1e293b;
+  --bg-main: #0f172a;
+  
+  --accent-green: #34d399;
+  --accent-green-light: #064e3b;
+  --accent-red: #f87171;
+  --accent-red-light: #7f1d1d;
+  --accent-orange: #fbbf24;
+  --accent-orange-light: #78350f;
+  
+  --border-color: #334155;
+  --card-shadow: 0px 10px 30px rgba(0, 0, 0, 0.25), 0px 2px 10px rgba(0, 0, 0, 0.15);
+
+  background-color: var(--bg-main);
+  color: var(--text-dark);
+  min-height: 100vh; /* Ensures the background covers the bottom */
+}
+
+.app-container.dark-theme .stat-card,
+.app-container.dark-theme .time-spent-card,
+.app-container.dark-theme .course-progress-card,
+.app-container.dark-theme .progress-card,
+.app-container.dark-theme .placeholder-view,
+.app-container.dark-theme .form-card,
+.app-container.dark-theme .note-card,
+.app-container.dark-theme .profile-details-card,
+.app-container.dark-theme .settings-item,
+.app-container.dark-theme .modal-container,
+.app-container.dark-theme .course-syllabus-card,
+.app-container.dark-theme .module-item,
+.app-container.dark-theme .assessment-item-row,
+.app-container.dark-theme .progress-req-box,
+.app-container.dark-theme .progress-insight-item,
+.app-container.dark-theme .progress-assessment-item-row,
+.app-container.dark-theme .schedule-card,
+.app-container.dark-theme .class-session-item,
+.app-container.dark-theme .week-navigation,
+.app-container.dark-theme .calendar-day-box,
+.app-container.dark-theme .notes-header,
+.app-container.dark-theme .schedule-banner-btn,
+.app-container.dark-theme .schedule-stats-card,
+.app-container.dark-theme .timetable-outer-container,
+.app-container.dark-theme .timetable-time-cell,
+.app-container.dark-theme .timetable-grid-cell {
+  background-color: var(--bg-sidebar) !important;
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .timetable-time-cell,
+.app-container.dark-theme .timetable-grid-cell {
+  border-right-color: var(--border-color) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+/* Time-spent badge pill dark override */
+.app-container.dark-theme .time-spent-badge {
+  background-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .user-profile-card {
+  background: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .user-name {
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .user-email {
+  color: var(--text-light) !important;
+}
+
+.app-container.dark-theme .module-timeline-group.unlocked-module {
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .module-timeline-group.locked-module {
+  background: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .lesson-row-interactive-card {
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .lesson-row-interactive-card:not(.locked-lesson) {
+  background: var(--bg-sidebar) !important;
+}
+
+.app-container.dark-theme .lesson-row-interactive-card.locked-lesson {
+  background: var(--bg-main) !important;
+}
+
+/* Sidebar styling for dark mode */
+.app-container.dark-theme .sidebar {
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+}
+
+.app-container.dark-theme .logo,
+.app-container.dark-theme .user-name,
+.app-container.dark-theme .nav-item {
+  color: var(--text-dark);
+}
+
+.app-container.dark-theme .user-email,
+.app-container.dark-theme .user-label {
+  color: var(--text-light);
+}
+
+.app-container.dark-theme .nav-item:hover,
+.app-container.dark-theme .nav-item.active {
+  background-color: var(--border-color);
+}
+
+.app-container.dark-theme .main-content {
+  background-color: var(--bg-main);
+}
+
+/* ============================================================
+   DARK THEME — COURSE PAGE OVERRIDES
+   ============================================================ */
+
+/* Main viewport + scroll area */
+.app-container.dark-theme .course-main-viewport {
+  background-color: var(--bg-main) !important;
+}
+
+.app-container.dark-theme .course-workspace-scroll-area {
+  background-color: var(--bg-main) !important;
+}
+
+/* Course hero / video banner */
+.app-container.dark-theme .course-hero-banner,
+.app-container.dark-theme .video-workspace-banner {
+  background-color: var(--primary-blue) !important;
+}
+
+/* Overview split grid cards */
+.app-container.dark-theme .overview-informational-card {
+  background-color: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+.app-container.dark-theme .overview-informational-card h3 {
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .overview-body-narrative {
+  color: var(--text-medium) !important;
+}
+
+.app-container.dark-theme .overview-metric-meta-label {
+  color: var(--text-light) !important;
+}
+
+.app-container.dark-theme .overview-metric-meta-value {
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .overview-checklist-bullet-text {
+  color: var(--text-medium) !important;
+}
+
+.app-container.dark-theme .overview-checklist-bullet-node {
+  background-color: #064e3b !important;
+  border-color: #065f46 !important;
+}
+
+/* Video section — nav tabs */
+.app-container.dark-theme .video-horizontal-nav-item {
+  background-color: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-medium) !important;
+}
+
+.app-container.dark-theme .video-horizontal-nav-item.active-nav-pill {
+  background-color: var(--primary-blue) !important;
+  border-color: var(--primary-blue) !important;
+  color: #ffffff !important;
+}
+
+/* Video dynamic card container */
+.app-container.dark-theme .video-dynamic-card-container-wrapper {
+  background-color: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Playlist items */
+.app-container.dark-theme .playlist-card-item {
+  background-color: var(--bg-sidebar) !important;
+  border-color: transparent !important;
+}
+
+.app-container.dark-theme .playlist-card-item:hover {
+  background-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .playlist-card-item.selection-active {
+  background-color: var(--primary-blue-light) !important;
+  border-color: var(--primary-blue) !important;
+}
+
+.app-container.dark-theme .playlist-card-title {
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .playlist-card-meta {
+  color: var(--text-medium) !important;
+}
+
+/* Notes button (secondary variant) */
+.app-container.dark-theme .variant-secondary-notes {
+  background-color: var(--border-color) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .variant-secondary-notes:hover {
+  background-color: #475569 !important;
+}
+
+/* Unchecked checkbox in dark mode */
+.app-container.dark-theme .state-unchecked {
+  background-color: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Loading / error fallback screens */
+.app-container.dark-theme .course-viewport-centered-fallback {
+  background-color: var(--bg-main) !important;
+  color: var(--text-dark) !important;
+}
+
+/* Overview detail panel (legacy class) */
+.app-container.dark-theme .course-overview-detail-panel {
+  background-color: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-medium) !important;
+}
+
+.app-container.dark-theme .course-overview-detail-panel h3 {
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .course-overview-detail-panel p {
+  color: var(--text-medium) !important;
 }

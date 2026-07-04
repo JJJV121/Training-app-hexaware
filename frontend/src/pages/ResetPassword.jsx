@@ -134,7 +134,7 @@ export default function ResetPassword() {
         {/* RIGHT SIDE: Dedicated Reset Interface Card */}
         <div style={{ display: 'flex', justifyContent: 'center' }} className="w-full">
           <div 
-            className="w-full bg-white shadow-[0_20px_50px_rgba(0,0,0,0.03)]"
+            className="w-full bg-white shadow-[0_25px_70px_rgba(0,0,0,0.06)] border border-white/80 hover:shadow-[0_30px_80px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all duration-300"
             style={{
               maxWidth: '500px',
               borderRadius: '32px',

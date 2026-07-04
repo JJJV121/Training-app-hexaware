@@ -1,90 +1,88 @@
 // scheduleService.js
-// Service providing mock data for the Weekly Schedule.
+
+import axios from "axios";
+
+const API_BASE_URL = "http://localhost:8000";
 
 const scheduleService = {
-  getScheduleData() {
-    return {
-      title: "Weekly Schedule",
-      stats: [
-        { label: "Modules", value: 64, color: "#3563e9" }, // Blue
-        { label: "Sections", value: 12, color: "#0dcd94" }, // Green/Teal
-        { label: "Days", value: 12, color: "#ff9f43" }, // Orange/Yellow
-        { label: "Total Hours/Week", value: "26 hrs", color: "#1a202c" } // Text Dark
-      ],
-      timeSlots: [
+  async getScheduleData(userId = 1) {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/schedule/${userId}`
+      );
+
+      const api = response.data;
+
+      const timeSlots = [
         "09:00\nto\n10:30",
         "10:45\nto\n12:15",
         "12:30\nto\n14:00",
         "14:15\nto\n15:45",
-        "16:00\nto\n17:30"
-      ],
-      days: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"],
-      events: [
-        {
-          day: "MONDAY",
-          timeSlot: "09:00\nto\n10:30",
-          type: "LECTURE",
-          title: "Data Structures &",
-          code: "CS201",
-          instructor: "Dr. Smith",
-          colorClass: "lecture-blue"
-        },
-        {
-          day: "TUESDAY",
-          timeSlot: "09:00\nto\n10:30",
-          type: "SECTION",
-          title: "Web Developm",
-          code: "CS310",
-          instructor: "Prof. Johnson",
-          colorClass: "section-green"
-        },
-        {
-          day: "TUESDAY",
-          timeSlot: "10:45\nto\n12:15",
-          type: "LECTURE",
-          title: "Software Engineering",
-          code: "CS315",
-          instructor: "Dr. Williams",
-          colorClass: "lecture-blue"
-        },
-        {
-          day: "THURSDAY",
-          timeSlot: "10:45\nto\n12:15",
-          type: "LECTURE",
-          title: "Software Engineering",
-          code: "CS315",
-          instructor: "Dr. Williams",
-          colorClass: "lecture-blue"
-        },
-        {
-          day: "WEDNESDAY",
-          timeSlot: "12:30\nto\n14:00",
-          type: "LAB",
-          title: "Database",
-          code: "CS320",
-          instructor: "Prof. Davis",
-          colorClass: "lab-blue"
-        },
-        {
-          day: "MONDAY",
-          timeSlot: "14:15\nto\n15:45",
-          type: "LECTURE",
-          title: "Machine Learning",
-          code: "CS401",
-          instructor: "Dr. Martinez",
-          colorClass: "lecture-blue"
-        },
-        {
-          day: "WEDNESDAY",
-          timeSlot: "14:15\nto\n15:45",
-          type: "SECTION",
-          title: "Cloud Computing",
-          code: "CS405",
-          instructor: "Prof. Anderson",
-          colorClass: "section-green"
-        }
-      ]
-    };
+        "16:00\nto\n17:30",
+        "17:45\nto\n19:15",
+        "19:30\nto\n21:00"
+      ];
+
+      const events = [];
+
+      api.schedule.forEach(day => {
+        day.sessions.forEach(session => {
+          events.push({
+            day: day.weekday.toUpperCase(),
+
+            timeSlot: `${session.start_time}\nto\n${session.end_time}`,
+
+            type: session.completed ? "COMPLETED" : "LECTURE",
+
+            title: session.title,
+
+            code: `LU-${session.learning_unit_id}`,
+
+            instructor: "",
+
+            colorClass: session.completed
+              ? "section-green"
+              : "lecture-blue"
+          });
+        });
+      });
+
+      return {
+        title: api.course_name,
+
+        stats: [
+          {
+            label: "Modules",
+            value: api.summary.total_modules,
+            color: "#3563e9"
+          },
+          {
+            label: "Sections",
+            value: api.summary.total_sections,
+            color: "#0dcd94"
+          },
+          {
+            label: "Days",
+            value: api.summary.total_days,
+            color: "#ff9f43"
+          },
+          {
+            label: "Total Hours",
+            value: `${api.summary.total_hours} hrs`,
+            color: "#1a202c"
+          }
+        ],
+
+        timeSlots,
+
+        days: [...new Set(api.schedule.map(day => day.weekday.toUpperCase()))],
+
+        events
+      };
+    } catch (error) {
+      console.error("Error fetching schedule:", error);
+      throw error;
+    }
   }
 };
 

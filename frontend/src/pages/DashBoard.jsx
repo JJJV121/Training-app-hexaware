@@ -7,6 +7,7 @@ import Schedule from '../pages/Schedule';
 import Placeholder from '../pages/Placeholder';
 import ProgressView from './ProgressView.jsx';
 import StudyNotes from './StudyNotes.jsx';
+import Profile from '../pages/Profile';
 
 export default function DashBoard() {
   // 1. Convert profile to a state object to handle asynchronous API loading
@@ -15,6 +16,8 @@ export default function DashBoard() {
   // 🌟 Dynamic Course ID State tracking user's enrollment assignment
   const [courseId, setCourseId] = useState(null);
   const [isCourseLoading, setIsCourseLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
   
   // Hash routing state
   const [currentRoute, setCurrentRoute] = useState(() => {
@@ -49,11 +52,28 @@ export default function DashBoard() {
     const fetchUserAssignedCourse = async () => {
       try {
         setIsCourseLoading(true);
-        const response = await fetch(`/courses/users/${userId}`);
+        const authToken = localStorage.getItem('authToken');
+
+        const response = await fetch(`http://localhost:8000/courses/users/${userId}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+          }
+        });
+
         const data = await response.json();
-        
-        // Safely extract the course_id or fall back to 1 if empty
-        const assignedId = data?.enrolled_courses?.[0]?.course_id || data?.course_id || 1;
+
+        console.log("Courses API Response:", data);
+
+        // Support multiple possible response formats
+        const assignedId =
+          data?.enrolled_courses?.[0]?.course_id ??
+          data?.course_id ??
+          data?.[0]?.id ??
+          1;
+
+        console.log("Assigned Course ID:", assignedId);
+
         setCourseId(assignedId);
       } catch (error) {
         console.error("Failed to load assigned user course:", error);
@@ -85,6 +105,25 @@ export default function DashBoard() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 900;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [currentRoute]);
+
   const renderContent = () => {
     switch (currentRoute) {
       case 'home':
@@ -102,7 +141,7 @@ export default function DashBoard() {
       case 'notes':
         return <StudyNotes/>;
       case 'profile':
-        return <Placeholder title="Profile" description="View and update your student profile information." />;
+        return <Profile />;
       case 'logout':
         return <Placeholder title="Logged Out" description="You have been successfully logged out." />;
       default:
@@ -119,10 +158,34 @@ export default function DashBoard() {
     { page: 'profile', icon: 'user', label: 'Profile' }
   ];
 
+  const closeMobileMenu = () => {
+    if (isMobile) {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
   return (
+    // FIX: Use app-container here (no duplicate dark-theme class; App.jsx owns theming)
     <div className="app-container">
+      <div
+        className={`sidebar-overlay ${isMobileMenuOpen ? 'show' : ''}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+
+      <header className="mobile-topbar">
+        <button
+          type="button"
+          className="mobile-menu-toggle"
+          aria-label="Toggle navigation"
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        >
+          <Icon name={isMobileMenuOpen ? 'x' : 'menu'} className="nav-icon" />
+        </button>
+        <span className="mobile-topbar-title">Hexaware</span>
+      </header>
+
       {/* Sidebar Navigation */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <h1 className="logo">Hexaware</h1>
         </div>
@@ -145,6 +208,7 @@ export default function DashBoard() {
                   href={`#${item.page}`} 
                   className={`nav-item ${currentRoute === item.page ? 'active' : ''}`}
                   data-page={item.page}
+                  onClick={closeMobileMenu}
                 >
                   <Icon name={item.icon} className="nav-icon" />
                   <span>{item.label}</span>
@@ -154,22 +218,23 @@ export default function DashBoard() {
           </ul>
         </nav>
         
-        {/* Logout at bottom */}
+        {/* Logout at bottom — FIX: use <button> not <a href="#logout"> to prevent hash flicker */}
         <div className="sidebar-footer">
-          <a 
-            href="#logout" 
+          <button 
+            type="button"
             className={`nav-item logout-btn ${currentRoute === 'logout' ? 'active' : ''}`}
             data-page="logout"
             onClick={() => {
               localStorage.removeItem('authToken');
               localStorage.removeItem('user');
               localStorage.removeItem('logged_in_user_id');
+              closeMobileMenu();
               window.location.href = '/'; 
             }}
           >
             <Icon name="log-out" className="nav-icon" />
             <span>Logout</span>
-          </a>
+          </button>
         </div>
       </aside>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // 👈 Added Link here
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
 export default function LoginScreen() {
@@ -25,119 +25,64 @@ export default function LoginScreen() {
   }, [navigate]);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  setIsLoading(true);
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
 
-  try {
-    const response = await axios.post(
-      'http://localhost:8000/auth/login',
-      {
-        email: email,
-        password: password
+    try {
+      const response = await axios.post(
+        'http://localhost:8000/auth/login',
+        {
+          email: email,
+          password: password
+        }
+      );
+
+      const { access_token, token_type, user } = response.data;
+
+      if (access_token) {
+        const formattedToken = `${token_type} ${access_token}`;
+
+        if (rememberMe) {
+          localStorage.setItem('authToken', formattedToken);
+        } else {
+          sessionStorage.setItem('authToken', formattedToken);
+        }
+
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('logged_in_user_id', user.id);
       }
-    );
+      alert('Login Successful!');
+      navigate('/dashboard');
 
-    const { access_token, token_type, user } = response.data;
+    } catch (err) {
+      console.error('Login Submission Error:', err);
 
-    if (access_token) {
-      const formattedToken = `${token_type} ${access_token}`;
-
-      if (rememberMe) {
-        localStorage.setItem('authToken', formattedToken);
-      } else {
-        sessionStorage.setItem('authToken', formattedToken);
-      }
-
-      localStorage.setItem('user', JSON.stringify(user));
-      localStorage.setItem('logged_in_user_id', user.id);
+      setError(
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        'Invalid email or password.'
+      );
+    } finally {
+      setIsLoading(false);
     }
-    alert('Login Successful!');
-    navigate('/dashboard');
-
-  } catch (err) {
-    console.error('Login Submission Error:', err);
-
-    setError(
-      err.response?.data?.detail ||
-      err.response?.data?.message ||
-      'Invalid email or password.'
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const animationStyles = `
-    @keyframes floatSlow {
-      0% { transform: translate(0px, 0px) scale(1); }
-      50% { transform: translate(20px, -15px) scale(1.05); }
-      100% { transform: translate(0px, 0px) scale(1); }
-    }
-    @keyframes floatReverse {
-      0% { transform: translate(0px, 0px) scale(1); }
-      50% { transform: translate(-15px, 15px) scale(0.95); }
-      100% { transform: translate(0px, 0px) scale(1); }
-    }
-  `;
+  };
 
   return (
-    <div 
-      className="min-h-screen w-full bg-[#F4F7FC] font-sans"
-      style={{
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        padding: '24px'
-      }}
-    >
-      <style dangerouslySetInnerHTML={{ __html: animationStyles }} />
+    <div className="login-wrapper min-h-screen w-full bg-gradient-to-br from-[#F4F7FC] via-[#F8FAFC] to-[#EFF6FF] font-sans" style={{ position: 'relative', overflow: 'hidden' }}>
       
       {/* --- BACKGROUND BLUR LAYER --- */}
-      <div style={{
-        position: 'absolute', top: '14%', left: '12%', width: '140px', height: '140px',
-        backgroundColor: '#C8DAF7', borderRadius: '50%', filter: 'blur(25px)', opacity: 0.6, pointerEvents: 'none',
-        animation: 'floatSlow 8s ease-in-out infinite'
-      }}></div>
-      
-      <div style={{
-        position: 'absolute', bottom: '-5%', left: '2%', width: '340px', height: '340px',
-        backgroundColor: '#FFFFFF', borderRadius: '50%', filter: 'blur(40px)', opacity: 0.5, pointerEvents: 'none',
-        animation: 'floatReverse 12s ease-in-out infinite'
-      }}></div>
-      
-      <div style={{
-        position: 'absolute', top: '22%', right: '10%', width: '310px', height: '310px',
-        backgroundColor: '#CFDDF2', borderRadius: '50%', filter: 'blur(45px)', opacity: 0.65, pointerEvents: 'none',
-        animation: 'floatSlow 10s ease-in-out infinite'
-      }}></div>
-      
-      <div style={{
-        position: 'absolute', top: '8%', right: '0%', width: '170px', height: '170px',
-        backgroundColor: '#D9E7F8', borderRadius: '50%', filter: 'blur(20px)', opacity: 0.7, pointerEvents: 'none',
-        animation: 'floatReverse 7s ease-in-out infinite'
-      }}></div>
+      <div className="blur-layer-1"></div>
+      <div className="blur-layer-2"></div>
+      <div className="blur-layer-3"></div>
+      <div className="blur-layer-4"></div>
 
       {/* --- MAIN CONTENT GRID WRAPPER --- */}
-      <div 
-        className="w-full max-w-6xl mx-auto"
-        style={{
-          position: 'relative',
-          zIndex: 10,
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '48px',
-          alignItems: 'center'
-        }}
-      >
+      <div className="content-grid w-full max-w-6xl mx-auto" style={{ position: 'relative', zIndex: 10 }}>
+        
         {/* LEFT SIDE: Branding Statement */}
         <div className="flex flex-col items-center text-center md:items-start md:text-left select-none">
-          <h1 
-            className="text-[72px] md:text-[88px] font-black text-[#0061FE] tracking-tight leading-none"
-            style={{ marginBottom: '24px' }}
-          >
+          <h1 className="brand-title text-[72px] md:text-[88px] font-black text-[#0061FE] tracking-tight leading-none">
             Sign In
           </h1>
           <p className="text-xl md:text-2xl text-gray-400 font-medium tracking-tight md:ml-1">
@@ -146,21 +91,11 @@ export default function LoginScreen() {
         </div>
 
         {/* RIGHT SIDE: White Login Form Card */}
-        <div style={{ display: 'flex', justifyContent: 'center' }} className="w-full">
-          <div 
-            className="w-full bg-white shadow-[0_20px_50px_rgba(0,0,0,0.03)]"
-            style={{
-              maxWidth: '500px',
-              borderRadius: '32px',
-              padding: '48px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '40px'
-            }}
-          >
+        <div className="form-card-wrapper w-full">
+          <div className="form-card w-full bg-white shadow-[0_25px_70px_rgba(0,0,0,0.06)] backdrop-blur-xl border border-white/80 hover:shadow-[0_30px_80px_rgba(0,0,0,0.08)] transition-all duration-300">
             
             {/* Header Text */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="card-header">
               <h2 className="text-[32px] font-bold text-[#0061FE] tracking-tight leading-tight">
                 Welcome to Hexaware
               </h2>
@@ -171,30 +106,22 @@ export default function LoginScreen() {
 
             {/* Error Notification Block */}
             {error && (
-              <div style={{ 
-                backgroundColor: '#FEE2E2', 
-                color: '#DC2626', 
-                padding: '14px 18px', 
-                borderRadius: '14px', 
-                fontSize: '13px', 
-                fontWeight: '500', 
-                marginTop: '-12px' 
-              }}>
+              <div className="error-notification">
                 {error}
               </div>
             )}
 
             {/* Input Form Fields */}
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            <form onSubmit={handleSubmit} className="login-form">
               
               {/* Field 1: Email */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="input-group">
                 <label htmlFor="email" className="text-[11px] font-bold text-gray-800 tracking-widest uppercase">
                   EMAIL
                 </label>
                 
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
-                  <span style={{ position: 'absolute', left: '18px', display: 'flex', alignItems: 'center', color: '#9ca3af', pointerEvents: 'none' }}>
+                <div className="input-wrapper relative">
+                  <span className="input-icon">
                     <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                     </svg>
@@ -207,32 +134,27 @@ export default function LoginScreen() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
-                    className="w-full bg-[#F1F5F9] border border-transparent rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-blue-400 transition-all"
-                    style={{
-                      paddingTop: '16px',
-                      paddingBottom: '16px',
-                      paddingLeft: '52px',
-                      paddingRight: '16px',
-                      opacity: isLoading ? 0.6 : 1
-                    }}
+                    className="email-input w-full bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-[#E2E8F0] rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-[#3563e9] focus:ring-2 focus:ring-[#3563e9]/10 transition-all duration-200"
                     required
                   />
                 </div>
               </div>
 
               {/* Field 2: Password */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="input-group">
                 <label htmlFor="password" className="text-[11px] font-bold text-gray-800 tracking-widest uppercase">
                   PASSWORD
                 </label>
                 
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
-                  <span style={{ position: 'absolute', left: '18px', display: 'flex', alignItems: 'center', color: '#9ca3af', pointerEvents: 'none' }}>
+                {/* Note the 'relative' utility class on this wrapper to keep absolute elements bound inside */}
+                <div className="input-wrapper relative">
+                  <span className="input-icon">
                     <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0V10.5m-2.25 0h13.5m-13.5 0a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25h13.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25M6.75 10.5h10.5" />
                     </svg>
                   </span>
                   
+                  {/* Added pr-12 padding-right so long typed text never overlaps behind the eye button */}
                   <input
                     type={showPassword ? "text" : "password"}
                     id="password"
@@ -240,23 +162,16 @@ export default function LoginScreen() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
-                    className="w-full bg-[#F1F5F9] border border-transparent rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-blue-400 transition-all"
-                    style={{
-                      paddingTop: '16px',
-                      paddingBottom: '16px',
-                      paddingLeft: '52px',
-                      paddingRight: '52px',
-                      opacity: isLoading ? 0.6 : 1
-                    }}
+                    className="password-input w-full pl-11 pr-12 bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-[#E2E8F0] rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-[#3563e9] focus:ring-2 focus:ring-[#3563e9]/10 transition-all duration-200"
                     required
                   />
 
-                  {/* Toggle Visibility Button */}
+                  {/* Single Toggle Visibility Eye Button positioned perfectly on the right */}
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
-                    style={{ position: 'absolute', right: '18px', background: 'none', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', color: '#9ca3af' }}
+                    className="toggle-visibility-btn absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
@@ -273,8 +188,8 @@ export default function LoginScreen() {
               </div>
 
               {/* Options Row: Remember Me & Forgot Password */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '-8px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+              <div className="options-row">
+                <label className={`remember-label ${isLoading ? 'loading' : ''}`}>
                   <input 
                     type="checkbox" 
                     checked={rememberMe}
@@ -294,29 +209,10 @@ export default function LoginScreen() {
               <button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full bg-[#0061FE] hover:bg-[#0052CC] text-white text-base font-semibold shadow-md shadow-blue-100 transition-all tracking-wide"
-                style={{
-                  paddingTop: '16px',
-                  paddingBottom: '16px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  opacity: isLoading ? 0.7 : 1,
-                  marginTop: '8px'
-                }}
+                className="submit-btn w-full bg-[#0061FE] hover:bg-[#0052CC] text-white text-base font-semibold shadow-md shadow-blue-100 transition-all tracking-wide"
               >
                 {isLoading ? 'Signing In...' : 'Sign In'}
               </button>
-
-              {/* 👈 NEW SIGNUP LINK SECTION */}
-              <div className="text-center mt-2">
-                <span className="text-sm text-gray-600 font-medium select-none">
-                  New User?{' '}
-                </span>
-                <Link to="/signup" className="text-sm font-semibold text-[#0061FE] hover:underline transition-all">
-                  Sign up
-                </Link>
-              </div>
 
             </form>
           </div>

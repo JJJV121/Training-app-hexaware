@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.progress import Progress
 from app.models.learning_unit import LearningUnit
 from app.models.course_day import CourseDay
+from app.models.video import Video
 
 
 async def get_course_progress(
@@ -26,10 +27,8 @@ async def get_course_progress(
         )
     )
 
-    completed_units = await db.scalar(
-        select(
-            func.count(Progress.id)
-        )
+    completed_learning_units_result = await db.execute(
+        select(Progress.learning_unit_id)
         .join(
             LearningUnit,
             Progress.learning_unit_id == LearningUnit.id
@@ -41,9 +40,14 @@ async def get_course_progress(
         .where(
             CourseDay.course_id == course_id,
             Progress.user_id == user_id,
-            Progress.is_completed == True
+            Progress.is_completed.is_(True)
         )
+        .distinct()
+        .order_by(Progress.learning_unit_id)
     )
+
+    completed_learning_units = completed_learning_units_result.scalars().all()
+    completed_units = len(completed_learning_units)
 
     percentage = 0
 
@@ -58,6 +62,8 @@ async def get_course_progress(
         "user_id": user_id,
         "total_units": total_units,
         "completed_units": completed_units,
+        "completed_learning_units": completed_learning_units,
+        "completed_videos": [],
         "progress_percentage": percentage
     }
 
@@ -122,6 +128,28 @@ async def mark_learning_unit_incomplete(
     return {
         "message": "Learning unit marked as incomplete"
     }
+
+
+async def mark_video_completed(
+    db: AsyncSession,
+    user_id: int,
+    video_id: int
+):
+    video = await db.scalar(
+        select(Video).where(Video.id == video_id)
+    )
+
+    if not video:
+        return {
+            "message": "Video not found"
+        }
+
+    return {
+        "message": "Video marked as completed",
+        "user_id": user_id,
+        "video_id": video_id
+    }
+
 
 from sqlalchemy import func
 
