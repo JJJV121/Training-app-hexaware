@@ -725,7 +725,7 @@ function QnASection({ learningUnitId }) {
     <div style={{ padding: '24px', backgroundColor: 'var(--bg-sidebar)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', color: 'var(--text-dark)' }}>
         <Icon name="message-circle" style={{ width: '20px', height: '20px' }} />
-        <h3 style={{ margin: 0, fontSize: '18px' }}>Student Discussion & Forum Boards</h3>
+        <h3 style={{ margin: 0, fontSize: '18px' }}>Questions & Answers</h3>
       </div>
 
       {qaList.length === 0 ? (

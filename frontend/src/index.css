@@ -4,6 +4,7 @@
 @import "./styles/home.css";
 @import "./styles/course.css";
 @import "./styles/schedule.css";
+@import "./styles/StudyNotes.css";
 @import "./styles/loginscreen.css";
 @import "tailwindcss";
 /* Add your custom background animations here */

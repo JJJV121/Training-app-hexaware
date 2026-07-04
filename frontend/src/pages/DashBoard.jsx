@@ -6,6 +6,7 @@ import Course from '../pages/Course';
 import Schedule from '../pages/Schedule';
 import Placeholder from '../pages/Placeholder';
 import ProgressView from './ProgressView.jsx';
+import StudyNotes from './StudyNotes.jsx';
 import Profile from '../pages/Profile';
 
 export default function DashBoard() {
@@ -138,7 +139,7 @@ export default function DashBoard() {
       case 'progress':
         return <ProgressView/>;
       case 'notes':
-        return <Placeholder title="Notes" description="Manage your course notes and key highlights." />;
+        return <StudyNotes/>;
       case 'profile':
         return <Profile />;
       case 'logout':
