@@ -10,7 +10,15 @@ from app.routers.dashboard_router import router as dashboard_router
 from app.routers.profile import router as profile_router
 from app.routers.note import router as note_router
 
+from app.database.session import test_connection
+
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup():
+    await test_connection()
+
 
 app.add_middleware(
     CORSMiddleware,
