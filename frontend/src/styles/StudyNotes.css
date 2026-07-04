@@ -79,7 +79,7 @@ html, body, #root {
 }
 
 .notes-search-input-premium::placeholder {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(144, 176, 245, 0.8);
 }
 
 .notes-search-input-premium:focus {
