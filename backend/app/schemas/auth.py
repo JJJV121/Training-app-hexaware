@@ -11,9 +11,17 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class LoginUserResponse(BaseModel):
+    id: int
+    email: str
+    employee_id: str
+    role: str | None
+
+
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str
+    user: LoginUserResponse
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -25,7 +33,6 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 class ProfileResponse(BaseModel):
-
     name: str
     email: str
     model_config = {

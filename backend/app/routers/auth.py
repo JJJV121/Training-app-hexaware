@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Request
-from app.schemas.auth import ActivateAccountRequest,LoginRequest,ForgotPasswordRequest,ResetPasswordRequest
+from app.schemas.auth import ActivateAccountRequest,LoginRequest,ForgotPasswordRequest, LoginResponse,ResetPasswordRequest
 from app.services.auth_service import activate_account,login_user,create_user,generate_activation_token,forgot_password,reset_password
 from app.database.session import get_db
 from app.schemas.user import UserCreate, UserResponse
@@ -68,7 +68,8 @@ async def activate_user(
 
 
 
-@router.post("/login")
+@router.post("/login", response_model=LoginResponse)
+
 async def login(
     request: Request,
     data: LoginRequest,  
