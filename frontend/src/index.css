@@ -5,6 +5,7 @@
 @import "./styles/course.css";
 @import "./styles/schedule.css";
 @import "./styles/loginscreen.css";
+@import "./styles/assessment.css";
 @import "tailwindcss";
 /* Add your custom background animations here */
 @keyframes floatSlow {

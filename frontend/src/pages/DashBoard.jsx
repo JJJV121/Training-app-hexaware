@@ -7,6 +7,7 @@ import Schedule from '../pages/Schedule';
 import Placeholder from '../pages/Placeholder';
 import ProgressView from './ProgressView.jsx';
 import Profile from '../pages/Profile';
+import Assessment from './Assessment.jsx';
 
 export default function DashBoard() {
   // 1. Convert profile to a state object to handle asynchronous API loading
@@ -127,6 +128,10 @@ export default function DashBoard() {
         return <Schedule />;
       case 'progress':
         return <ProgressView/>;
+      case 'assessment-mcq':
+        return <Assessment assessmentType="MCQ" onFinished={() => window.location.hash = 'progress'} />;
+      case 'assessment-coding':
+        return <Assessment assessmentType="Coding" onFinished={() => window.location.hash = 'progress'} />;
       case 'notes':
         return <Placeholder title="Notes" description="Manage your course notes and key highlights." />;
       case 'profile':
