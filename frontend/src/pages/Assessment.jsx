@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 import Icon from '../components/Icon';
 import '../styles/assessment.css';
+import { useTheme } from '../context/ThemeContext';
 
 // ==========================================
 // 1. MOCK DATA SCHEMAS (FASTAPI FORMAT)
@@ -307,8 +309,10 @@ public:
 export default function Assessment({
   assessmentType = "MCQ", // Can be "MCQ" or "Coding"
   initialRemainingTime = null, // Prop injection to recover timer state
-  onFinished = null // Callback on exit or completed submission
+  onFinished = null, // Callback on exit or completed submission
+  onLockChange = null // Callback to signal locking status
 }) {
+  const { isDarkMode } = useTheme();
   // Select active assessment configuration payload
   const activeAssessment = assessmentType === "Coding" ? CODING_ASSESSMENT_MOCK : MCQ_ASSESSMENT_MOCK;
   const assessmentId = activeAssessment.id;
@@ -393,6 +397,20 @@ export default function Assessment({
   useEffect(() => {
     selectedAnswersRef.current = selectedAnswers;
   }, [selectedAnswers]);
+
+  // ==========================================
+  // 2.5. NAVIGATION LOCK EFFECT
+  // ==========================================
+  useEffect(() => {
+    if (onLockChange) {
+      onLockChange(!isSubmitted);
+    }
+    return () => {
+      if (onLockChange) {
+        onLockChange(false);
+      }
+    };
+  }, [isSubmitted, onLockChange]);
 
   // ==========================================
   // 3. TIMER countdown implementation
@@ -1002,22 +1020,24 @@ export default function Assessment({
                   </select>
                 </div>
 
-                <div className="editor-workspace">
-                  <div className="editor-gutter">
-                    {getLineNumbers().map((num) => (
-                      <div key={num} className="editor-gutter-num">
-                        {num}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="editor-textarea-wrapper">
-                    <textarea
-                      className="editor-textarea"
-                      value={selectedAnswers[currentQuestion.id]?.code || ''}
-                      onChange={(e) => handleCodeChange(currentQuestion.id, e.target.value)}
-                      spellCheck="false"
-                    />
-                  </div>
+                <div className="editor-workspace" style={{ padding: 0 }}>
+                  <Editor
+                    height="100%"
+                    language={selectedAnswers[currentQuestion.id]?.language || 'python'}
+                    theme={isDarkMode ? 'vs-dark' : 'light'}
+                    value={selectedAnswers[currentQuestion.id]?.code || ''}
+                    onChange={(value) => handleCodeChange(currentQuestion.id, value || '')}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 14,
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      tabSize: 4,
+                      cursorBlinking: 'smooth',
+                      padding: { top: 12, bottom: 12 }
+                    }}
+                  />
                 </div>
 
                 {/* Console results block */}

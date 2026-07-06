@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dashboardService from '../services/dashboardService.js';
 import Icon from '../components/Icon';
 import Home from '../pages/Home';
@@ -24,6 +24,19 @@ export default function DashBoard() {
     const hash = window.location.hash.substring(1);
     return hash || 'home';
   });
+
+  // Assessment locking state
+  const [isLocked, setIsLocked] = useState(false);
+  const isLockedRef = useRef(isLocked);
+  const currentRouteRef = useRef(currentRoute);
+
+  useEffect(() => {
+    isLockedRef.current = isLocked;
+  }, [isLocked]);
+
+  useEffect(() => {
+    currentRouteRef.current = currentRoute;
+  }, [currentRoute]);
 
   // 2. Dynamically retrieve the logged-in user ID from localStorage
   const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
@@ -81,7 +94,14 @@ export default function DashBoard() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.substring(1);
-      setCurrentRoute(hash || 'home');
+      const targetRoute = hash || 'home';
+      
+      if (isLockedRef.current && targetRoute !== currentRouteRef.current) {
+        alert("Assessment is in progress. You must submit the assessment before leaving the page.");
+        window.location.hash = currentRouteRef.current;
+        return;
+      }
+      setCurrentRoute(targetRoute);
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -129,9 +149,9 @@ export default function DashBoard() {
       case 'progress':
         return <ProgressView/>;
       case 'assessment-mcq':
-        return <Assessment assessmentType="MCQ" onFinished={() => window.location.hash = 'progress'} />;
+        return <Assessment assessmentType="MCQ" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
       case 'assessment-coding':
-        return <Assessment assessmentType="Coding" onFinished={() => window.location.hash = 'progress'} />;
+        return <Assessment assessmentType="Coding" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
       case 'notes':
         return <Placeholder title="Notes" description="Manage your course notes and key highlights." />;
       case 'profile':
@@ -196,19 +216,29 @@ export default function DashBoard() {
         {/* Nav menu list */}
         <nav className="nav-menu">
           <ul>
-            {navItems.map(item => (
-              <li key={item.page}>
-                <a 
-                  href={`#${item.page}`} 
-                  className={`nav-item ${currentRoute === item.page ? 'active' : ''}`}
-                  data-page={item.page}
-                  onClick={closeMobileMenu}
-                >
-                  <Icon name={item.icon} className="nav-icon" />
-                  <span>{item.label}</span>
-                </a>
-              </li>
-            ))}
+            {navItems.map(item => {
+              const isDisabled = isLocked && currentRoute !== item.page;
+              return (
+                <li key={item.page}>
+                  <a 
+                    href={isDisabled ? undefined : `#${item.page}`} 
+                    className={`nav-item ${currentRoute === item.page ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
+                    data-page={item.page}
+                    onClick={(e) => {
+                      if (isDisabled) {
+                        e.preventDefault();
+                        alert("Assessment is in progress. You must submit the assessment before leaving the page.");
+                        return;
+                      }
+                      closeMobileMenu();
+                    }}
+                  >
+                    <Icon name={item.icon} className="nav-icon" />
+                    <span>{item.label}</span>
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </nav>
         
@@ -216,9 +246,11 @@ export default function DashBoard() {
         <div className="sidebar-footer">
           <button 
             type="button"
-            className={`nav-item logout-btn ${currentRoute === 'logout' ? 'active' : ''}`}
+            className={`nav-item logout-btn ${currentRoute === 'logout' ? 'active' : ''} ${isLocked ? 'disabled' : ''}`}
             data-page="logout"
+            disabled={isLocked}
             onClick={() => {
+              if (isLocked) return;
               localStorage.removeItem('authToken');
               localStorage.removeItem('user');
               localStorage.removeItem('logged_in_user_id');
