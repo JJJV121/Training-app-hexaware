@@ -6,6 +6,7 @@
 @import "./styles/schedule.css";
 @import "./styles/StudyNotes.css";
 @import "./styles/loginscreen.css";
+@import "./styles/assessment.css";
 @import "tailwindcss";
 /* Add your custom background animations here */
 @keyframes floatSlow {
@@ -281,4 +282,16 @@
 
 .app-container.dark-theme .course-overview-detail-panel p {
   color: var(--text-medium) !important;
+}
+
+/* Disabled navigation items in sidebar during active assessments */
+.nav-item.disabled {
+  opacity: 0.45;
+  cursor: not-allowed !important;
+}
+
+.nav-item.disabled:hover {
+  background-color: transparent !important;
+  transform: none !important;
+  color: var(--text-light) !important;
 }

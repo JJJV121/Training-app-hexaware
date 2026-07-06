@@ -31,7 +31,24 @@ body, html, #root {
   flex-grow: 1;
   height: 100%;
   min-height: 0;   
-  display: flex;
-  flex-direction: column;
-  overflow: scroll;
+  overflow: auto;
+}
+
+/* Ensure fixed sidebar and independent main content scrolling on desktop */
+@media (min-width: 901px) {
+  body, html, #root {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .app-container {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden !important;
+  }
+  .main-content {
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto !important;
+  }
 }
