@@ -11,3 +11,6 @@ from app.models.video import Video
 from app.models.progress import Progress
 from app.models.lesson_qa import LessonQA
 from app.models.enrollment import Enrollment
+
+from .assignment import Assignment
+from .assignment_submission import AssignmentSubmission
