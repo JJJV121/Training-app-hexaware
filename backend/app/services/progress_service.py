@@ -14,42 +14,35 @@ async def get_course_progress(
     course_id: int,
     user_id: int
 ):
-    total_units = await db.scalar(
+    stmt = (
         select(
-            func.count(LearningUnit.id)
+            LearningUnit.id,
+            Progress.learning_unit_id.label("progress_unit_id")
         )
         .join(
             CourseDay,
             LearningUnit.day_id == CourseDay.id
+        )
+        .outerjoin(
+            Progress,
+            (Progress.learning_unit_id == LearningUnit.id)
+            & (Progress.user_id == user_id)
+            & (Progress.is_completed.is_(True))
         )
         .where(
             CourseDay.course_id == course_id
         )
     )
+    result = await db.execute(stmt)
+    rows = result.all()
 
-    completed_learning_units_result = await db.execute(
-        select(Progress.learning_unit_id)
-        .join(
-            LearningUnit,
-            Progress.learning_unit_id == LearningUnit.id
-        )
-        .join(
-            CourseDay,
-            LearningUnit.day_id == CourseDay.id
-        )
-        .where(
-            CourseDay.course_id == course_id,
-            Progress.user_id == user_id,
-            Progress.is_completed.is_(True)
-        )
-        .distinct()
-        .order_by(Progress.learning_unit_id)
-    )
-
-    completed_learning_units = completed_learning_units_result.scalars().all()
+    total_units = len(rows)
+    completed_learning_units = sorted(list(set(
+        row.id for row in rows if row.progress_unit_id is not None
+    )))
     completed_units = len(completed_learning_units)
 
-    percentage = 0
+    percentage = 0.0
 
     if total_units and total_units > 0:
         percentage = round(
@@ -150,8 +143,6 @@ async def mark_video_completed(
         "video_id": video_id
     }
 
-
-from sqlalchemy import func
 
 async def get_learning_timeline_data(
     db: AsyncSession,

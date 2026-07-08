@@ -98,51 +98,39 @@ async def get_course_content(
     db,
     course_id: int
 ):
-    course = await db.scalar(
-        select(Course).where(
-            Course.id == course_id
-        )
+    stmt = (
+        select(Course, CourseDay, LearningUnit)
+        .outerjoin(CourseDay, CourseDay.course_id == Course.id)
+        .outerjoin(LearningUnit, LearningUnit.day_id == CourseDay.id)
+        .where(Course.id == course_id)
+        .order_by(CourseDay.day_number, LearningUnit.display_order)
     )
+    res = await db.execute(stmt)
+    rows = res.all()
 
-    if not course:
+    if not rows:
         raise ValueError("Course not found")
 
-    days = (
-        await db.scalars(
-            select(CourseDay)
-            .where(
-                CourseDay.course_id == course_id
-            )
-            .order_by(
-                CourseDay.day_number
-            )
-        )
-    ).all()
+    course = rows[0][0]
 
-    result = []
+    days_dict = {}
+    day_order = []
 
-    for day in days:
-
-        units = (
-            await db.scalars(
-                select(LearningUnit)
-                .where(
-                    LearningUnit.day_id == day.id
-                )
-                .order_by(
-                    LearningUnit.display_order
-                )
-            )
-        ).all()
-
-        result.append(
-            {
-                "day_id": day.id,
-                "day_number": day.day_number,
-                "title": day.title,
-                "units": units
+    for r_course, r_day, r_unit in rows:
+        if r_day is None:
+            continue
+        if r_day.id not in days_dict:
+            days_dict[r_day.id] = {
+                "day_id": r_day.id,
+                "day_number": r_day.day_number,
+                "title": r_day.title,
+                "units": []
             }
-        )
+            day_order.append(r_day.id)
+        if r_unit is not None:
+            days_dict[r_day.id]["units"].append(r_unit)
+
+    result = [days_dict[day_id] for day_id in day_order]
 
     return {
         "course": course,
@@ -197,4 +185,3 @@ async def get_user_courses(
     )
 
     return result.all()
-
