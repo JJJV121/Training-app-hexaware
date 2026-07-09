@@ -28,7 +28,24 @@ import {
   Edit3,
   Plus,
   Menu,
-  X
+  X,
+  // Trainer Dashboard icons
+  Users,
+  BarChart2,
+  ClipboardCheck,
+  Video,
+  ChevronLeft,
+  AlertTriangle,
+  Megaphone,
+  PenSquare,
+  Timer,
+  GraduationCap,
+  Award,
+  TrendingDown,
+  Send,
+  UserCheck,
+  ChevronDown,
+  BarChart
 } from 'lucide-react';
 
 const iconMap = {
@@ -61,7 +78,24 @@ const iconMap = {
   'edit-3': Edit3,
   'plus': Plus,
   'menu': Menu,
-  'x': X
+  'x': X,
+  // Trainer Dashboard icons
+  'users': Users,
+  'bar-chart-2': BarChart2,
+  'bar-chart': BarChart,
+  'clipboard-check': ClipboardCheck,
+  'video': Video,
+  'chevron-left': ChevronLeft,
+  'chevron-down': ChevronDown,
+  'alert-triangle': AlertTriangle,
+  'megaphone': Megaphone,
+  'pen-square': PenSquare,
+  'timer': Timer,
+  'graduation-cap': GraduationCap,
+  'award': Award,
+  'trending-down': TrendingDown,
+  'send': Send,
+  'user-check': UserCheck,
 };
 
 export default function Icon({ name, ...props }) {
