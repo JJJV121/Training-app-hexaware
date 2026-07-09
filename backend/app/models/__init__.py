@@ -3,6 +3,7 @@ from app.models.activation_token import ActivationToken
 from app.models.password_reset_token import PasswordResetToken
 from app.models.login_history import LoginHistory
 
+from .note import Note
 from app.models.course import Course
 from app.models.course_day import CourseDay
 from app.models.learning_unit import LearningUnit
