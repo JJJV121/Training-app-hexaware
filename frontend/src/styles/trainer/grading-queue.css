@@ -1,0 +1,413 @@
+/* grading-queue.css */
+/* Trainer Dashboard — Grading Queue and Assessment Hub styles */
+
+.grading-container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  animation: fadeIn 0.35s ease-out forwards;
+}
+
+/* ──────────────────────────────────────────── */
+/* Page Header Banner                           */
+/* ──────────────────────────────────────────── */
+.grading-banner {
+  background: linear-gradient(135deg, #002060 0%, #1e3a8a 60%, #2563eb 100%);
+  border-radius: 24px;
+  padding: 36px 40px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 15px 40px rgba(0, 32, 96, 0.25);
+}
+
+.grading-banner::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -5%;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.grading-banner-left h2 {
+  font-family: var(--font-family-header);
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.grading-banner-left p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+}
+
+.grading-banner-right {
+  display: flex;
+  gap: 12px;
+  z-index: 2;
+}
+
+.queue-count-pill {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(4px);
+}
+
+/* ──────────────────────────────────────────── */
+/* Main Split Layout                            */
+/* ──────────────────────────────────────────── */
+.grading-split-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1.3fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ──────────────────────────────────────────── */
+/* Queue List Panel                             */
+/* ──────────────────────────────────────────── */
+.queue-panel-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.queue-panel-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+}
+
+.queue-panel-title {
+  font-family: var(--font-family-header);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.queue-item {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  background: #ffffff;
+  position: relative;
+  text-align: left;
+  border-left: 4px solid transparent;
+}
+
+.queue-item:last-child {
+  border-bottom: none;
+}
+
+.queue-item:hover {
+  background: #f8fafc;
+}
+
+.queue-item.selected {
+  background: #eef2ff;
+  border-left-color: #2563eb;
+}
+
+.queue-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.queue-trainee-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.queue-trainee-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.queue-trainee-name {
+  font-family: var(--font-family-header);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.queue-date {
+  font-size: 11px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+
+.queue-item-mid {
+  margin-bottom: 8px;
+}
+
+.queue-task-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.queue-module-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 50px;
+  background: #e2e8f0;
+  color: var(--text-medium);
+  width: fit-content;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+/* ──────────────────────────────────────────── */
+/* Active Review Blade                          */
+/* ──────────────────────────────────────────── */
+.review-blade-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 480px;
+}
+
+.review-blade-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-light);
+  text-align: center;
+  padding: 60px 20px;
+  flex: 1;
+}
+
+.review-blade-empty-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-light);
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.review-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+}
+
+.review-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.review-trainee-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-trainee-name {
+  font-family: var(--font-family-header);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.review-trainee-id {
+  font-size: 12px;
+  color: var(--text-medium);
+}
+
+.review-task-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-task-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.review-task-module {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Response/Code Section */
+.submission-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.submission-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.submission-code-block {
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+  max-height: 280px;
+  border: 1px solid #1e293b;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Evaluation Form */
+.evaluation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-top: 1px solid var(--border-color);
+  padding-top: 20px;
+}
+
+.form-group-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.form-input-number {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+  outline: none;
+  background: #f8fafc;
+  transition: all var(--transition-fast);
+}
+
+.form-input-number:focus {
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.form-textarea {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-dark);
+  outline: none;
+  background: #f8fafc;
+  transition: all var(--transition-fast);
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.form-textarea:focus {
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.grade-submit-btn {
+  background: linear-gradient(135deg, #002060 0%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.grade-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+}
+
+/* ──────────────────────────────────────────── */
+/* Responsive                                   */
+/* ──────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .grading-split-layout {
+    grid-template-columns: 1fr;
+  }
+}

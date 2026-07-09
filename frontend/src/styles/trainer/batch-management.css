@@ -1,0 +1,340 @@
+/* batch-management.css */
+/* Trainer Dashboard — Batch & Trainee Management screen */
+
+.batch-container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  animation: fadeIn 0.35s ease-out forwards;
+}
+
+/* ──────────────────────────────────────────── */
+/* Page Header Banner                           */
+/* ──────────────────────────────────────────── */
+.batch-banner {
+  background: linear-gradient(135deg, #002060 0%, #1e3a8a 60%, #2563eb 100%);
+  border-radius: 24px;
+  padding: 36px 40px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 15px 40px rgba(0, 32, 96, 0.25);
+}
+
+.batch-banner::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -5%;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.batch-banner-left h2 {
+  font-family: var(--font-family-header);
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.batch-banner-left p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+}
+
+.batch-summary-pills {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 2;
+}
+
+.batch-summary-pill {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 50px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(4px);
+}
+
+/* ──────────────────────────────────────────── */
+/* Batch Tab Bar                                */
+/* ──────────────────────────────────────────── */
+.batch-tab-bar {
+  display: flex;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: var(--card-shadow);
+  overflow-x: auto;
+}
+
+.batch-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.batch-tab:hover {
+  background: #f8fafc;
+  color: var(--text-dark);
+}
+
+.batch-tab.active {
+  background: linear-gradient(135deg, #002060 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.batch-tab-count {
+  background: rgba(255,255,255,0.25);
+  border-radius: 50px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.batch-tab:not(.active) .batch-tab-count {
+  background: var(--border-color);
+  color: var(--text-dark);
+}
+
+/* ──────────────────────────────────────────── */
+/* Trainee Table Card                           */
+/* ──────────────────────────────────────────── */
+.trainee-table-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.trainee-table-header {
+  display: grid;
+  grid-template-columns: 2.4fr 2fr 1fr 1fr;
+  gap: 16px;
+  padding: 14px 24px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.trainee-table-col-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.trainee-table-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.trainee-row {
+  display: grid;
+  grid-template-columns: 2.4fr 2fr 1fr 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-color);
+  transition: background var(--transition-fast);
+  animation: fadeInUp 0.3s ease-out both;
+}
+
+.trainee-row:last-child {
+  border-bottom: none;
+}
+
+.trainee-row:hover {
+  background: #f8fafc;
+}
+
+/* Trainee Profile Cell */
+.trainee-profile-cell {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.trainee-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family-header);
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.trainee-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.trainee-name {
+  font-family: var(--font-family-header);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trainee-email {
+  font-size: 12px;
+  color: var(--text-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trainee-emp-id {
+  font-size: 11px;
+  color: var(--text-light);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Progress Cell */
+.trainee-progress-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trainee-progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trainee-progress-course {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-medium);
+}
+
+.trainee-progress-pct {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.trainee-progress-track {
+  height: 7px;
+  background: #e2e8f0;
+  border-radius: 50px;
+  overflow: hidden;
+}
+
+.trainee-progress-bar {
+  height: 100%;
+  border-radius: 50px;
+  background: linear-gradient(90deg, #002060, #2563eb);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.trainee-progress-bar.bar-green  { background: linear-gradient(90deg, #059669, #10b981); }
+.trainee-progress-bar.bar-amber  { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.trainee-progress-bar.bar-blue   { background: linear-gradient(90deg, #002060, #2563eb); }
+
+/* Attendance Cell */
+.attendance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.attendance-high   { background: #d1fae5; color: #065f46; }
+.attendance-medium { background: #fef3c7; color: #92400e; }
+.attendance-low    { background: #fee2e2; color: #991b1b; }
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-on-track         { background: #d1fae5; color: #065f46; }
+.status-behind-schedule  { background: #fef3c7; color: #92400e; }
+.status-completed        { background: #dbeafe; color: #1e40af; }
+
+/* ──────────────────────────────────────────── */
+/* Empty State                                  */
+/* ──────────────────────────────────────────── */
+.trainee-table-empty {
+  padding: 60px;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 14px;
+}
+
+/* ──────────────────────────────────────────── */
+/* Responsive                                   */
+/* ──────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .trainee-table-header {
+    display: none;
+  }
+
+  .trainee-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    border-left: 3px solid #2563eb;
+    margin: 4px 12px;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    padding: 16px;
+    border-bottom: none;
+  }
+
+  .batch-summary-pills {
+    display: none;
+  }
+}
