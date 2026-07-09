@@ -9,6 +9,8 @@ from app.routers.schedule import router as schedule_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.profile import router as profile_router
 from app.routers.note import router as note_router
+from app.routers.mcq_router import router as mcq_router
+
 
 from app.database.session import test_connection
 
@@ -42,6 +44,7 @@ app.include_router(progress_router)
 app.include_router(schedule_router)
 app.include_router(dashboard_router)
 app.include_router(note_router)
+app.include_router(mcq_router)
 
 
 @app.get("/")
