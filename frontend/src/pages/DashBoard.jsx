@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import dashboardService from '../services/dashboardService.js';
 import Icon from '../components/Icon';
 import Home from '../pages/Home';
@@ -8,8 +9,11 @@ import Placeholder from '../pages/Placeholder';
 import ProgressView from './ProgressView.jsx';
 import StudyNotes from './StudyNotes.jsx';
 import Profile from '../pages/Profile';
+import Assessment from './Assessment.jsx';
 
 export default function DashBoard() {
+  const { courseId: paramCourseId } = useParams();
+
   // 1. Convert profile to a state object to handle asynchronous API loading
   const [profile, setProfile] = useState({ name: "Loading...", email: "" });
   
@@ -21,9 +25,31 @@ export default function DashBoard() {
   
   // Hash routing state
   const [currentRoute, setCurrentRoute] = useState(() => {
+    if (paramCourseId) return 'course';
     const hash = window.location.hash.substring(1);
     return hash || 'home';
   });
+
+  // Assessment locking state
+  const [isLocked, setIsLocked] = useState(false);
+  const isLockedRef = useRef(isLocked);
+  const currentRouteRef = useRef(currentRoute);
+
+  useEffect(() => {
+    isLockedRef.current = isLocked;
+  }, [isLocked]);
+
+  useEffect(() => {
+    currentRouteRef.current = currentRoute;
+  }, [currentRoute]);
+
+  useEffect(() => {
+    if (paramCourseId) {
+      setCourseId(Number(paramCourseId));
+      setCurrentRoute('course');
+      setIsCourseLoading(false);
+    }
+  }, [paramCourseId]);
 
   // 2. Dynamically retrieve the logged-in user ID from localStorage
   const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
@@ -91,7 +117,14 @@ export default function DashBoard() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.substring(1);
-      setCurrentRoute(hash || 'home');
+      const targetRoute = hash || 'home';
+      
+      if (isLockedRef.current && targetRoute !== currentRouteRef.current) {
+        alert("Assessment is in progress. You must submit the assessment before leaving the page.");
+        window.location.hash = currentRouteRef.current;
+        return;
+      }
+      setCurrentRoute(targetRoute);
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -138,6 +171,10 @@ export default function DashBoard() {
         return <Schedule />;
       case 'progress':
         return <ProgressView/>;
+      case 'assessment-mcq':
+        return <Assessment assessmentType="MCQ" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
+      case 'assessment-coding':
+        return <Assessment assessmentType="Coding" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
       case 'notes':
         return <StudyNotes/>;
       case 'profile':
@@ -202,19 +239,29 @@ export default function DashBoard() {
         {/* Nav menu list */}
         <nav className="nav-menu">
           <ul>
-            {navItems.map(item => (
-              <li key={item.page}>
-                <a 
-                  href={`#${item.page}`} 
-                  className={`nav-item ${currentRoute === item.page ? 'active' : ''}`}
-                  data-page={item.page}
-                  onClick={closeMobileMenu}
-                >
-                  <Icon name={item.icon} className="nav-icon" />
-                  <span>{item.label}</span>
-                </a>
-              </li>
-            ))}
+            {navItems.map(item => {
+              const isDisabled = isLocked && currentRoute !== item.page;
+              return (
+                <li key={item.page}>
+                  <a 
+                    href={isDisabled ? undefined : `#${item.page}`} 
+                    className={`nav-item ${currentRoute === item.page ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
+                    data-page={item.page}
+                    onClick={(e) => {
+                      if (isDisabled) {
+                        e.preventDefault();
+                        alert("Assessment is in progress. You must submit the assessment before leaving the page.");
+                        return;
+                      }
+                      closeMobileMenu();
+                    }}
+                  >
+                    <Icon name={item.icon} className="nav-icon" />
+                    <span>{item.label}</span>
+                  </a>
+                </li>
+              );
+            })}
           </ul>
         </nav>
         
@@ -222,9 +269,11 @@ export default function DashBoard() {
         <div className="sidebar-footer">
           <button 
             type="button"
-            className={`nav-item logout-btn ${currentRoute === 'logout' ? 'active' : ''}`}
+            className={`nav-item logout-btn ${currentRoute === 'logout' ? 'active' : ''} ${isLocked ? 'disabled' : ''}`}
             data-page="logout"
+            disabled={isLocked}
             onClick={() => {
+              if (isLocked) return;
               localStorage.removeItem('authToken');
               localStorage.removeItem('user');
               localStorage.removeItem('logged_in_user_id');

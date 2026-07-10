@@ -105,11 +105,28 @@ export default function Schedule() {
             <Icon name="clock" />
           </div>
 
-          {data.days.map((day, index) => (
-            <div key={index} className="timetable-header-cell">
-              {day}
-            </div>
-          ))}
+          {data.days.map((day, index) => {
+            let statusColorClass = "";
+            let emoji = "🔵";
+            if (day.status === "completed") {
+              statusColorClass = "status-completed";
+              emoji = "🟢";
+            } else if (day.status === "current") {
+              statusColorClass = "status-in-progress";
+              emoji = "🟡";
+            } else {
+              statusColorClass = "status-upcoming";
+              emoji = "🔵";
+            }
+            return (
+              <div key={index} className={`timetable-header-cell ${statusColorClass}`} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <span style={{ fontSize: "11px", fontWeight: "800" }}>{emoji} {day.name}</span>
+                <span style={{ fontSize: "8px", opacity: 0.8, fontWeight: "normal", textTransform: "uppercase" }}>
+                  {day.status === "completed" ? "Completed" : day.status === "current" ? "In Progress" : "Yet to be Done"}
+                </span>
+              </div>
+            );
+          })}
 
           {/* Rows */}
           {data.timeSlots.map((slot, rowIndex) => (
@@ -129,7 +146,7 @@ export default function Schedule() {
               {data.days.map((day, dayIndex) => {
                 const event = data.events.find(
                   (e) =>
-                    e.day === day &&
+                    e.day === day.name &&
                     e.timeSlot === slot
                 );
 

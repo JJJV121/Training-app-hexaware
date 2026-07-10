@@ -27,31 +27,25 @@ async def get_user_schedule(
     user_id: int
 ):
 
-    enrollment = await db.scalar(
-        select(Enrollment)
+    enrollment_course_res = await db.execute(
+        select(Enrollment, Course)
+        .join(Course, Course.id == Enrollment.course_id)
         .where(
             Enrollment.user_id == user_id
         )
         .order_by(
             Enrollment.enrolled_at.desc()
         )
+        .limit(1)
     )
+    enrollment_course = enrollment_course_res.first()
 
-    if not enrollment:
+    if not enrollment_course:
         raise ValueError(
             "User is not enrolled in any course"
         )
 
-    course = await db.scalar(
-        select(Course).where(
-            Course.id == enrollment.course_id
-        )
-    )
-
-    if not course:
-        raise ValueError(
-            "Course not found"
-        )
+    enrollment, course = enrollment_course
 
     course_days = (
         await db.scalars(
@@ -65,6 +59,45 @@ async def get_user_schedule(
         )
     ).all()
 
+    day_ids = [day.id for day in course_days]
+    units_by_day = {}
+    all_units = []
+
+    if day_ids:
+        all_units = (
+            await db.scalars(
+                select(LearningUnit)
+                .where(
+                    LearningUnit.day_id.in_(day_ids)
+                )
+                .order_by(
+                    LearningUnit.display_order
+                )
+            )
+        ).all()
+
+        for unit in all_units:
+            if unit.day_id not in units_by_day:
+                units_by_day[unit.day_id] = []
+            units_by_day[unit.day_id].append(unit)
+
+    progress_by_unit = {}
+    unit_ids = [unit.id for unit in all_units]
+    if unit_ids:
+        all_progress = (
+            await db.scalars(
+                select(Progress)
+                .where(
+                    Progress.user_id == user_id,
+                    Progress.learning_unit_id.in_(unit_ids),
+                    Progress.is_completed.is_(True)
+                )
+            )
+        ).all()
+
+        for progress in all_progress:
+            progress_by_unit[progress.learning_unit_id] = progress
+
     total_modules = 0
 
     schedule = []
@@ -72,17 +105,7 @@ async def get_user_schedule(
 
     for day in course_days:
 
-        units = (
-            await db.scalars(
-                select(LearningUnit)
-                .where(
-                    LearningUnit.day_id == day.id
-                )
-                .order_by(
-                    LearningUnit.display_order
-                )
-            )
-        ).all()
+        units = units_by_day.get(day.id, [])
 
         total_modules += len(units)
 
@@ -99,14 +122,7 @@ async def get_user_schedule(
 
         for index, unit in enumerate(units):
 
-            progress = await db.scalar(
-                select(Progress)
-                .where(
-                    Progress.user_id == user_id,
-                    Progress.learning_unit_id == unit.id,
-                    Progress.is_completed.is_(True)
-                )
-            )
+            progress = progress_by_unit.get(unit.id)
 
             if progress:
                 completed_count += 1
@@ -178,28 +194,7 @@ async def get_user_schedule(
     current_day = calculate_unlocked_day(course_days, day_progress_map)
 
     total_hours = round(
-        (
-            await db.scalar(
-                select(
-                    func.coalesce(
-                        func.sum(
-                            LearningUnit.duration_minutes
-                        ),
-                        0
-                    )
-                )
-                .join(
-                    CourseDay,
-                    LearningUnit.day_id
-                    == CourseDay.id
-                )
-                .where(
-                    CourseDay.course_id
-                    == course.id
-                )
-            )
-            or 0
-        ) / 60,
+        sum(unit.duration_minutes or 0 for unit in all_units) / 60,
         1
     )
 
@@ -244,4 +239,4 @@ async def get_user_schedule(
 
         "schedule":
             schedule
-    }  
+    }

@@ -61,56 +61,33 @@ async def get_dashboard(
     db: AsyncSession,
     user_id: int
 ):
-
-    user = await db.scalar(
-        select(User).where(
-            User.id == user_id
-        )
+    count_subquery = (
+        select(func.count(Enrollment.id))
+        .where(Enrollment.user_id == user_id)
+        .scalar_subquery()
     )
 
-    if not user:
+    stmt = (
+        select(User, Enrollment, Course, count_subquery)
+        .outerjoin(Enrollment, Enrollment.user_id == User.id)
+        .outerjoin(Course, Course.id == Enrollment.course_id)
+        .where(User.id == user_id)
+        .order_by(Enrollment.enrolled_at.desc())
+        .limit(1)
+    )
+
+    res = await db.execute(stmt)
+    row = res.first()
+
+    if not row:
         raise ValueError(
             "User not found"
         )
 
-    courses_enrolled = await db.scalar(
-        select(
-            func.count(Enrollment.id)
-        ).where(
-            Enrollment.user_id == user_id
-        )
-    )
-
+    user, enrollment, course, courses_enrolled = row
     courses_enrolled = courses_enrolled or 0
 
-    enrollment = await db.scalar(
-        select(Enrollment)
-        .where(
-            Enrollment.user_id == user_id
-        )
-        .order_by(
-            Enrollment.enrolled_at.desc()
-        )
-    )
-
-    if not enrollment:
-
-        return {
-            "name": user.name or user.employee_id,
-            "employee_id": user.employee_id,
-            "email": user.email,
-            "courses_enrolled": courses_enrolled,
-            "current_course": None
-        }
-
-    course = await db.scalar(
-        select(Course).where(
-            Course.id == enrollment.course_id
-        )
-    )
-
-    if not course:
-
+    if not enrollment or not course:
         return {
             "name": user.name or user.employee_id,
             "employee_id": user.employee_id,
@@ -120,9 +97,7 @@ async def get_dashboard(
         }
 
     duration_days = course.duration_days
-
     start_date = enrollment.enrolled_at.date()
-
     end_date = (
         start_date +
         timedelta(days=duration_days - 1)
@@ -140,58 +115,42 @@ async def get_dashboard(
         )
     ).all()
 
+    day_ids = [day.id for day in course_days]
+
+    total_map = {}
+    completed_map = {}
+    if day_ids:
+        day_progress_stmt = (
+            select(
+                LearningUnit.day_id,
+                func.count(LearningUnit.id),
+                func.count(Progress.id),
+                func.max(Progress.completed_at)
+            )
+            .outerjoin(
+                Progress,
+                (Progress.learning_unit_id == LearningUnit.id)
+                & (Progress.user_id == user_id)
+                & (Progress.is_completed.is_(True))
+            )
+            .where(LearningUnit.day_id.in_(day_ids))
+            .group_by(LearningUnit.day_id)
+        )
+        day_progress_res = await db.execute(day_progress_stmt)
+
+        for row_dp in day_progress_res.all():
+            d_id, tot, comp, comp_at = row_dp
+            total_map[d_id] = tot
+            completed_map[d_id] = (comp, comp_at)
+
     day_progress_map = {}
-
     for day in course_days:
-        day_total_modules = await db.scalar(
-            select(
-                func.count(
-                    LearningUnit.id
-                )
-            )
-            .where(
-                LearningUnit.day_id == day.id
-            )
-        )
-
-        day_total_modules = day_total_modules or 0
-
-        day_completed_modules = await db.scalar(
-            select(
-                func.count(
-                    Progress.id
-                )
-            )
-            .join(
-                LearningUnit,
-                Progress.learning_unit_id ==
-                LearningUnit.id
-            )
-            .where(
-                Progress.user_id == user_id,
-                Progress.is_completed.is_(True),
-                LearningUnit.day_id == day.id
-            )
-        )
-
-        day_completed_modules = day_completed_modules or 0
+        day_total_modules = total_map.get(day.id, 0)
+        day_completed_modules, completed_at_max_raw = completed_map.get(day.id, (0, None))
 
         completed_at_max = None
         if day_completed_modules >= day_total_modules and day_total_modules > 0:
-            completed_at_max = await db.scalar(
-                select(
-                    func.max(Progress.completed_at)
-                )
-                .join(
-                    LearningUnit,
-                    Progress.learning_unit_id == LearningUnit.id
-                )
-                .where(
-                    Progress.user_id == user_id,
-                    Progress.is_completed.is_(True),
-                    LearningUnit.day_id == day.id
-                )
-            )
+            completed_at_max = completed_at_max_raw
 
         day_progress_map[day.id] = {
             "total_modules": day_total_modules,
@@ -201,53 +160,11 @@ async def get_dashboard(
 
     current_day = calculate_unlocked_day(course_days, day_progress_map)
 
-    total_modules = await db.scalar(
-        select(
-            func.count(
-                LearningUnit.id
-            )
-        )
-        .join(
-            CourseDay,
-            LearningUnit.day_id == CourseDay.id
-        )
-        .where(
-            CourseDay.course_id == course.id
-        )
-    )
-
-    total_modules = total_modules or 0
-
-    completed_modules = await db.scalar(
-        select(
-            func.count(
-                Progress.id
-            )
-        )
-        .join(
-            LearningUnit,
-            Progress.learning_unit_id == LearningUnit.id
-        )
-        .join(
-            CourseDay,
-            LearningUnit.day_id == CourseDay.id
-        )
-        .where(
-            Progress.user_id == user_id,
-            Progress.is_completed.is_(True),
-            CourseDay.course_id == course.id
-        )
-    )
-
-    completed_modules = completed_modules or 0
-
-    remaining_modules = max(
-        0,
-        total_modules - completed_modules
-    )
+    total_modules = sum(total_map.values())
+    completed_modules = sum(val[0] for val in completed_map.values())
+    remaining_modules = max(0, total_modules - completed_modules)
 
     progress_percentage = 0.0
-
     if total_modules > 0:
         progress_percentage = round(
             (
@@ -257,56 +174,16 @@ async def get_dashboard(
             2
         )
 
-    current_day_record = await db.scalar(
-        select(CourseDay)
-        .where(
-            CourseDay.course_id == course.id,
-            CourseDay.day_number == current_day
-        )
+    current_day_record = next(
+        (day for day in course_days if day.day_number == current_day),
+        None
     )
 
     day_progress_percentage = 0.0
-
     if current_day_record:
-
-        current_day_total_modules = await db.scalar(
-            select(
-                func.count(
-                    LearningUnit.id
-                )
-            )
-            .where(
-                LearningUnit.day_id ==
-                current_day_record.id
-            )
-        )
-
-        current_day_completed_modules = await db.scalar(
-            select(
-                func.count(
-                    Progress.id
-                )
-            )
-            .join(
-                LearningUnit,
-                Progress.learning_unit_id ==
-                LearningUnit.id
-            )
-            .where(
-                Progress.user_id == user_id,
-                Progress.is_completed.is_(True),
-                LearningUnit.day_id ==
-                current_day_record.id
-            )
-        )
-
-        current_day_total_modules = (
-            current_day_total_modules or 0
-        )
-
-        current_day_completed_modules = (
-            current_day_completed_modules or 0
-        )
+        current_day_progress = day_progress_map.get(current_day_record.id, {})
+        current_day_total_modules = current_day_progress.get("total_modules", 0)
+        current_day_completed_modules = current_day_progress.get("completed_modules", 0)
 
         if current_day_total_modules > 0:
             day_progress_percentage = round(
@@ -318,49 +195,14 @@ async def get_dashboard(
             )
 
     day_wise_progress = []
-
     for day in course_days:
         if day.day_number > current_day:
             continue
-        day_total_modules = await db.scalar(
-            select(
-                func.count(
-                    LearningUnit.id
-                )
-            )
-            .where(
-                LearningUnit.day_id == day.id
-            )
-        )
-
-        day_total_modules = (
-            day_total_modules or 0
-        )
-
-        day_completed_modules = await db.scalar(
-            select(
-                func.count(
-                    Progress.id
-                )
-            )
-            .join(
-                LearningUnit,
-                Progress.learning_unit_id ==
-                LearningUnit.id
-            )
-            .where(
-                Progress.user_id == user_id,
-                Progress.is_completed.is_(True),
-                LearningUnit.day_id == day.id
-            )
-        )
-
-        day_completed_modules = (
-            day_completed_modules or 0
-        )
+        day_progress = day_progress_map.get(day.id, {})
+        day_total_modules = day_progress.get("total_modules", 0)
+        day_completed_modules = day_progress.get("completed_modules", 0)
 
         percentage = 0.0
-
         if day_total_modules > 0:
             percentage = round(
                 (
@@ -377,96 +219,50 @@ async def get_dashboard(
             }
         )
 
-    estimated_learning_minutes = await db.scalar(
-        select(
-            func.coalesce(
-                func.sum(
-                    LearningUnit.duration_minutes
-                ),
-                0
+    estimated_learning_minutes = 0
+    if day_ids:
+        estimated_learning_minutes = await db.scalar(
+            select(
+                func.coalesce(
+                    func.sum(
+                        LearningUnit.duration_minutes
+                    ),
+                    0
+                )
+            )
+            .join(
+                Progress,
+                Progress.learning_unit_id == LearningUnit.id
+            )
+            .where(
+                Progress.user_id == user_id,
+                Progress.is_completed.is_(True),
+                LearningUnit.day_id.in_(day_ids)
             )
         )
-        .join(
-            Progress,
-            Progress.learning_unit_id ==
-            LearningUnit.id
-        )
-        .join(
-            CourseDay,
-            LearningUnit.day_id ==
-            CourseDay.id
-        )
-        .where(
-            Progress.user_id == user_id,
-            Progress.is_completed.is_(True),
-            CourseDay.course_id == course.id
-        )
-    )
-
-    estimated_learning_minutes = (
-        estimated_learning_minutes or 0
-    )
+        estimated_learning_minutes = estimated_learning_minutes or 0
 
     learning_hours_completed = round(estimated_learning_minutes / 60, 2)
     return {
-
-        "name":
-            user.name or user.employee_id,
-
-        "employee_id":
-            user.employee_id,
-
-        "email":
-            user.email,
-
-        "courses_enrolled":
-            courses_enrolled,
-
+        "name": user.name or user.employee_id,
+        "employee_id": user.employee_id,
+        "email": user.email,
+        "courses_enrolled": courses_enrolled,
         "current_course": {
-
-            "course_id":
-                course.id,
-
-            "course_name":
-                course.title,
-
-            "current_day":
-                current_day,
-
-            "duration_days":
-                duration_days,
-
-            "start_date":
-                start_date,
-
-            "end_date":
-                end_date,
-
-            "total_modules":
-                total_modules,
-
-            "completed_modules":
-                completed_modules,
-
-            "remaining_modules":
-                remaining_modules,
-
-            "progress_percentage":
-                progress_percentage,
-
-            "day_progress_percentage":
-                day_progress_percentage,
-
-            "day_wise_progress":
-                day_wise_progress,
-
-            "learning_hours_completed":
-                learning_hours_completed,
-
-            "assessment_time_hours":
-                10,
-
-            "assignment_time_hours":
-                5
+            "course_id": course.id,
+            "course_name": course.title,
+            "current_day": current_day,
+            "duration_days": duration_days,
+            "start_date": start_date,
+            "end_date": end_date,
+            "total_modules": total_modules,
+            "completed_modules": completed_modules,
+            "remaining_modules": remaining_modules,
+            "progress_percentage": progress_percentage,
+            "day_progress_percentage": day_progress_percentage,
+            "day_wise_progress": day_wise_progress,
+            "learning_hours_completed": learning_hours_completed,
+            "assessment_time_hours": 10,
+            "assignment_time_hours": 5
         }
     }

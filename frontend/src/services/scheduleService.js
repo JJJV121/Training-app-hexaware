@@ -32,7 +32,11 @@ const scheduleService = {
 
             timeSlot: `${session.start_time}\nto\n${session.end_time}`,
 
-            type: session.completed ? "COMPLETED" : "LECTURE",
+            type: session.completed 
+              ? "COMPLETED" 
+              : day.status === "current"
+                ? "IN PROGRESS"
+                : "YET TO BE DONE",
 
             title: session.title,
 
@@ -42,9 +46,24 @@ const scheduleService = {
 
             colorClass: session.completed
               ? "section-green"
-              : "lecture-blue"
+              : day.status === "current"
+                ? "status-yellow"
+                : "lecture-blue"
           });
         });
+      });
+
+      const days = [];
+      const seen = new Set();
+      api.schedule.forEach(day => {
+        const uDay = day.weekday.toUpperCase();
+        if (!seen.has(uDay)) {
+          seen.add(uDay);
+          days.push({
+            name: uDay,
+            status: day.status
+          });
+        }
       });
 
       return {
@@ -75,7 +94,7 @@ const scheduleService = {
 
         timeSlots,
 
-        days: [...new Set(api.schedule.map(day => day.weekday.toUpperCase()))],
+        days,
 
         events
       };

@@ -1,67 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import "../styles/StudyNotes.css";
-
-const initialNotes = [
-  {
-    id: 1,
-    title: 'AI201',
-    content: 'TEST',
-    date: 'May 3, 2026',
-    color: '#f5e6fe',
-    pinned: true,
-    tag: 'Artificial Intelligence'
-  },
-  {
-    id: 2,
-    title: 'Database Systems',
-    content: 'Normalization: 1NF, 2NF, 3NF, BCNF - Eliminate repeating groups - Remove partial dependencies - Remove transitive dependencies',
-    date: 'May 1, 2026',
-    color: '#e6f0fa',
-    pinned: true,
-    tag: 'Core CS'
-  },
-  {
-    id: 3,
-    title: 'Machine Learning',
-    content: 'Supervised vs Unsupervised Learning Key algorithms to review for midterm.',
-    date: 'Apr 30, 2026',
-    color: '#eafaf1',
-    pinned: false,
-    tag: 'Artificial Intelligence'
-  },
-  {
-    id: 4,
-    title: 'Web Development',
-    content: 'React Hooks: - useState - useEffect - useContext - useMemo - useCallback',
-    date: 'Apr 28, 2026',
-    color: '#fef7e0',
-    pinned: false,
-    tag: 'Fullstack'
-  },
-  {
-    id: 5,
-    title: 'Data Structures',
-    content: 'Time Complexity: O(1) - Constant, O(log n) - Logarithmic, O(n) - Linear, O(n²) - Quadratic',
-    date: 'Apr 27, 2026',
-    color: '#fdeaf2',
-    pinned: false,
-    tag: 'Core CS'
-  },
-  {
-    id: 6,
-    title: 'Algorithms',
-    content: 'Sorting Algorithms: QuickSort, MergeSort, HeapSort Best for different scenarios.',
-    date: 'Apr 25, 2026',
-    color: '#eef2fe',
-    pinned: false,
-    tag: 'Core CS'
-  }
-];
+import noteService from '../services/noteService';
 
 const pastelColors = ['#f5e6fe', '#e6f0fa', '#eafaf1', '#fef7e0', '#fdeaf2', '#eef2fe'];
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (e) {
+    return dateStr;
+  }
+};
+
 export default function StudyNotes() {
-  const [notes, setNotes] = useState(initialNotes);
+  const [notes, setNotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeNote, setActiveNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -72,6 +28,36 @@ export default function StudyNotes() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [noteIdToDelete, setNoteIdToDelete] = useState(null);
 
+  // Retrieve logged-in user ID
+  const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
+
+  // Fetch notes on mount and when userId changes
+  useEffect(() => {
+    let isMounted = true;
+    const fetchNotes = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await noteService.getNotes(userId);
+        if (isMounted) {
+          setNotes(data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notes:", err);
+        if (isMounted) {
+          setError("Could not load study notes from server.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchNotes();
+    return () => { isMounted = false; };
+  }, [userId]);
+
   const handleOpenNote = (note) => {
     setActiveNote(note);
     setEditTitle(note.title);
@@ -81,55 +67,112 @@ export default function StudyNotes() {
     setCopySuccess(false);
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
     const finalTitle = editTitle.trim() || 'Untitled Note';
     const finalContent = editContent.trim() || 'No content provided.';
     const finalTag = editTag.trim() || 'General';
 
-    setNotes(prevNotes =>
-      prevNotes.map(note =>
-        note.id === activeNote.id
-          ? { ...note, title: finalTitle, content: finalContent, tag: finalTag }
-          : note
-      )
-    );
-    setActiveNote(null);
+    try {
+      if (activeNote.isNew) {
+        // Create new note on backend
+        const created = await noteService.createNote(userId, {
+          title: finalTitle,
+          content: finalContent,
+          tag: finalTag,
+          color: activeNote.color,
+          pinned: activeNote.pinned
+        });
+        setNotes(prevNotes => [created, ...prevNotes]);
+        setActiveNote(created);
+      } else {
+        // Update existing note on backend
+        const updated = await noteService.updateNote(userId, activeNote.id, {
+          title: finalTitle,
+          content: finalContent,
+          tag: finalTag,
+          color: activeNote.color,
+          pinned: activeNote.pinned
+        });
+        setNotes(prevNotes =>
+          prevNotes.map(n => n.id === activeNote.id ? updated : n)
+        );
+        setActiveNote(updated);
+      }
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to save note:", err);
+      alert("Failed to save note. Please check backend connection.");
+    }
   };
 
   const triggerDeleteConfirmation = (id) => {
+    if (activeNote?.isNew) {
+      setActiveNote(null);
+      setIsEditing(false);
+      return;
+    }
     setNoteIdToDelete(id);
     setShowDeleteModal(true);
   };
 
-  const handleConfirmDelete = () => {
-    setNotes(prevNotes => prevNotes.filter(note => note.id !== noteIdToDelete));
-    setActiveNote(null);
-    setShowDeleteModal(false);
-    setNoteIdToDelete(null);
+  const handleConfirmDelete = async () => {
+    if (!noteIdToDelete) return;
+    try {
+      await noteService.deleteNote(userId, noteIdToDelete);
+      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteIdToDelete));
+      setActiveNote(null);
+      setShowDeleteModal(false);
+      setNoteIdToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete note:", err);
+      alert("Failed to delete note. Please check backend connection.");
+    }
   };
 
-  const handleTogglePin = (e, id) => {
+  const handleTogglePin = async (e, id) => {
     e.stopPropagation();
+    const noteToToggle = notes.find(n => n.id === id);
+    if (!noteToToggle) return;
+
+    const newPinnedState = !noteToToggle.pinned;
+
+    // Optimistic UI update
     setNotes(prevNotes =>
       prevNotes.map(note =>
-        note.id === id ? { ...note, pinned: !note.pinned } : note
+        note.id === id ? { ...note, pinned: newPinnedState } : note
       )
     );
+
+    try {
+      await noteService.updateNote(userId, id, {
+        title: noteToToggle.title,
+        content: noteToToggle.content,
+        tag: noteToToggle.tag,
+        color: noteToToggle.color,
+        pinned: newPinnedState
+      });
+    } catch (err) {
+      console.error("Failed to update pin state:", err);
+      // Revert optimistic update
+      setNotes(prevNotes =>
+        prevNotes.map(note =>
+          note.id === id ? { ...note, pinned: !newPinnedState } : note
+        )
+      );
+    }
   };
 
   const handleCreateNote = () => {
     const randomColor = pastelColors[notes.length % pastelColors.length];
     const newNote = {
-      id: Date.now(),
       title: '',
       content: '',
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       color: randomColor,
       pinned: false,
-      tag: ''
+      tag: '',
+      isNew: true
     };
 
-    setNotes([newNote, ...notes]);
     setActiveNote(newNote);
     setEditTitle('');
     setEditContent('');
@@ -177,10 +220,25 @@ export default function StudyNotes() {
         </div>
       )}
 
-      {activeNote ? (
+      {loading ? (
+        <div style={{ padding: '48px', textAlign: 'center', color: 'var(--text-medium)' }}>
+          <p>Fetching your study notes...</p>
+        </div>
+      ) : error ? (
+        <div style={{ padding: '48px', textAlign: 'center', color: 'var(--accent-red)' }}>
+          <p>{error}</p>
+          <button 
+            className="empty-state-btn" 
+            onClick={() => window.location.reload()}
+            style={{ marginTop: '16px' }}
+          >
+            Retry Loading
+          </button>
+        </div>
+      ) : activeNote ? (
         <div className="notes-preview-page">
           <div className="preview-header">
-            <button className="preview-back-btn" onClick={() => setActiveNote(null)}>
+            <button className="preview-back-btn" onClick={() => { setActiveNote(null); setIsEditing(false); }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
@@ -189,16 +247,18 @@ export default function StudyNotes() {
             </button>
 
             <div className="preview-actions">
-              <button
-                className={`preview-action-btn preview-copy-btn ${copySuccess ? 'active' : ''}`}
-                onClick={() => handleCopyToClipboard(activeNote.content)}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                <span>{copySuccess ? 'Copied' : 'Copy'}</span>
-              </button>
+              {!activeNote.isNew && (
+                <button
+                  className={`preview-action-btn preview-copy-btn ${copySuccess ? 'active' : ''}`}
+                  onClick={() => handleCopyToClipboard(activeNote.content)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span>{copySuccess ? 'Copied' : 'Copy'}</span>
+                </button>
+              )}
 
               {isEditing ? (
                 <button className="preview-action-btn preview-save-btn" onClick={handleSaveNote}>
@@ -261,7 +321,9 @@ export default function StudyNotes() {
 
                 <h2 className="preview-title">{activeNote.title || 'Untitled Note'}</h2>
                 <p className="preview-copy-text">{activeNote.content || 'No content provided.'}</p>
-                <div className="preview-timestamp">Last Modified • {activeNote.date}</div>
+                <div className="preview-timestamp">
+                  Last Modified • {formatDate(activeNote.updated_at || activeNote.created_at)}
+                </div>
               </div>
             )}
           </div>
@@ -339,7 +401,7 @@ export default function StudyNotes() {
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px' }}>
                       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
-                    {note.date}
+                    {formatDate(note.updated_at || note.created_at)}
                   </div>
                 </div>
               ))}

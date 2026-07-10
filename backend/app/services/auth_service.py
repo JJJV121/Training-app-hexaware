@@ -36,6 +36,7 @@ async def create_user(
         name=user_data.name,
         email=user_data.email,
         course_id=user_data.course_id,
+        role=user_data.role,
         is_active=False
     )
 
@@ -172,7 +173,8 @@ async def login_user(
             "id": user.id,
             "email": user.email,
             "employee_id": user.employee_id,
-            "name": user.name
+            "name": user.name,
+            "role": user.role
         }
     }
 

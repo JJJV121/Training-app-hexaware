@@ -25,7 +25,7 @@ export default function Profile() {
     name: "Loading...",
     email: "Loading..."
   });
-
+//checking
   const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
 
   useEffect(() => {

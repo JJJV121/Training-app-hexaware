@@ -255,6 +255,17 @@ const handleTimeUpdate = (e) => {
 };
 
 const handleSeeking = (e) => {
+    const currentIndex = unitVideos.findIndex(v => {
+      const videoUrl = normalizeVideoUrl(v.video_url || v.url);
+      return videoUrl === currentVideoUrl;
+    });
+    if (currentIndex !== -1) {
+      const currentVid = unitVideos[currentIndex];
+      const videoId = String(currentVid.id ?? currentVid.video_id ?? currentIndex);
+      if (completedVideos.has(videoId)) {
+        return;
+      }
+    }
     if (e.target.currentTime > lastValidTime.current + 1) {
         e.target.currentTime = lastValidTime.current;
     }
@@ -271,6 +282,15 @@ const handleSeeking = (e) => {
 
     const currentVid = unitVideos[currentIndex];
     const videoId = String(currentVid.id ?? currentVid.video_id ?? currentIndex);
+
+    if (completedVideos.has(videoId)) {
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < unitVideos.length) {
+        const nextVid = unitVideos[nextIndex];
+        setCurrentVideoUrl(normalizeVideoUrl(nextVid.video_url || nextVid.url));
+      }
+      return;
+    }
 
     setCompletedVideos(prev => {
       const next = new Set(prev);
