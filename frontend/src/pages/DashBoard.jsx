@@ -56,14 +56,20 @@ export default function DashBoard() {
 
   // 3. Fetch the user profile and assigned course asynchronously when the dashboard mounts
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchDashboardShellData = async () => {
       try {
-        const data = await dashboardService.getUserProfile(userId);
+        setIsCourseLoading(true);
+        const data = await dashboardService.getDashboard(userId);
         if (data) {
-          setProfile(data);
+          setProfile({
+            name: data.name || data.employee_id || "Student",
+            email: data.email || "student@example.com"
+          });
+          const assignedId = data.course?.id || 1;
+          setCourseId(assignedId);
         }
       } catch (error) {
-        console.error("Failed to load user profile in sidebar:", error);
+        console.error("Failed to load dashboard shell data:", error);
         
         // Smart Fallback
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -71,46 +77,13 @@ export default function DashBoard() {
           name: storedUser.employee_id || "Student", 
           email: storedUser.email || "student@example.com" 
         });
-      }
-    };
-
-    // 🌟 New: Fetch the course ID assigned to this user from the API endpoint
-    const fetchUserAssignedCourse = async () => {
-      try {
-        setIsCourseLoading(true);
-        const authToken = localStorage.getItem('authToken');
-
-        const response = await fetch(`http://localhost:8000/courses/users/${userId}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-          }
-        });
-
-        const data = await response.json();
-
-        console.log("Courses API Response:", data);
-
-        // Support multiple possible response formats
-        const assignedId =
-          data?.enrolled_courses?.[0]?.course_id ??
-          data?.course_id ??
-          data?.[0]?.id ??
-          1;
-
-        console.log("Assigned Course ID:", assignedId);
-
-        setCourseId(assignedId);
-      } catch (error) {
-        console.error("Failed to load assigned user course:", error);
-        setCourseId(1); // Production Fallback to default course
+        setCourseId(1);
       } finally {
         setIsCourseLoading(false);
       }
     };
 
-    fetchProfile();
-    fetchUserAssignedCourse();
+    fetchDashboardShellData();
   }, [userId]);
 
   // 4. Handle hash-based navigation changes

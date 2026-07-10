@@ -167,6 +167,37 @@ if (Array.isArray(progressData?.completed_learning_units)) {
     syncCourseProgressAndDashboard(true);
   }, [syncCourseProgressAndDashboard]);
 
+  useEffect(() => {
+    if (!isLoading && course) {
+      const targetRaw = localStorage.getItem('continue_learning_target');
+      if (targetRaw) {
+        try {
+          const target = JSON.parse(targetRaw);
+          if (Number(target.course_id) === Number(activeCourseId)) {
+            let targetLesson = null;
+            for (const mod of course.modules) {
+              const lesson = mod.lessons.find(l => Number(l.id) === Number(target.module_id));
+              if (lesson) {
+                targetLesson = lesson;
+                break;
+              }
+            }
+            if (targetLesson) {
+              setExpandedDay(target.day);
+              handleLaunchVideoPlayer(targetLesson, 'Videos');
+            } else {
+              setExpandedDay(target.day);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to automatically redirect to lesson module:", e);
+        } finally {
+          localStorage.removeItem('continue_learning_target');
+        }
+      }
+    }
+  }, [isLoading, course, activeCourseId]);
+
   // Accordion Toggle Handler
   const toggleDayAccordion = (dayId, isLocked) => {
     if (isLocked) return; 

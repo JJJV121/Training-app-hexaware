@@ -42,29 +42,59 @@ const dashboardService = {
         if (!IS_BACKEND_RUNNING) {
           await sleep();
           const mockData = {
+            name: "John",
             employee_id: "EMP001",
             email: "emp001@example.com",
             courses_enrolled: 1,
-            current_course: {
+            course: {
+              id: 1,
+              name: "Java Training",
+              current_day: 5,
+              total_days: 16,
+              remaining_modules: 40,
+              completed_percentage: 31.25,
+              start_date: "2026-06-29",
+              end_date: "2026-07-14",
+              motivation_message: "Great Progress!"
+            },
+            progress: {
+              completed_days: 5,
+              remaining_days: 11
+            },
+            time_spent: {
+              learning_hours: 19.75,
+              assessment_hours: 10,
+              practice_hours: 5,
+              revision_hours: 2
+            },
+            continue_learning: {
               course_id: 1,
-              course_name: "Java Training",
-              current_day: 1,
-              day_progress_percentage: 20,
-              duration_days: 16,
-              start_date: "2026-06-14",
-              end_date: "2026-06-29",
-              total_modules: 56,
-              completed_modules: 1,
-              remaining_modules: 55,
-              progress_percentage: 2,
-              learning_hours_completed: 1.0,
-              assessment_time_hours: 10,
-              assignment_time_hours: 5,
-              day_wise_progress: [
-                { day: 1, progress_percentage: 20 }
-              ]
-            }
+              day: 5,
+              module_id: 27
+            },
+            enrolled_courses: [
+              {
+                course_id: 1,
+                course_name: "Java Training",
+                progress: 31.25,
+                start_date: "2026-06-29",
+                end_date: "2026-07-14",
+                completion_percentage: 31.25
+              }
+            ]
           };
+
+          // Backwards compatibility layer
+          mockData.current_course = {
+            current_day: mockData.course.current_day,
+            course_id: mockData.course.id,
+            course_name: mockData.course.name,
+            duration_days: mockData.course.total_days,
+            start_date: mockData.course.start_date,
+            end_date: mockData.course.end_date,
+            progress_percentage: mockData.course.completed_percentage
+          };
+
           this._cache[userId] = { data: mockData, timestamp: Date.now() };
           return mockData;
         }
@@ -74,6 +104,19 @@ const dashboardService = {
         console.log("Dashboard Response:", response.data);
 
         const data = response.data;
+        if (data && data.course) {
+          // Backwards compatibility injector
+          data.current_course = {
+            current_day: data.course.current_day,
+            course_id: data.course.id,
+            course_name: data.course.name,
+            duration_days: data.course.total_days,
+            start_date: data.course.start_date,
+            end_date: data.course.end_date,
+            progress_percentage: data.course.completed_percentage
+          };
+        }
+
         this._cache[userId] = { data, timestamp: Date.now() };
         return data;
       } finally {
@@ -88,16 +131,17 @@ const dashboardService = {
   // Reusable function to get current course
   async getCurrentCourse(userId) {
     const data = await this.getDashboard(userId);
-    return data?.current_course || null;
+    return data?.course || null;
   },
 
   // Reusable function to get progress
   async getProgress(userId) {
-    const course = await this.getCurrentCourse(userId);
-    if (!course) return null;
+    const data = await this.getDashboard(userId);
+    if (!data || !data.course) return null;
     return {
-      percent: Number(course.progress_percentage || 0),
-      day_wise_progress: Array.isArray(course.day_wise_progress) ? course.day_wise_progress : []
+      percent: Number(data.course.completed_percentage || 0),
+      completed_days: Number(data.progress?.completed_days || 0),
+      total_days: Number(data.course.total_days || 0)
     };
   },
 
@@ -109,33 +153,33 @@ const dashboardService = {
   async getUserProfile(userId) {
     const data = await this.getDashboard(userId);
     return {
-      name: data.name || data.employee_id || "Student",
-      email: data.email || ""
+      name: data?.name || data?.employee_id || "Student",
+      email: data?.email || ""
     };
   },
 
   async getOverviewStats(userId) {
     const data = await this.getDashboard(userId);
-    const course = data.current_course;
+    const course = data?.course;
     if (!course) return [];
     return [
       {
         id: "current-course",
-        title: course.course_name,
+        title: course.name,
         label: "Course Enrolled",
         icon: "book-open",
         color: "blue"
       },
       {
         id: "modules-completed",
-        title: String(course.completed_modules),
+        title: String(course.total_days - data.progress?.remaining_days || 0),
         label: "Modules Completed",
         icon: "check-circle",
         color: "green"
       },
       {
         id: "overall-completion",
-        title: `${course.progress_percentage}%`,
+        title: `${course.completed_percentage}%`,
         label: "Overall Completion",
         icon: "trending-up",
         color: "blue"
@@ -152,66 +196,34 @@ const dashboardService = {
 
   async getTimeSpentData(userId) {
     const data = await this.getDashboard(userId);
-    const course = data.current_course;
-    if (!course) return null;
-
-    const totalHours = Number(course.learning_hours_completed || 0);
-    const hrs = Math.floor(totalHours);
-    const mins = Math.round((totalHours - hrs) * 60);
-
-    return {
-      badge: "Time Spent",
-      categories: [
-        {
-          id: "learning",
-          title: `Day ${course.current_day}`,
-          hours: `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")} hrs`,
-          label: "Learning Contents",
-          color: "#3563e9"
-        },
-        {
-          id: "assessment",
-          title: "",
-          hours: `${String(course.assessment_time_hours).padStart(2, "0")}:00 hrs`,
-          label: "Assessment",
-          color: "#5c6f84"
-        },
-        {
-          id: "practice",
-          title: "",
-          hours: `${String(course.assignment_time_hours).padStart(2, "0")}:00 hrs`,
-          label: "Practice",
-          color: "#0dcd94"
-        }
-      ]
-    };
+    if (!data || !data.time_spent) return null;
+    return data.time_spent;
   },
 
   async getKeepGoingData(userId) {
     const data = await this.getDashboard(userId);
-    const course = data.current_course;
+    const course = data?.course;
     if (!course) return null;
 
     return {
       badge: "Keep Going!",
-      title: `${course.remaining_modules} Modules Almost Done`,
-      description: "You're making amazing progress! Finish your courses and unlock new achievements.",
+      title: `${course.remaining_modules} Modules Remaining`,
+      description: `Currently on Day ${course.current_day} of ${course.name} (${course.completed_percentage}% Completed). ${course.motivation_message}`,
       buttonText: "Continue Learning"
     };
   },
 
   async getCourseProgressData(userId) {
     const data = await this.getDashboard(userId);
-    const course = data.current_course;
+    const course = data?.course;
     if (!course) return null;
 
     return {
-      title: course.course_name,
-      subtitle: `Day ${course.current_day} of ${course.duration_days}`,
-      percent: Number(course.progress_percentage || 0),
+      title: course.name,
+      subtitle: `Day ${course.current_day} of ${course.total_days}`,
+      percent: Number(course.completed_percentage || 0),
       startDate: course.start_date,
-      endDate: course.end_date,
-      chartPoints: Array.isArray(course.day_wise_progress) ? course.day_wise_progress : []
+      endDate: course.end_date
     };
   },
 
@@ -219,8 +231,8 @@ const dashboardService = {
     try {
       const data = await this.getDashboard(userId);
       return {
-        name: data.name || data.employee_id || "Student",
-        email: data.email || ""
+        name: data?.name || data?.employee_id || "Student",
+        email: data?.email || ""
       };
     } catch (error) {
       console.error(error);

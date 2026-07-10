@@ -43,33 +43,12 @@ const calculateBubbleSize = (hours, maxHours, minSize = 90, maxSize = 160) => {
 
 const generateChartPath = (points) => {
   if (!points || points.length === 0) return 'M 100 90 L 900 90';
-  if (points.length === 1) {
-    const y = 90 - (Number(points[0].progress_percentage || 0) * 0.8);
-    return `M 100 ${y} L 900 ${y}`;
-  }
-
-  const coords = points.map((point, index) => {
-    const x = 100 + (index * (800 / Math.max(1, points.length - 1)));
+  const totalPoints = points.length;
+  return points.map((point, index) => {
+    const x = 100 + (index * (800 / Math.max(1, totalPoints - 1)));
     const y = 90 - (Number(point.progress_percentage || 0) * 0.8);
-    return { x, y };
-  });
-
-  let path = `M ${coords[0].x} ${coords[0].y}`;
-  
-  for (let i = 0; i < coords.length - 1; i++) {
-    const p0 = coords[i];
-    const p1 = coords[i + 1];
-    
-    // Smooth control points
-    const cp1x = p0.x + (p1.x - p0.x) / 3;
-    const cp1y = p0.y;
-    const cp2x = p0.x + 2 * (p1.x - p0.x) / 3;
-    const cp2y = p1.y;
-    
-    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-  }
-  
-  return path;
+    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }).join(' ');
 };
 
 // ==========================================
@@ -203,7 +182,41 @@ export default function Home() {
 
   const name = dashboardData?.name || "Student";
   const coursesEnrolled = dashboardData?.courses_enrolled || 0;
-  const course = dashboardData?.current_course;
+  const course = dashboardData?.course;
+  const progressData = dashboardData?.progress || { completed_days: 0, remaining_days: 0 };
+  const timeSpent = dashboardData?.time_spent || { learning_hours: 0, assessment_hours: 0, practice_hours: 0, revision_hours: 0 };
+  const continueLearning = dashboardData?.continue_learning;
+  const enrolledCourses = dashboardData?.enrolled_courses || [];
+
+  const getGreeting = (nameVal) => {
+    const hr = new Date().getHours();
+    let greet = "Good Morning";
+    if (hr >= 12 && hr < 17) {
+      greet = "Good Afternoon";
+    } else if (hr >= 17) {
+      greet = "Good Evening";
+    }
+    return `${greet}, ${nameVal}`;
+  };
+
+  // Generate dynamic day-wise progress points for SVG curve
+  const dayWiseProgress = [];
+  if (course) {
+    for (let d = 1; d <= course.total_days; d++) {
+      let progressPct = 0;
+      if (d <= progressData.completed_days) {
+        progressPct = 100;
+      } else if (d === course.current_day) {
+        const dayModulesTotal = Math.ceil(course.total_modules / course.total_days) || 1;
+        const dayModulesCompleted = Math.max(0, course.completed_modules - (progressData.completed_days * dayModulesTotal));
+        progressPct = Math.min(100, Math.round((dayModulesCompleted / dayModulesTotal) * 100));
+      }
+      dayWiseProgress.push({
+        day: d,
+        progress_percentage: progressPct
+      });
+    }
+  }
 
   return (
     <div className="page-view dashboard-container">
@@ -211,7 +224,7 @@ export default function Home() {
       {/* 1. Blue Header Banner */}
       <div className="dashboard-banner">
         <div className="banner-content">
-          <h2 className="banner-greeting">Hii {name}! 👋</h2>
+          <h2 className="banner-greeting">{getGreeting(name)}! 👋</h2>
           <span className="banner-subtitle">READY TO LEARN</span>
         </div>
       </div>
@@ -224,7 +237,7 @@ export default function Home() {
               <div className="stat-icon-wrapper">
                 <Icon name="book-open" className="stat-icon" />
               </div>
-              <span className="stat-title">{course.course_name}</span>
+              <span className="stat-title">{course.name}</span>
               <span className="stat-label">Course Enrolled</span>
             </div>
 
@@ -240,7 +253,7 @@ export default function Home() {
               <div className="stat-icon-wrapper">
                 <Icon name="trending-up" className="stat-icon" />
               </div>
-              <span className="stat-title">{course.progress_percentage}%</span>
+              <span className="stat-title">{course.completed_percentage}%</span>
               <span className="stat-label">Overall Completion</span>
             </div>
 
@@ -252,6 +265,52 @@ export default function Home() {
               <span className="stat-label">Courses Enrolled</span>
             </div>
           </div>
+
+          {/* 2.5 Multiple Courses Enrolled Support Cards */}
+          {enrolledCourses.length > 1 && (
+            <div className="enrolled-courses-section">
+              <h3 className="section-title">Your Enrolled Courses</h3>
+              <div className="course-cards-grid">
+                {enrolledCourses.map((c) => (
+                  <div 
+                    key={c.course_id} 
+                    className="course-card-interactive" 
+                    onClick={() => {
+                      navigate(`/course/${c.course_id}`);
+                    }}
+                  >
+                    <div className="course-card-header">
+                      <div className="course-card-icon-bg">
+                        <Icon name="book-open" />
+                      </div>
+                      <h4 className="course-card-name">{c.course_name}</h4>
+                    </div>
+                    <div className="course-card-body">
+                      <div className="course-card-date-row">
+                        <div className="course-card-date">
+                          <span className="date-label">Start Date</span>
+                          <span className="date-value">{formatDate(c.start_date)}</span>
+                        </div>
+                        <div className="course-card-date">
+                          <span className="date-label">End Date</span>
+                          <span className="date-value">{formatDate(c.end_date)}</span>
+                        </div>
+                      </div>
+                      <div className="course-card-progress-container">
+                        <div className="progress-info-row">
+                          <span className="progress-label">Progress</span>
+                          <span className="progress-value">{c.progress}%</span>
+                        </div>
+                        <div className="progress-bar-rail">
+                          <div className="progress-bar-fill" style={{ width: `${c.progress}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 3. Mid Row (Keep Going & Time Spent Cards) */}
           <div className="dashboard-row-mid">
@@ -268,14 +327,24 @@ export default function Home() {
                   {course.remaining_modules} Modules Remaining
                 </h3>
                 <p className="keep-going-desc">
-                  Currently on Day {course.current_day} of {course.course_name} ({course.progress_percentage}% Completed). {getMotivationMessage(course.progress_percentage)}
+                  Currently on Day {course.current_day} of {course.name} ({course.completed_percentage}% Completed). {course.motivation_message}
                 </p>
               </div>
               
               <a 
                 href="#course" 
                 className="continue-btn"
-                onClick={() => { window.location.hash = 'course'; }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (continueLearning) {
+                    localStorage.setItem('continue_learning_target', JSON.stringify({
+                      course_id: continueLearning.course_id,
+                      day: continueLearning.day,
+                      module_id: continueLearning.module_id
+                    }));
+                  }
+                  window.location.hash = 'course';
+                }}
               >
                 <span>Continue Learning</span>
                 <Icon name="arrow-right" style={{ width: '16px', height: '16px' }} />
@@ -285,20 +354,30 @@ export default function Home() {
             {/* Time Spent Venn Diagram Card */}
             {(() => {
               const maxHours = Math.max(
-                course.learning_hours_completed || 0,
-                course.assessment_time_hours || 0,
-                course.assignment_time_hours || 0
+                timeSpent.learning_hours || 0,
+                timeSpent.assessment_hours || 0,
+                timeSpent.practice_hours || 0,
+                timeSpent.revision_hours || 0
               );
               
-              const learningSize = calculateBubbleSize(course.learning_hours_completed, maxHours);
-              const assessmentSize = calculateBubbleSize(course.assessment_time_hours, maxHours);
-              const practiceSize = calculateBubbleSize(course.assignment_time_hours, maxHours);
+              const learningSize = calculateBubbleSize(timeSpent.learning_hours, maxHours, 80, 130);
+              const assessmentSize = calculateBubbleSize(timeSpent.assessment_hours, maxHours, 80, 130);
+              const practiceSize = calculateBubbleSize(timeSpent.practice_hours, maxHours, 80, 130);
+              const revisionSize = calculateBubbleSize(timeSpent.revision_hours, maxHours, 80, 130);
+
+              const totalHours = (timeSpent.learning_hours || 0) + 
+                                 (timeSpent.assessment_hours || 0) + 
+                                 (timeSpent.practice_hours || 0) + 
+                                 (timeSpent.revision_hours || 0);
 
               return (
                 <div className="time-spent-card">
-                  <div className="card-badge-pill time-spent-badge">
-                    <Icon name="zap" style={{ width: '12px', height: '12px', fill: '#ffdf40', stroke: '#ffdf40' }} />
-                    <span>Time Spent</span>
+                  <div className="card-badge-pill time-spent-badge" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Icon name="zap" style={{ width: '12px', height: '12px', fill: '#ffdf40', stroke: '#ffdf40' }} />
+                      <span>Time Spent</span>
+                    </div>
+                    <span style={{ fontWeight: '700', opacity: 0.8 }}>Total: {formatHours(totalHours)}</span>
                   </div>
                   
                   <div className="venn-container">
@@ -307,8 +386,7 @@ export default function Home() {
                       className="venn-circle circle-learning" 
                       style={{ width: `${learningSize}px`, height: `${learningSize}px` }}
                     >
-                      <span className="venn-circle-title">Day {course.current_day}</span>
-                      <span className="venn-circle-hours">{formatHours(course.learning_hours_completed)}</span>
+                      <span className="venn-circle-hours">{formatHours(timeSpent.learning_hours)}</span>
                       <span className="venn-circle-label">Learning</span>
                     </div>
                     
@@ -317,7 +395,7 @@ export default function Home() {
                       className="venn-circle circle-assessment" 
                       style={{ width: `${assessmentSize}px`, height: `${assessmentSize}px` }}
                     >
-                      <span className="venn-circle-hours">{formatHours(course.assessment_time_hours)}</span>
+                      <span className="venn-circle-hours">{formatHours(timeSpent.assessment_hours)}</span>
                       <span className="venn-circle-label">Assessment</span>
                     </div>
                     
@@ -326,8 +404,17 @@ export default function Home() {
                       className="venn-circle circle-practice" 
                       style={{ width: `${practiceSize}px`, height: `${practiceSize}px` }}
                     >
-                      <span className="venn-circle-hours">{formatHours(course.assignment_time_hours)}</span>
+                      <span className="venn-circle-hours">{formatHours(timeSpent.practice_hours)}</span>
                       <span className="venn-circle-label">Practice</span>
+                    </div>
+
+                    {/* Revision Circle */}
+                    <div 
+                      className="venn-circle circle-revision" 
+                      style={{ width: `${revisionSize}px`, height: `${revisionSize}px` }}
+                    >
+                      <span className="venn-circle-hours">{formatHours(timeSpent.revision_hours)}</span>
+                      <span className="venn-circle-label">Revision</span>
                     </div>
                   </div>
                 </div>
@@ -344,11 +431,11 @@ export default function Home() {
                   <Icon name="book-open" style={{ width: '20px', height: '20px' }} />
                 </div>
                 <div className="course-title-sub">
-                  <h3>{course.course_name}</h3>
-                  <span>Day {course.current_day} of {course.duration_days}</span>
+                  <h3>{course.name}</h3>
+                  <span>Day {course.current_day} of {course.total_days}</span>
                 </div>
               </div>
-              <span className="progress-percent-label">{course.progress_percentage}% Completed</span>
+              <span className="progress-percent-label">{course.completed_percentage}% Completed</span>
             </div>
 
             {/* SVG Progress Curve plotted dynamically */}
@@ -358,16 +445,16 @@ export default function Home() {
                 <line x1="100" y1="90" x2="900" y2="90" style={{ stroke: '#e2e8f0', strokeWidth: 2 }} />
                 
                 {/* Dynamic Progress line curvature */}
-                {course.day_wise_progress && course.day_wise_progress.length > 0 && (
+                {dayWiseProgress.length > 0 && (
                   <path 
-                    d={generateChartPath(course.day_wise_progress)} 
+                    d={generateChartPath(dayWiseProgress)} 
                     className="chart-line" 
                   />
                 )}
                 
                 {/* Dynamic Milestone node circles based on API timeline data */}
-                {course.day_wise_progress && course.day_wise_progress.map((point, index) => {
-                  const totalPoints = course.day_wise_progress.length;
+                {dayWiseProgress.map((point, index) => {
+                  const totalPoints = dayWiseProgress.length;
                   const normalizedXCoordinate = 100 + (index * (800 / Math.max(1, totalPoints - 1)));
                   const calculatedYCoordinate = 90 - (Number(point.progress_percentage || 0) * 0.8);
 
@@ -387,6 +474,40 @@ export default function Home() {
                 <text x="100" y="112" className="chart-label" textAnchor="middle">0%</text>
                 <text x="900" y="112" className="chart-label" textAnchor="middle">100%</text>
               </svg>
+            </div>
+
+            {/* Progress Timeline Checklist */}
+            <div className="progress-timeline-container">
+              <div className="timeline-title-row">
+                <span className="timeline-title">Progress Timeline</span>
+                <span className="timeline-summary">Day {course.current_day} of {course.total_days}</span>
+              </div>
+              <div className="timeline-scroll-wrapper">
+                <div className="timeline-track">
+                  {Array.from({ length: course.total_days }, (_, i) => {
+                    const dayNum = i + 1;
+                    const isCompleted = dayNum <= progressData.completed_days;
+                    const isCurrent = dayNum === course.current_day;
+
+                    let statusClass = "upcoming";
+                    if (isCompleted) statusClass = "completed";
+                    else if (isCurrent) statusClass = "current";
+
+                    return (
+                      <div key={dayNum} className={`timeline-node ${statusClass}`}>
+                        <div className="node-circle">
+                          {isCompleted ? (
+                            <Icon name="check" style={{ width: '14px', height: '14px', color: '#fff' }} />
+                          ) : (
+                            <span>{dayNum}</span>
+                          )}
+                        </div>
+                        <span className="node-label">Day {dayNum}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Date references & footer button redirection links */}
@@ -412,11 +533,11 @@ export default function Home() {
               </div>
               
               <a 
-                href={`/course/${course.course_id}`} 
+                href={`/course/${course.id}`} 
                 className="view-course-btn"
                 onClick={(e) => {
                   e.preventDefault();
-                  navigate(`/course/${course.course_id}`);
+                  navigate(`/course/${course.id}`);
                 }}
               >
                 View Course

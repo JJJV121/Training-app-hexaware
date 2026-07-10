@@ -1,58 +1,53 @@
 from datetime import date
-
 from pydantic import BaseModel
 
-class DayProgressResponse(BaseModel):
-
-    day: int
-
-    progress_percentage: float
-
-class CurrentCourseResponse(BaseModel):
-
-    course_id: int
-
-    course_name: str
-
+class CourseResponse(BaseModel):
+    id: int
+    name: str
     current_day: int
-
-    day_progress_percentage: float
-
-    duration_days: int
-
-    start_date: date
-
-    end_date: date
-
+    total_days: int
     total_modules: int
-
     completed_modules: int
-
     remaining_modules: int
+    completed_percentage: float
+    start_date: date
+    end_date: date
+    motivation_message: str
 
-    progress_percentage: float
+class ProgressResponse(BaseModel):
+    completed_days: int
+    remaining_days: int
 
-    learning_hours_completed: float
+class TimeSpentResponse(BaseModel):
+    learning_hours: float
+    assessment_hours: float
+    practice_hours: float
+    revision_hours: float
 
-    assessment_time_hours: int
+class ContinueLearningResponse(BaseModel):
+    course_id: int
+    day: int
+    module_id: int | None = None
 
-    assignment_time_hours: int
-
-    day_wise_progress: list[DayProgressResponse]
-
+class EnrolledCourseCardResponse(BaseModel):
+    course_id: int
+    course_name: str
+    progress: float
+    start_date: date
+    end_date: date
+    completion_percentage: float
 
 class DashboardResponse(BaseModel):
-
     name: str | None = None
-
     employee_id: str
-
     email: str
-
     courses_enrolled: int
-
-    current_course: CurrentCourseResponse | None
+    course: CourseResponse | None = None
+    progress: ProgressResponse | None = None
+    time_spent: TimeSpentResponse | None = None
+    continue_learning: ContinueLearningResponse | None = None
+    enrolled_courses: list[EnrolledCourseCardResponse] = []
 
     model_config = {
         "from_attributes": True
-    }
+    }
