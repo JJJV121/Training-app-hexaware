@@ -1,11 +1,6 @@
-@import "tailwindcss";
-/* Add your custom background animations here */
-@keyframes floatSlow {
-  0%, 100% { transform: translate(0px, 0px) scale(1); }
-  50% { transform: translate(20px, -15px) scale(1.05); }
-}
-
-@keyframes floatReverse {
-  0%, 100% { transform: translate(0px, 0px) scale(1); }
-  50% { transform: translate(-15px, 15px) scale(0.95); }
-}
+/* src/index.css */
+/* Import the original stylesheets in their proper cascade order to preserve look & feel */
+@import "./styles/main.css";
+@import "./styles/home.css";
+@import "./styles/course.css";
+@import "./styles/schedule.css";

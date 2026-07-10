@@ -1,0 +1,326 @@
+/* schedule.css */
+/* Weekly Schedule page specific styles matching Figma screens */
+
+.schedule-container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Header Banner */
+.schedule-banner {
+  background-color: var(--primary-blue);
+  border-radius: 24px;
+  padding: 40px;
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  overflow: visible; /* Need overflow visible to let stats card overlap cleanly */
+  height: 180px;
+  box-shadow: 0 10px 30px rgba(53, 99, 233, 0.15);
+}
+
+.schedule-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 2;
+}
+
+.schedule-banner-left i {
+  width: 32px;
+  height: 32px;
+}
+
+.schedule-banner-title {
+  font-family: var(--font-family-header);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.schedule-banner-right {
+  display: flex;
+  gap: 12px;
+  z-index: 2;
+}
+
+.schedule-banner-btn {
+  background-color: #ffffff;
+  color: var(--text-dark);
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.schedule-banner-btn:hover {
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.schedule-banner-btn i {
+  width: 16px;
+  height: 16px;
+  color: var(--text-medium);
+}
+
+/* Stats Overlay Card */
+.schedule-stats-card {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 20px 32px;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: -40px;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 60px;
+}
+
+.schedule-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.schedule-stat-icon-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Center white dot inside dot icon */
+.schedule-stat-icon-circle::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #ffffff;
+}
+
+.schedule-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-stat-lbl {
+  font-size: 10px;
+  color: var(--text-medium);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.schedule-stat-val {
+  font-family: var(--font-family-header);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+/* Timetable Container */
+.timetable-outer-container {
+  margin-top: 24px; /* Space for statistics overlay */
+  background-color: #ffffff;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+/* Grid Layout */
+.timetable-grid {
+  display: grid;
+  grid-template-columns: 100px repeat(6, 1fr);
+  width: 100%;
+}
+
+/* Header Row style */
+.timetable-header-cell {
+  background-color: var(--primary-blue);
+  color: #ffffff;
+  font-family: var(--font-family-header);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  padding: 16px 8px;
+  border-right: 1.5px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.timetable-header-cell:last-child {
+  border-right: none;
+}
+
+.timetable-header-cell i {
+  width: 18px;
+  height: 18px;
+  color: #ffffff;
+}
+
+/* Time slots column style */
+.timetable-time-cell {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dark);
+  text-align: center;
+  padding: 24px 8px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #ffffff;
+  line-height: 1.5;
+}
+
+/* Grid items cells */
+.timetable-grid-cell {
+  background-color: #ffffff;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+}
+
+/* Remove last columns border right */
+.timetable-grid-cell:nth-child(7n) {
+  border-right: none;
+}
+
+/* Remove last row border bottom */
+.timetable-grid-cell:nth-last-child(-n+7),
+.timetable-time-cell:nth-last-child(-n+7) {
+  border-bottom: none;
+}
+
+/* Event Cards inside cell */
+.schedule-event-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  padding: 12px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-family-body);
+  box-shadow: 0 4px 12px rgba(53, 99, 233, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.schedule-event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(53, 99, 233, 0.16);
+  z-index: 10;
+}
+
+/* Card color schemes matching Figma */
+.schedule-event-card.lecture-blue {
+  background: linear-gradient(135deg, #3563e9 0%, #1e40af 100%);
+}
+
+.schedule-event-card.section-green {
+  background: linear-gradient(135deg, #0dcd94 0%, #0aa779 100%);
+  box-shadow: 0 4px 12px rgba(13, 205, 148, 0.08);
+}
+
+.schedule-event-card.lab-blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+/* Card content */
+.event-type-badge {
+  background-color: rgba(255, 255, 255, 0.18);
+  border-radius: 50px;
+  padding: 3px 10px;
+  font-size: 8px;
+  font-weight: 800;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.event-title {
+  font-family: var(--font-family-header);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.event-code {
+  font-size: 9px;
+  opacity: 0.8;
+  font-weight: 600;
+}
+
+.event-instructor {
+  font-size: 9px;
+  font-weight: 600;
+  margin-top: auto;
+}
+
+/* Responsive Table Layout */
+@media (max-width: 1024px) {
+  .timetable-grid {
+    grid-template-columns: 80px repeat(6, 120px);
+    overflow-x: auto;
+  }
+  .timetable-outer-container {
+    overflow-x: auto;
+  }
+  .schedule-stats-card {
+    gap: 20px;
+    justify-content: space-between;
+  }
+}
+@media (max-width: 768px) {
+  .schedule-banner {
+    flex-direction: column;
+    height: auto;
+    min-height: 200px;
+    padding-bottom: 80px;
+  }
+  .schedule-banner-right {
+    margin-top: 12px;
+  }
+  .schedule-stats-card {
+    left: 20px;
+    right: 20px;
+    bottom: -50px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .timetable-outer-container {
+    margin-top: 60px;
+  }
+}

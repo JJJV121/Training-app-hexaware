@@ -1,0 +1,350 @@
+/* course.css */
+/* Course Content page specific styles matching Figma screens */
+
+.course-container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Banner Header styled for Course Page */
+.course-banner {
+  background-color: var(--primary-blue);
+  border-radius: 24px;
+  padding: 40px;
+  color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  min-height: 220px;
+  box-shadow: 0 10px 30px rgba(53, 99, 233, 0.15);
+}
+
+.course-banner-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  gap: 20px;
+  z-index: 2;
+}
+
+.course-breadcrumb {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.course-banner-title {
+  font-family: var(--font-family-header);
+  font-size: 36px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+/* Tabs style at the bottom left of course banner */
+.course-tabs-wrapper {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.course-tab {
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.course-tab.active {
+  background-color: #ffffff;
+  color: var(--primary-blue);
+}
+
+.course-tab.inactive {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.course-tab.inactive:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Banner Right Widget (Progress) */
+.course-banner-right {
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 24px 32px;
+  display: flex;
+  gap: 48px;
+  z-index: 2;
+  min-width: 320px;
+}
+
+.course-banner-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.course-banner-stat-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.course-banner-stat-val {
+  font-family: var(--font-family-header);
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+/* Banner Progress Bar track */
+.course-progress-track {
+  width: 120px;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50px;
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.course-progress-bar {
+  height: 100%;
+  background-color: #ffffff;
+  border-radius: 50px;
+}
+
+/* Main Modules Section */
+.modules-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0 8px;
+}
+
+.module-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Module Header row */
+.module-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.module-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-family: var(--font-family-header);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.module-badge.active-badge {
+  background-color: var(--primary-blue);
+  color: #ffffff;
+}
+
+.module-badge.inactive-badge {
+  background-color: #ffffff;
+  color: var(--text-medium);
+  border: 1.5px solid var(--border-color);
+}
+
+.module-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.module-title {
+  font-family: var(--font-family-header);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.module-day {
+  font-size: 11px;
+  color: var(--text-medium);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.module-day i {
+  width: 12px;
+  height: 12px;
+}
+
+/* Lesson Cards list */
+.lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-left: 52px; /* indent to line up with module badge details */
+}
+
+.lesson-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 20px 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lesson-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.lesson-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lesson-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.lesson-title {
+  font-family: var(--font-family-header);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.lesson-duration {
+  font-size: 11px;
+  color: var(--text-medium);
+  font-weight: 600;
+}
+
+.lesson-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.lesson-action-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.action-video {
+  background-color: var(--primary-blue);
+  color: #ffffff;
+}
+
+.action-video:hover {
+  background-color: var(--primary-blue-hover);
+}
+
+.action-notes {
+  background-color: #f1f5f9;
+  color: var(--text-medium);
+  border: 1px solid #e2e8f0;
+}
+
+.action-notes:hover {
+  background-color: #e2e8f0;
+}
+
+.lesson-action-btn i {
+  width: 12px;
+  height: 12px;
+}
+
+/* Lesson Checkbox status */
+.lesson-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.lesson-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.checkbox-checked {
+  border: 2px solid var(--accent-green);
+  background-color: transparent;
+  color: var(--accent-green);
+}
+
+.checkbox-unchecked {
+  border: 2px solid #cbd5e1;
+  background-color: #ffffff;
+}
+
+.lesson-checkbox i {
+  width: 16px;
+  height: 16px;
+  stroke-width: 3;
+}
+
+/* Responsive adjustment */
+@media (max-width: 768px) {
+  .course-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 30px;
+  }
+  
+  .course-banner-right {
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+  }
+  
+  .lessons-list {
+    padding-left: 0;
+  }
+}
