@@ -95,7 +95,10 @@ async def update_note(
     await db.commit()
     await db.refresh(note)
 
-    return note
+    return {
+        "message": "Note updated successfully",
+        "note": note
+    }
 
 
 async def delete_note(
