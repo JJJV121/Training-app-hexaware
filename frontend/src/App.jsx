@@ -32,6 +32,7 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword/>}/>
         <Route path="/reset-password" element={<ResetPassword/>}/>
         <Route path="/dashboard" element={<DashBoard/>}/>
+        <Route path="/course/:courseId" element={<DashBoard/>}/>
         
         {/* Catch-all route to redirect unknown URLs back to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />

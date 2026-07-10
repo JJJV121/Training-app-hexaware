@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import dashboardService from '../services/dashboardService.js';
 import Icon from '../components/Icon';
 import Home from '../pages/Home';
@@ -11,6 +12,8 @@ import Profile from '../pages/Profile';
 import Assessment from './Assessment.jsx';
 
 export default function DashBoard() {
+  const { courseId: paramCourseId } = useParams();
+
   // 1. Convert profile to a state object to handle asynchronous API loading
   const [profile, setProfile] = useState({ name: "Loading...", email: "" });
   
@@ -22,6 +25,7 @@ export default function DashBoard() {
   
   // Hash routing state
   const [currentRoute, setCurrentRoute] = useState(() => {
+    if (paramCourseId) return 'course';
     const hash = window.location.hash.substring(1);
     return hash || 'home';
   });
@@ -38,6 +42,14 @@ export default function DashBoard() {
   useEffect(() => {
     currentRouteRef.current = currentRoute;
   }, [currentRoute]);
+
+  useEffect(() => {
+    if (paramCourseId) {
+      setCourseId(Number(paramCourseId));
+      setCurrentRoute('course');
+      setIsCourseLoading(false);
+    }
+  }, [paramCourseId]);
 
   // 2. Dynamically retrieve the logged-in user ID from localStorage
   const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
