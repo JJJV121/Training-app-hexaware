@@ -16,6 +16,7 @@ class LoginUserResponse(BaseModel):
     email: str
     employee_id: str
     role: str | None
+    name: str | None = None
 
 
 class LoginResponse(BaseModel):
