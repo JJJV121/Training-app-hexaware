@@ -137,24 +137,19 @@ async def get_assessments_api(
     return await get_all_assessments(db)
 
 
-@router.get("/assessments/{assessment_id}")
-async def get_assessment_api(
-    assessment_id: int,
+# ==========================================================
+# AVAILABLE ASSESSMENTS
+# ==========================================================
+
+@router.get("/assessments/available")
+async def available_assessments_api(
     db: AsyncSession = Depends(get_db)
 ):
-    try:
-        return await get_assessment_by_id(
-            db,
-            assessment_id
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=404,
-            detail=str(e)
-        )
-    
+    return await get_available_assessments(db)
+
+
 # ==========================================================
-# UPDATE / DELETE / PUBLISH ASSESSMENT
+# UPDATE ASSESSMENT
 # ==========================================================
 
 @router.put("/assessments/{assessment_id}")
@@ -176,6 +171,10 @@ async def update_assessment_api(
         )
 
 
+# ==========================================================
+# DELETE ASSESSMENT
+# ==========================================================
+
 @router.delete("/assessments/{assessment_id}")
 async def delete_assessment_api(
     assessment_id: int,
@@ -192,6 +191,10 @@ async def delete_assessment_api(
             detail=str(e)
         )
 
+
+# ==========================================================
+# PUBLISH ASSESSMENT
+# ==========================================================
 
 @router.post("/assessments/{assessment_id}/publish")
 async def publish_assessment_api(
@@ -211,15 +214,25 @@ async def publish_assessment_api(
 
 
 # ==========================================================
-# AVAILABLE ASSESSMENTS
+# GET ASSESSMENT BY ID
+# KEEP THIS LAST
 # ==========================================================
 
-@router.get("/assessments/available")
-async def available_assessments_api(
+@router.get("/assessments/{assessment_id}")
+async def get_assessment_api(
+    assessment_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    return await get_available_assessments(db)
-
+    try:
+        return await get_assessment_by_id(
+            db,
+            assessment_id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
 
 # ==========================================================
 # ATTEMPTS
@@ -310,27 +323,6 @@ async def submit_attempt_api(
             db,
             attempt_id,
             data
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
-
-
-# ==========================================================
-# EVALUATION
-# ==========================================================
-
-@router.post("/evaluation/{attempt_id}")
-async def evaluate_attempt_api(
-    attempt_id: int,
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        return await evaluate_attempt(
-            db,
-            attempt_id
         )
     except ValueError as e:
         raise HTTPException(

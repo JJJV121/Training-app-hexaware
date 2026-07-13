@@ -58,7 +58,7 @@ class AssessmentBase(BaseModel):
     total_questions: int
     pass_percentage: int
     unlock_after_days: int
-    topic_distribution: dict
+    topic_distribution: Dict[str, int]
 
 
 class AssessmentCreate(AssessmentBase):
@@ -72,6 +72,7 @@ class AssessmentUpdate(BaseModel):
     total_questions: Optional[int] = None
     pass_percentage: Optional[int] = None
     unlock_after_days: Optional[int] = None
+    topic_distribution: Optional[Dict[str, int]] = None
     status: Optional[str] = None
 
 

@@ -75,44 +75,64 @@ async def start_attempt(
 
 async def generate_random_questions(
     db: AsyncSession,
-    assessment: MCQAssessment
+    assessment: MCQAssessment,
 ):
+    topic_distribution = assessment.topic_distribution or {}
+
+    if not topic_distribution:
+        return []
+
+    topics = list(topic_distribution.keys())
+
+    result = await db.scalars(
+        select(MCQQuestion)
+        .where(
+            MCQQuestion.topic.in_(topics),
+            MCQQuestion.is_active.is_(True),
+        )
+    )
+
+    questions = result.all()
+
+    questions_by_topic = {}
+
+    for question in questions:
+        questions_by_topic.setdefault(
+            question.topic,
+            []
+        ).append(question)
 
     generated_questions = []
-    topic_distribution = assessment.topic_distribution
-    for topic, question_count in topic_distribution.items():
-        result = await db.scalars(
-            select(MCQQuestion)
-            .where(
-                MCQQuestion.topic == topic,
-                MCQQuestion.is_active == True
-            )
-        )
 
-        questions = result.all()
-        if len(questions) < question_count:
+    for topic, required_count in topic_distribution.items():
+
+        available_questions = questions_by_topic.get(topic, [])
+
+        if len(available_questions) < required_count:
             raise ValueError(
                 f"Not enough questions available for {topic}"
             )
+
         selected_questions = random.sample(
-            questions,
-            question_count
+            available_questions,
+            required_count,
         )
-        for question in selected_questions:
-            generated_questions.append(
-                {
-                    "id": question.id,
-                    "question_text": question.question_text,
-                    "option_a": question.option_a,
-                    "option_b": question.option_b,
-                    "option_c": question.option_c,
-                    "option_d": question.option_d,
-                    "marks": question.marks
-                }
-            )
-    random.shuffle(
-        generated_questions
-    )
+
+        generated_questions.extend(
+            {
+                "id": question.id,
+                "question_text": question.question_text,
+                "option_a": question.option_a,
+                "option_b": question.option_b,
+                "option_c": question.option_c,
+                "option_d": question.option_d,
+                "marks": question.marks,
+            }
+            for question in selected_questions
+        )
+
+    random.shuffle(generated_questions)
+
     return generated_questions
 
 
@@ -246,11 +266,15 @@ async def submit_attempt(
     attempt.status = "SUBMITTED"
     attempt.remaining_seconds = 0
     attempt.submitted_at = datetime.utcnow()
+
     await db.commit()
+    await db.refresh(attempt)
+
     result = await evaluate_attempt(
         db,
         attempt.id
     )
+
     return result
 
 
@@ -317,9 +341,8 @@ from app.models.mcq_models import (
 
 async def evaluate_attempt(
     db: AsyncSession,
-    attempt_id: int
+    attempt_id: int,
 ):
-
     attempt = await db.scalar(
         select(MCQAttempt).where(
             MCQAttempt.id == attempt_id
@@ -327,52 +350,75 @@ async def evaluate_attempt(
     )
 
     if not attempt:
-        raise ValueError(
-            "Attempt not found"
-        )
+        raise ValueError("Attempt not found")
+    existing_report = await db.scalar(
+    select(MCQReport).where(
+        MCQReport.assessment_id == attempt.assessment_id,
+        MCQReport.trainee_id == attempt.trainee_id,
+    )
+    )
 
+    if existing_report:
+        return {
+            "score": existing_report.score,
+            "percentage": float(existing_report.percentage),
+            "result": existing_report.result,
+        }
+    
     answers = attempt.answers or {}
+    generated_questions = attempt.generated_questions or []
+
+    question_ids = [
+        question["id"]
+        for question in generated_questions
+    ]
+
+    if not question_ids:
+        raise ValueError("No questions found for this attempt")
+
+    question_result = await db.scalars(
+        select(MCQQuestion).where(
+            MCQQuestion.id.in_(question_ids)
+        )
+    )
+
+    question_map = {
+        question.id: question
+        for question in question_result.all()
+    }
 
     correct_answers = 0
     total_marks = 0
     obtained_marks = 0
 
-    for question in attempt.generated_questions:
+    for question_data in generated_questions:
 
-        question_obj = await db.scalar(
-            select(MCQQuestion).where(
-                MCQQuestion.id == question["id"]
-            )
+        question = question_map.get(
+            question_data["id"]
         )
 
-        if not question_obj:
+        if question is None:
             continue
 
-        total_marks += question_obj.marks
+        total_marks += question.marks
 
         selected_option = answers.get(
-            str(question_obj.id)
+            str(question.id)
         )
 
-        if (
-            selected_option ==
-            question_obj.correct_option
-        ):
+        if selected_option == question.correct_option:
             correct_answers += 1
-            obtained_marks += question_obj.marks
+            obtained_marks += question.marks
 
-    percentage = 0
-
-    if total_marks > 0:
-        percentage = round(
-            (obtained_marks / total_marks) * 100,
-            2
-        )
+    percentage = (
+        round((obtained_marks / total_marks) * 100, 2)
+        if total_marks > 0
+        else 0
+    )
 
     assessment = await db.scalar(
         select(MCQAssessment).where(
-            MCQAssessment.id ==
-            attempt.assessment_id
+            MCQAssessment.id == attempt.assessment_id
         )
     )
 
@@ -391,18 +437,19 @@ async def evaluate_attempt(
         trainee_id=attempt.trainee_id,
         score=obtained_marks,
         percentage=percentage,
-        result=result
+        result=result,
     )
 
     db.add(report)
 
     await db.commit()
+
     await db.refresh(report)
 
     return {
         "score": obtained_marks,
         "percentage": percentage,
-        "result": result
+        "result": result,
     }
 
 

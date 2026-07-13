@@ -1,29 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy import select, func
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.mcq_models import (
-    MCQAssessment,
-    MCQQuestion
-)
-
-from app.schemas.mcq_schemas import (
-    AssessmentCreate,
-    AssessmentUpdate
-)
+from app.models.mcq_models import MCQAssessment, MCQQuestion
+from app.schemas.mcq_schemas import AssessmentCreate, AssessmentUpdate
 
 
-# ==========================================================
-# CREATE ASSESSMENT
-# ==========================================================
-
-async def create_assessment(
-    db: AsyncSession,
-    assessment: AssessmentCreate
-):
-
-    new_assessment = MCQAssessment(
+async def create_assessment(db: AsyncSession, assessment: AssessmentCreate):
+    obj = MCQAssessment(
         title=assessment.title,
         description=assessment.description,
         duration_minutes=assessment.duration_minutes,
@@ -32,374 +17,149 @@ async def create_assessment(
         unlock_after_days=assessment.unlock_after_days,
         topic_distribution=assessment.topic_distribution,
         status="Draft",
-        created_by=assessment.created_by
+        created_by=assessment.created_by,
     )
-
-    db.add(new_assessment)
-
+    db.add(obj)
     await db.commit()
-    await db.refresh(new_assessment)
+    await db.refresh(obj)
+    return obj
 
-    return new_assessment
 
-
-# ==========================================================
-# GET ALL ASSESSMENTS
-# ==========================================================
-
-async def get_all_assessments(
-    db: AsyncSession
-):
-
-    result = await db.scalars(
-
-        select(MCQAssessment)
-        .order_by(
-            MCQAssessment.created_at.desc()
+async def get_all_assessments(db: AsyncSession):
+    return (
+        await db.scalars(
+            select(MCQAssessment).order_by(MCQAssessment.created_at.desc())
         )
-
-    )
-
-    return result.all()
+    ).all()
 
 
-# ==========================================================
-# GET ASSESSMENT BY ID
-# ==========================================================
-
-async def get_assessment_by_id(
-    db: AsyncSession,
-    assessment_id: int
-):
-
+async def get_assessment_by_id(db: AsyncSession, assessment_id: int):
     assessment = await db.scalar(
-
-        select(MCQAssessment)
-        .where(
-            MCQAssessment.id == assessment_id
-        )
-
+        select(MCQAssessment).where(MCQAssessment.id == assessment_id)
     )
-
     if not assessment:
-        raise ValueError(
-            "Assessment not found"
-        )
-
+        raise ValueError("Assessment not found")
     return assessment
 
 
-# ==========================================================
-# UPDATE ASSESSMENT
-# ==========================================================
-
-async def update_assessment(
-    db: AsyncSession,
-    assessment_id: int,
-    assessment_data: AssessmentUpdate
-):
-
-    assessment = await db.scalar(
-
-        select(MCQAssessment)
-        .where(
-            MCQAssessment.id == assessment_id
-        )
-
-    )
-
-    if not assessment:
-        raise ValueError(
-            "Assessment not found"
-        )
-
-    update_data = assessment_data.model_dump(
-        exclude_unset=True
-    )
-
-    for key, value in update_data.items():
-        setattr(
-            assessment,
-            key,
-            value
-        )
-
+async def update_assessment(db: AsyncSession, assessment_id: int, assessment_data: AssessmentUpdate):
+    assessment = await get_assessment_by_id(db, assessment_id)
+    for k, v in assessment_data.model_dump(exclude_unset=True).items():
+        setattr(assessment, k, v)
     await db.commit()
-    await db.refresh(
-        assessment
-    )
-
+    await db.refresh(assessment)
     return assessment
 
 
-# ==========================================================
-# DELETE ASSESSMENT
-# ==========================================================
-
-async def delete_assessment(
-    db: AsyncSession,
-    assessment_id: int
-):
-
-    assessment = await db.scalar(
-
-        select(MCQAssessment)
-        .where(
-            MCQAssessment.id == assessment_id
-        )
-
-    )
-
-    if not assessment:
-        raise ValueError(
-            "Assessment not found"
-        )
-
-    await db.delete(
-        assessment
-    )
-
+async def delete_assessment(db: AsyncSession, assessment_id: int):
+    assessment = await get_assessment_by_id(db, assessment_id)
+    await db.delete(assessment)
     await db.commit()
-
-    return {
-        "message":
-        "Assessment deleted successfully"
-    }
+    return {"message": "Assessment deleted successfully"}
 
 
-# ==========================================================
-# VALIDATE QUESTION AVAILABILITY
-# ==========================================================
+async def validate_question_availability(db: AsyncSession, assessment_id: int):
+    assessment = await get_assessment_by_id(db, assessment_id)
+    topic_distribution = assessment.topic_distribution or {}
+    topics = list(topic_distribution.keys())
+    if not topics:
+        return []
 
-async def validate_question_availability(
-    db: AsyncSession,
-    assessment_id: int
-):
-
-    assessment = await db.scalar(
-
-        select(MCQAssessment)
-        .where(
-            MCQAssessment.id == assessment_id
-        )
-
-    )
-
-    if not assessment:
-        raise ValueError(
-            "Assessment not found"
-        )
-
-    topic_distribution = assessment.topic_distribution
-
-    validation_result = []
-
-    for topic, required_count in topic_distribution.items():
-
-        available_questions = await db.scalar(
-
+    rows = (
+        await db.execute(
             select(
-                func.count(
-                    MCQQuestion.id
-                )
+                MCQQuestion.topic,
+                func.count(MCQQuestion.id).label("cnt")
             )
             .where(
-                MCQQuestion.topic == topic,
-                MCQQuestion.is_active == True
+                MCQQuestion.is_active.is_(True),
+                MCQQuestion.topic.in_(topics),
             )
-
+            .group_by(MCQQuestion.topic)
         )
+    ).all()
 
-        available_questions = (
-            available_questions or 0
-        )
+    counts = {topic: cnt for topic, cnt in rows}
 
-        validation_result.append({
-
-            "topic":
-                topic,
-
-            "required":
-                required_count,
-
-            "available":
-                available_questions,
-
-            "status":
-                available_questions >= required_count
-
-        })
-
-    return validation_result
-
-# ==========================================================
-# PUBLISH ASSESSMENT
-# ==========================================================
-
-async def publish_assessment(
-    db: AsyncSession,
-    assessment_id: int
-):
-
-    assessment = await db.scalar(
-        select(MCQAssessment).where(
-            MCQAssessment.id == assessment_id
-        )
-    )
-
-    if not assessment:
-        raise ValueError(
-            "Assessment not found"
-        )
-
-    if assessment.status == "Published":
-        raise ValueError(
-            "Assessment already published"
-        )
-
-    validation = await validate_question_availability(
-        db,
-        assessment_id
-    )
-
-    failed_topics = [
-        item
-        for item in validation
-        if not item["status"]
+    return [
+        {
+            "topic": topic,
+            "required": required,
+            "available": counts.get(topic, 0),
+            "status": counts.get(topic, 0) >= required,
+        }
+        for topic, required in topic_distribution.items()
     ]
 
-    if failed_topics:
 
-        message = ", ".join(
-            [
-                f'{item["topic"]} '
-                f'(Required: {item["required"]}, '
-                f'Available: {item["available"]})'
-                for item in failed_topics
-            ]
-        )
+async def publish_assessment(db: AsyncSession, assessment_id: int):
+    assessment = await get_assessment_by_id(db, assessment_id)
 
-        raise ValueError(
-            f"Insufficient questions available: {message}"
+    if assessment.status == "Published":
+        raise ValueError("Assessment already published")
+
+    validation = await validate_question_availability(db, assessment_id)
+    failed = [v for v in validation if not v["status"]]
+
+    if failed:
+        msg = ", ".join(
+            f'{i["topic"]} (Required: {i["required"]}, Available: {i["available"]})'
+            for i in failed
         )
+        raise ValueError(f"Insufficient questions available: {msg}")
 
     assessment.status = "Published"
     assessment.published_at = datetime.utcnow()
-
     await db.commit()
     await db.refresh(assessment)
 
     return {
         "message": "Assessment published successfully",
-        "assessment": assessment
+        "assessment": assessment,
     }
 
 
-# ==========================================================
-# GET PUBLISHED ASSESSMENTS
-# ==========================================================
-
-async def get_published_assessments(
-    db: AsyncSession
-):
-
-    result = await db.scalars(
-
-        select(MCQAssessment)
-        .where(
-            MCQAssessment.status == "Published"
+async def get_published_assessments(db: AsyncSession):
+    return (
+        await db.scalars(
+            select(MCQAssessment)
+            .where(MCQAssessment.status == "Published")
+            .order_by(MCQAssessment.published_at.desc())
         )
-        .order_by(
-            MCQAssessment.published_at.desc()
+    ).all()
+
+
+async def get_available_assessments(db: AsyncSession):
+    return (
+        await db.scalars(
+            select(MCQAssessment)
+            .where(MCQAssessment.status == "Published")
+            .order_by(MCQAssessment.created_at.desc())
         )
-
-    )
-
-    return result.all()
+    ).all()
 
 
-# ==========================================================
-# GET AVAILABLE ASSESSMENTS
-# ==========================================================
-
-async def get_available_assessments(
-    db: AsyncSession
-):
-
-    result = await db.scalars(
-
-        select(MCQAssessment)
-        .where(
-            MCQAssessment.status == "Published"
-        )
-        .order_by(
-            MCQAssessment.created_at.desc()
-        )
-
-    )
-
-    return result.all()
-
-
-# ==========================================================
-# ASSESSMENT STATISTICS
-# ==========================================================
-
-async def get_assessment_statistics(
-    db: AsyncSession
-):
-
-    total_assessments = await db.scalar(
-        select(
-            func.count(
-                MCQAssessment.id
+async def get_assessment_statistics(db: AsyncSession):
+    total, published, draft = (
+        await db.execute(
+            select(
+                func.count(MCQAssessment.id),
+                func.sum(case((MCQAssessment.status == "Published", 1), else_=0)),
+                func.sum(case((MCQAssessment.status == "Draft", 1), else_=0)),
             )
         )
-    )
-
-    published_assessments = await db.scalar(
-        select(
-            func.count(
-                MCQAssessment.id
-            )
-        ).where(
-            MCQAssessment.status == "Published"
-        )
-    )
-
-    draft_assessments = await db.scalar(
-        select(
-            func.count(
-                MCQAssessment.id
-            )
-        ).where(
-            MCQAssessment.status == "Draft"
-        )
-    )
+    ).one()
 
     return {
-        "total_assessments": total_assessments or 0,
-        "published_assessments": published_assessments or 0,
-        "draft_assessments": draft_assessments or 0
+        "total_assessments": total or 0,
+        "published_assessments": published or 0,
+        "draft_assessments": draft or 0,
     }
 
 
-# ==========================================================
-# CHECK ASSESSMENT EXISTS
-# ==========================================================
-
-async def assessment_exists(
-    db: AsyncSession,
-    assessment_id: int
-):
-
-    assessment = await db.scalar(
-
-        select(MCQAssessment)
-        .where(
-            MCQAssessment.id == assessment_id
+async def assessment_exists(db: AsyncSession, assessment_id: int):
+    return (
+        await db.scalar(
+            select(func.count()).select_from(MCQAssessment).where(MCQAssessment.id == assessment_id)
         )
-
-    )
-
-    return assessment is not None
+    ) > 0
