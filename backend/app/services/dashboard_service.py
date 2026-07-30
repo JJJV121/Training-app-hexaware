@@ -197,28 +197,40 @@ async def get_dashboard(
     }
 
     # Time spent response data
-    estimated_learning_minutes = 0
+    learning_mins = 0
+    assessment_mins = 0
+    practice_mins = 0
+    revision_mins = 0
+
     if day_ids:
-        estimated_learning_minutes = await db.scalar(
-            select(
-                func.coalesce(
-                    func.sum(LearningUnit.duration_minutes),
-                    0
-                )
-            )
+        # Fetch titles and durations of completed learning units
+        stmt = (
+            select(LearningUnit.title, LearningUnit.duration_minutes)
             .join(Progress, Progress.learning_unit_id == LearningUnit.id)
             .where(
                 Progress.user_id == user_id,
                 Progress.is_completed.is_(True),
                 LearningUnit.day_id.in_(day_ids)
             )
-        ) or 0
-    
-    learning_hours = round(estimated_learning_minutes / 60, 2)
-    # Dynamic but progress-dependent mock values for assessment/practice/revision
-    assessment_hours = round(completed_days * 0.5, 2) + 2.0
-    practice_hours = round(completed_days * 0.75, 2) + 1.0
-    revision_hours = round(completed_days * 0.25, 2) + 0.5
+        )
+        res_units = await db.execute(stmt)
+        for title, duration_minutes in res_units.all():
+            dur = duration_minutes or 0
+            title_lower = title.lower() if title else ""
+            
+            if any(word in title_lower for word in ["assessment", "challenge", "quiz", "exam", "test"]):
+                assessment_mins += dur
+            elif any(word in title_lower for word in ["assignment", "q&a", "practice", "lab", "case study", "development", "project"]):
+                practice_mins += dur
+            elif any(word in title_lower for word in ["review", "recap", "revision", "summary"]):
+                revision_mins += dur
+            else:
+                learning_mins += dur
+
+    learning_hours = round(learning_mins / 60, 2)
+    assessment_hours = round(assessment_mins / 60, 2)
+    practice_hours = round(practice_mins / 60, 2)
+    revision_hours = round(revision_mins / 60, 2)
 
     time_spent_response_data = {
         "learning_hours": learning_hours,

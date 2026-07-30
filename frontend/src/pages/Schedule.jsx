@@ -9,7 +9,8 @@ export default function Schedule() {
   useEffect(() => {
     const loadSchedule = async () => {
       try {
-        const result = await scheduleService.getScheduleData();
+        const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
+        const result = await scheduleService.getScheduleData(userId);
         setData(result);
       } catch (error) {
         console.error("Failed to load schedule:", error);

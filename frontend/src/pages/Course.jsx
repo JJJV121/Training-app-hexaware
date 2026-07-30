@@ -385,7 +385,7 @@ const handleSeeking = (e) => {
         <div className="course-workspace-scroll-area">
           {activeMainTab === 'Content' ? (
             course.modules.map(module => {
-              const isLocked = Number(module.id) !== Number(currentUnlockedDay);
+              const isLocked = Number(module.id) > Number(currentUnlockedDay);
               const isExpanded = expandedDay === module.id;
 
               return (

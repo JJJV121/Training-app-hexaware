@@ -25,18 +25,27 @@ const scheduleService = {
 
       const events = [];
 
+      let foundCurrentDoing = false;
       api.schedule.forEach(day => {
         day.sessions.forEach(session => {
+          let type = "YET TO BE DONE";
+          let colorClass = "lecture-blue";
+
+          if (session.completed) {
+            type = "COMPLETED";
+            colorClass = "section-green";
+          } else if (!foundCurrentDoing) {
+            type = "IN PROGRESS";
+            colorClass = "status-yellow";
+            foundCurrentDoing = true;
+          }
+
           events.push({
             day: day.weekday.toUpperCase(),
 
             timeSlot: `${session.start_time}\nto\n${session.end_time}`,
 
-            type: session.completed 
-              ? "COMPLETED" 
-              : day.status === "current"
-                ? "IN PROGRESS"
-                : "YET TO BE DONE",
+            type: type,
 
             title: session.title,
 
@@ -44,11 +53,7 @@ const scheduleService = {
 
             instructor: "",
 
-            colorClass: session.completed
-              ? "section-green"
-              : day.status === "current"
-                ? "status-yellow"
-                : "lecture-blue"
+            colorClass: colorClass
           });
         });
       });

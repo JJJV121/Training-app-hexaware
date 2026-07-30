@@ -12,7 +12,7 @@ const progressService = {
     try {
       const response = await axios.get(`http://localhost:8000/dashboard/${activeUserId}`);
       const data = response.data;
-      const course = data.current_course;
+      const course = data.course;
 
       if (!course) {
         return {
@@ -26,7 +26,10 @@ const progressService = {
         };
       }
 
-      const progressPercent = course.progress_percentage || 0;
+      const progressPercent = course.completed_percentage || 0;
+      const completedModules = course.completed_modules || 0;
+      const totalModules = course.total_modules || 0;
+
       let completedAssessments = 0;
       if (progressPercent >= 33) completedAssessments = 1;
       if (progressPercent >= 66) completedAssessments = 2;
@@ -34,8 +37,8 @@ const progressService = {
 
       return {
         percentage: progressPercent,
-        completedModules: course.completed_modules || 0,
-        totalModules: course.total_modules || 0,
+        completedModules: completedModules,
+        totalModules: totalModules,
         completedAssessments,
         totalAssessments: 3,
         insights: [
@@ -48,7 +51,7 @@ const progressService = {
             description: "Keep going to unlock achievements!"
           },
           {
-            title: `Modules Completed: ${course.completed_modules}/${course.total_modules}`,
+            title: `Modules Completed: ${completedModules}/${totalModules}`,
             description: "Track your module progress"
           }
         ],

@@ -177,13 +177,23 @@ export default function ProgressView() {
               
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-medium)', fontWeight: '500' }}>
-                  <span style={{ backgroundColor: 'var(--accent-green-light)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon name="check" style={{ color: 'var(--accent-green)', width: '12px', height: '12px', strokeWidth: '3' }} />
-                  </span>
+                  {progressData.completedModules >= progressData.totalModules && progressData.totalModules > 0 ? (
+                    <span style={{ backgroundColor: 'var(--accent-green-light)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name="check" style={{ color: 'var(--accent-green)', width: '12px', height: '12px', strokeWidth: '3' }} />
+                    </span>
+                  ) : (
+                    <span style={{ border: '2px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'block', boxSizing: 'border-box', flexShrink: 0, backgroundColor: 'var(--bg-sidebar)' }}></span>
+                  )}
                   <span>Complete all {progressData.totalModules} modules</span>
                 </li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-medium)', fontWeight: '500' }}>
-                  <span style={{ border: '2px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'block', boxSizing: 'border-box', flexShrink: 0, backgroundColor: 'var(--bg-sidebar)' }}></span>
+                  {progressData.completedAssessments >= progressData.totalAssessments ? (
+                    <span style={{ backgroundColor: 'var(--accent-green-light)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name="check" style={{ color: 'var(--accent-green)', width: '12px', height: '12px', strokeWidth: '3' }} />
+                    </span>
+                  ) : (
+                    <span style={{ border: '2px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'block', boxSizing: 'border-box', flexShrink: 0, backgroundColor: 'var(--bg-sidebar)' }}></span>
+                  )}
                   <span>Pass all assessments ({progressData.completedAssessments}/{progressData.totalAssessments} completed)</span>
                 </li>
               </ul>
