@@ -40,7 +40,8 @@ export default function Profile() {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         setProfileData({
           name: user.employee_id || user.name || 'Student',
-          email: user.email || 'student@example.com'
+          email: user.email || 'student@example.com',
+          courseName: 'Java Training'
         });
       }
     };
@@ -172,9 +173,20 @@ export default function Profile() {
             
             {expandedSection === 'personal' && (
               <div className="profile-expanded-panel" style={{ borderTopColor: theme.borderColor, background: theme.bgExpanded }}>
-                <p className="profile-expanded-text" style={{ color: theme.textSub }}>
-                  Update your personal information including name, email, and contact details.
-                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: theme.textSub }}>Email Address</span>
+                    <div style={{ padding: '12px 16px', borderRadius: '10px', background: theme.bgApp, border: `1px solid ${theme.borderColor}`, color: theme.textMain, fontSize: '14px', fontWeight: '500' }}>
+                      {profileData.email}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color: theme.textSub }}>Assigned Course</span>
+                    <div style={{ padding: '12px 16px', borderRadius: '10px', background: theme.bgApp, border: `1px solid ${theme.borderColor}`, color: theme.textMain, fontSize: '14px', fontWeight: '500' }}>
+                      {profileData.courseName || "Not Assigned"}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -257,58 +269,7 @@ export default function Profile() {
             )}
           </div>
 
-          {false && (
-          /* Item 3: Theme Preferences */
-          <div className="profile-section-item" style={{ background: theme.bgCard, borderColor: theme.borderColor, padding: '16px 20px' }}>
-            <div className="profile-inline-row">
-              <div className="profile-trigger-left">
-                <div className="profile-icon-wrapper lightmode-icon" style={{ background: darkModeEnabled ? '#78350f' : '#fef3c7' }}>
-                  ✨
-                </div>
-                <span className="profile-trigger-label" style={{ color: theme.textMain }}>
-                  Dark Mode
-                </span>
-              </div>
-              <button
-                onClick={() => toggleTheme()}
-                className="profile-toggle-switch"
-                style={{ 
-                  background: darkModeEnabled ? '#3563e9' : '#cbd5e1',
-                  paddingLeft: darkModeEnabled ? '24px' : '4px'
-                }}
-              >
-                <div className="profile-toggle-node"></div>
-              </button>
-            </div>
-          </div>
-
-          )}
-
-          {/* Notifications Hub */}
-          <div className="profile-section-item" style={{ background: theme.bgCard, borderColor: theme.borderColor, padding: '16px 20px' }}>
-            <div className="profile-inline-row">
-              <div className="profile-trigger-left">
-                <div className="profile-icon-wrapper alerts-icon" style={{ background: darkModeEnabled ? '#1e3a8a' : '#e0e7ff' }}>
-                  🔔
-                </div>
-                <span className="profile-trigger-label" style={{ color: theme.textMain }}>
-                  Notifications
-                </span>
-              </div>
-              <button
-                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                className="profile-toggle-switch"
-                style={{ 
-                  background: notificationsEnabled ? '#3563e9' : '#cbd5e1',
-                  paddingLeft: notificationsEnabled ? '24px' : '4px'
-                }}
-              >
-                <div className="profile-toggle-node"></div>
-              </button>
-            </div>
-          </div>
-
-          {/* Item 5: Application Termination Context */}
+          {/* Item 3: Application Termination Context */}
           <div className="profile-section-item" style={{ background: theme.bgCard, borderColor: theme.borderColor }}>
             <button
               onClick={() => toggleSection('logout')}

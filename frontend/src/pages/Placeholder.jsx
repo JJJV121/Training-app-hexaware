@@ -33,7 +33,6 @@ export default function Placeholder({ title, description }) {
       completedAssessments: 2,
       totalAssessments: 3,
       insights: [
-        { title: "You learn best at 9:00 AM", description: "Based on your completion patterns" },
         { title: "20% ahead of average pace", description: "You're making excellent progress!" },
         { title: "Estimated completion: May 22, 2026", description: "2 days earlier than scheduled" }
       ],
@@ -57,10 +56,6 @@ export default function Placeholder({ title, description }) {
               <span className="progress-banner-subtitle">Track your progress</span>
             </div>
           </div>
-          <button className="progress-new-note-btn">
-            <Icon name="plus" className="progress-new-note-icon" />
-            <span>New Note</span>
-          </button>
         </div>
 
         {/* Column Row (Certificate and Insights) */}

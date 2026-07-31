@@ -26,7 +26,6 @@ export default function ProgressView() {
             completedAssessments: 2,
             totalAssessments: 3,
             insights: [
-              { title: "You learn best at 9:00 AM", description: "Based on your completion patterns" },
               { title: "20% ahead of average pace", description: "You're making excellent progress!" },
               { title: "Estimated completion: May 22, 2026", description: "2 days earlier than scheduled" }
             ],
@@ -104,27 +103,6 @@ export default function ProgressView() {
             <span style={{ color: 'rgba(255, 255, 255, 0.75)', textTransform: 'uppercase', fontSize: '12px', fontWeight: '600', letterSpacing: '0.8px' }}>Track your progress</span>
           </div>
         </div>
-        <button 
-          className="progress-new-note-btn" 
-          onClick={() => alert('Feature coming soon!')}
-          style={{
-            backgroundColor: '#ffffff',
-            border: 'none',
-            borderRadius: '12px',
-            padding: '12px 20px',
-            color: '#2563eb',
-            fontWeight: '600',
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-          }}
-        >
-          <Icon name="plus" style={{ width: '16px', height: '16px', strokeWidth: '2.5' }} />
-          <span>New Note</span>
-        </button>
       </div>
 
       {/* 2. Middle Grid Block */}

@@ -43,10 +43,6 @@ const progressService = {
         totalAssessments: 3,
         insights: [
           {
-            title: "You learn best at 9:00 AM",
-            description: "Based on your completion patterns"
-          },
-          {
             title: `${progressPercent.toFixed(0)}% overall completion`,
             description: "Keep going to unlock achievements!"
           },
