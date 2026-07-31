@@ -24,7 +24,8 @@ TIME_SLOTS = [
 
 async def get_user_schedule(
     db: AsyncSession,
-    user_id: int
+    user_id: int,
+    week: int = 0
 ):
 
     enrollment_course_res = await db.execute(
@@ -103,6 +104,9 @@ async def get_user_schedule(
     schedule = []
     day_progress_map = {}
 
+    start_day = week * 7 + 1
+    end_day = (week + 1) * 7
+
     for day in course_days:
 
         units = units_by_day.get(day.id, [])
@@ -168,27 +172,28 @@ async def get_user_schedule(
             elif completed_count > 0:
                 status = "current"
 
-        schedule.append(
-            {
-                "day_number":
-                    day.day_number,
+        if start_day <= day.day_number <= end_day:
+            schedule.append(
+                {
+                    "day_number":
+                        day.day_number,
 
-                "date":
-                    actual_date,
+                    "date":
+                        actual_date,
 
-                "weekday":
-                    actual_date.strftime("%A"),
+                    "weekday":
+                        actual_date.strftime("%A"),
 
-                "title":
-                    day.title,
+                    "title":
+                        day.title,
 
-                "status":
-                    status,
+                    "status":
+                        status,
 
-                "sessions":
-                    sessions
-            }
-        )
+                    "sessions":
+                        sessions
+                }
+            )
 
     from app.services.dashboard_service import calculate_unlocked_day
     current_day = calculate_unlocked_day(course_days, day_progress_map)
