@@ -69,7 +69,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="login-wrapper min-h-screen w-full bg-gradient-to-br from-[#F4F7FC] via-[#F8FAFC] to-[#EFF6FF] font-sans" style={{ position: 'relative', overflow: 'hidden' }}>
+    <div className="auth-page login-wrapper min-h-screen w-full bg-gradient-to-br from-[#F4F7FC] via-[#F8FAFC] to-[#EFF6FF] font-sans" style={{ position: 'relative', overflow: 'hidden' }}>
       
       {/* --- BACKGROUND BLUR LAYER --- */}
       <div className="blur-layer-1"></div>

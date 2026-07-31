@@ -8,19 +8,17 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import DashBoard from './pages/DashBoard';
 import { useTheme } from './context/ThemeContext';
-
-// Auth pages that should never receive the dark-theme class
-const AUTH_PATHS = ['/', '/login', '/signup', '/forgot-password', '/reset-password', '/create-password'];
+import ThemeToggle from './components/ThemeToggle';
 
 function AppRoutes() {
   const { isDarkMode } = useTheme();
   const location = useLocation();
-
-  const isAuthPage = AUTH_PATHS.includes(location.pathname);
-  const themeClass = isDarkMode && !isAuthPage ? 'dark-theme' : '';
+  const themeClass = isDarkMode ? 'dark-theme' : '';
+  const isDashboardPage = location.pathname === '/dashboard' || location.pathname.startsWith('/course/');
 
   return (
     <div className={`app-container ${themeClass}`}>
+      {!isDashboardPage && <ThemeToggle className="theme-toggle-auth" />}
       <Routes>
         {/* Default route (Base URL) loads the Login screen */}
         <Route path="/" element={<LoginScreen />} />

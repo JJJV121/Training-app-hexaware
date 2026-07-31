@@ -44,8 +44,7 @@ export default function ForgotPassword() {
   `;
 
   return (
-    <div 
-      className="min-h-screen w-full bg-[#F4F7FC] font-sans"
+    <div className="auth-page min-h-screen w-full bg-[#F4F7FC] font-sans"
       style={{
         position: 'relative',
         display: 'flex',

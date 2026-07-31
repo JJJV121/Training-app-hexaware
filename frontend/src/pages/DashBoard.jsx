@@ -10,6 +10,7 @@ import ProgressView from './ProgressView.jsx';
 import StudyNotes from './StudyNotes.jsx';
 import Profile from '../pages/Profile';
 import Assessment from './Assessment.jsx';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function DashBoard() {
   const { courseId: paramCourseId } = useParams();
@@ -240,6 +241,7 @@ export default function DashBoard() {
         
         {/* Logout at bottom — FIX: use <button> not <a href="#logout"> to prevent hash flicker */}
         <div className="sidebar-footer">
+          <ThemeToggle className="theme-toggle-sidebar" />
           <button 
             type="button"
             className={`nav-item logout-btn ${currentRoute === 'logout' ? 'active' : ''} ${isLocked ? 'disabled' : ''}`}

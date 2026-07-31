@@ -257,7 +257,8 @@ export default function Profile() {
             )}
           </div>
 
-          {/* Item 3: Theme Preferences */}
+          {false && (
+          /* Item 3: Theme Preferences */
           <div className="profile-section-item" style={{ background: theme.bgCard, borderColor: theme.borderColor, padding: '16px 20px' }}>
             <div className="profile-inline-row">
               <div className="profile-trigger-left">
@@ -281,7 +282,9 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* Item 4: Notifications Hub */}
+          )}
+
+          {/* Notifications Hub */}
           <div className="profile-section-item" style={{ background: theme.bgCard, borderColor: theme.borderColor, padding: '16px 20px' }}>
             <div className="profile-inline-row">
               <div className="profile-trigger-left">

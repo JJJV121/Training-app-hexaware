@@ -214,6 +214,47 @@ body {
   padding-top: 24px;
 }
 
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: var(--bg-sidebar);
+  color: var(--text-medium);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  border-color: var(--primary-blue);
+  color: var(--primary-blue);
+  background: var(--primary-blue-light);
+}
+
+.theme-toggle span:first-child {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.theme-toggle-sidebar {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.theme-toggle-auth {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 100;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+}
+
 .logout-btn {
   color: var(--accent-red);
   transition: all var(--transition-fast);

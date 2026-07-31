@@ -16,7 +16,7 @@ const apiClient = axios.create({
 });
 
 // 👉 TOGGLE THIS TO FALSE WHEN YOUR BACKEND IS READY
-const USE_MOCK_DATA = false; 
+const USE_MOCK_DATA = true; 
 
 // Helper to simulate network latency for mock data
 const sleep = (ms = 600) => new Promise(resolve => setTimeout(resolve, ms));
