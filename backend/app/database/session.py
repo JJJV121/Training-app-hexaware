@@ -26,6 +26,8 @@ if "?" in db_url:
 engine = create_async_engine(
     db_url,
     echo=True,
+    pool_pre_ping=True,
+    pool_recycle=300,
     connect_args={
         "ssl": ssl_context,
         "server_settings": {
