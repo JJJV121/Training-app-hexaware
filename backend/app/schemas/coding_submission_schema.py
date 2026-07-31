@@ -5,7 +5,8 @@ from pydantic import BaseModel
 
 class SubmissionCreate(BaseModel):
     problem_id: int
-    user_id: int                 # remove after auth is implemented for current_user.id
+    # user_id: int                 
+    # remove after auth is implemented for current_user.id
     source_code: str
     language_id: int
 

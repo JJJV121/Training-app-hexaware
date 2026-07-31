@@ -34,5 +34,6 @@ class HiddenTestCase(Base):
 
     is_hidden: Mapped[bool] = mapped_column(
         Boolean,
-        default=True
+        default=True,
+        nullable=False
     )

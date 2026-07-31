@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
 
 from app.database.session import get_db
 from app.schemas.note import (
     NoteCreate,
     NoteUpdate,
-    NoteResponse
+    NoteResponse,
+    CreateNoteResponse,
+    UpdateNoteResponse,
+    NotesListResponse,
+    DeleteNoteResponse,
 )
 from app.services.note_service import (
     create_note,
@@ -24,7 +27,7 @@ router = APIRouter(
 
 @router.post(
     "/{user_id}",
-    response_model=NoteResponse
+    response_model=CreateNoteResponse
 )
 async def create_note_api(
     user_id: int,
@@ -40,7 +43,7 @@ async def create_note_api(
 
 @router.get(
     "/{user_id}",
-    response_model=List[NoteResponse]
+    response_model=NotesListResponse
 )
 async def get_notes_api(
     user_id: int,
@@ -77,7 +80,7 @@ async def get_note_api(
 
 @router.put(
     "/{user_id}/{note_id}",
-    response_model=NoteResponse
+    response_model=UpdateNoteResponse
 )
 async def update_note_api(
     user_id: int,
@@ -101,7 +104,8 @@ async def update_note_api(
 
 
 @router.delete(
-    "/{user_id}/{note_id}"
+    "/{user_id}/{note_id}",
+    response_model=DeleteNoteResponse
 )
 async def delete_note_api(
     user_id: int,

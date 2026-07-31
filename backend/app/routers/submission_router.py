@@ -33,10 +33,12 @@ async def create_submission(
     db: AsyncSession = Depends(get_db)
 ):
     try:
+        # Mock trainee until authentication is merged
+        trainee_id = 3
         submission = await run_submission(
             db=db,
             problem_id=payload.problem_id,
-            user_id=payload.user_id,
+            user_id=trainee_id,
             source_code=payload.source_code,
             language_id=payload.language_id
         )
@@ -58,12 +60,12 @@ async def create_submission(
     response_model=list[SubmissionResponse]
 )
 async def get_my_submissions(
-    user_id: int,
     db: AsyncSession = Depends(get_db)
 ):
+    trainee_id = 3
     result = await db.execute(
         select(CodingSubmission).where(
-            CodingSubmission.user_id == user_id
+            CodingSubmission.user_id == trainee_id
         )
     )
 

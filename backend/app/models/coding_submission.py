@@ -51,12 +51,14 @@ class CodingSubmission(Base):
     # RUNTIME_ERROR / COMPILATION_ERROR
     status: Mapped[str] = mapped_column(
         String(50),
-        default="PENDING"
+        default="PENDING",
+        nullable=False
     )
 
     score: Mapped[int] = mapped_column(
         Integer,
-        default=0
+        default=0,
+        nullable=False
     )
 
     is_passed: Mapped[bool] = mapped_column(
