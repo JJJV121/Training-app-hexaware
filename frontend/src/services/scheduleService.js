@@ -3,7 +3,7 @@
 import axios from "axios";
 
 const API_BASE_URL = "http://localhost:8000";
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 const mockScheduleData = {
   course_name: "Frontend Development Bootcamp",
