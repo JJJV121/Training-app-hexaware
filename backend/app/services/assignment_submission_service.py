@@ -63,17 +63,14 @@ async def submit_assignment(
         )
 
     # Validate submission based on assignment type
-    if assignment.assignment_type == AssignmentType.CASE_STUDY:
+    if assignment.assignment_type in( AssignmentType.CASE_STUDY,AssignmentType.PROJECT,):
         if not github_url:
             raise HTTPException(
                 status_code=400,
                 detail="GitHub URL is required for Case Study."
             )
 
-    elif assignment.assignment_type in (
-        AssignmentType.NON_CODING,
-        AssignmentType.PROJECT,
-    ):
+    elif assignment.assignment_type == AssignmentType.PROJECT:
         if not submission_path:
             raise HTTPException(
                 status_code=400,
