@@ -363,12 +363,11 @@ export default function Home() {
               const learningSize = calculateBubbleSize(timeSpent.learning_hours, maxHours, 80, 130);
               const assessmentSize = calculateBubbleSize(timeSpent.assessment_hours, maxHours, 80, 130);
               const practiceSize = calculateBubbleSize(timeSpent.practice_hours, maxHours, 80, 130);
-              const revisionSize = calculateBubbleSize(timeSpent.revision_hours, maxHours, 80, 130);
 
               const totalHours = (timeSpent.learning_hours || 0) + 
                                  (timeSpent.assessment_hours || 0) + 
-                                 (timeSpent.practice_hours || 0) + 
-                                 (timeSpent.revision_hours || 0);
+                                 (timeSpent.practice_hours || 0);
+                                 
 
               return (
                 <div className="time-spent-card">
@@ -408,14 +407,7 @@ export default function Home() {
                       <span className="venn-circle-label">Practice</span>
                     </div>
 
-                    {/* Revision Circle */}
-                    <div 
-                      className="venn-circle circle-revision" 
-                      style={{ width: `${revisionSize}px`, height: `${revisionSize}px` }}
-                    >
-                      <span className="venn-circle-hours">{formatHours(timeSpent.revision_hours)}</span>
-                      <span className="venn-circle-label">Revision</span>
-                    </div>
+                    
                   </div>
                 </div>
               );
