@@ -379,36 +379,79 @@ const mockScheduleData = {
   ]
 };
 
-function transformScheduleResponse(api) {
-  const weeks = (api.weeks || []).map((week) => ({
-    ...week,
-    days: (week.days || []).map((day) => ({
-      ...day,
-      sessions: (day.sessions || []).map((session) => ({ ...session }))
-    }))
-  }));
+function transformScheduleResponse(api, weekNumber = 0) {
+  let weeks = [];
+
+  if (api.weeks) {
+    weeks = api.weeks.map((week) => ({
+      ...week,
+      days: (week.days || []).map((day) => ({
+        ...day,
+        sessions: (day.sessions || []).map((session) => ({ ...session }))
+      }))
+    }));
+  } else if (api.schedule) {
+    // Map backend schedule to weeks format
+    const days = api.schedule.map((day) => {
+      const dateParts = day.date.split("-");
+      const dayDate = dateParts[2] ? dateParts[2].replace(/^0+/, '') : "";
+      
+      const shortWeekday = day.weekday ? day.weekday.substring(0, 3) : "";
+      const frontendStatus = day.status === "current" ? "inprogress" : day.status;
+
+      return {
+        name: day.weekday,
+        shortName: shortWeekday,
+        date: dayDate,
+        status: frontendStatus,
+        sessions: (day.sessions || []).map((session) => ({
+          ...session
+        }))
+      };
+    });
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${months[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const startRange = api.schedule.length > 0 ? formatDate(api.schedule[0].date) : "";
+    const endRange = api.schedule.length > 0 ? formatDate(api.schedule[api.schedule.length - 1].date) : "";
+    const range = startRange && endRange ? `${startRange} - ${endRange}` : "";
+
+    weeks = [
+      {
+        label: `Week ${weekNumber + 1}`,
+        range: range,
+        days: days
+      }
+    ];
+  }
 
   return {
     title: api.course_name,
     stats: [
       {
         label: "Modules",
-        value: api.summary.total_modules,
+        value: api.summary?.total_modules || 0,
         color: "#3563e9"
       },
       {
         label: "Sections",
-        value: api.summary.total_sections,
+        value: api.summary?.total_sections || 0,
         color: "#0dcd94"
       },
       {
         label: "Days",
-        value: api.summary.total_days,
+        value: api.summary?.total_days || 0,
         color: "#ff9f43"
       },
       {
         label: "Total Hours",
-        value: `${api.summary.total_hours} hrs`,
+        value: `${api.summary?.total_hours || 0} hrs`,
         color: "#1a202c"
       }
     ],
@@ -425,14 +468,14 @@ const scheduleService = {
       return transformScheduleResponse({
         ...mockScheduleData,
         weeks: [week]
-      });
+      }, weekNumber);
     }
 
     try {
       const response = await axios.get(`${API_BASE_URL}/schedule/${userId}`, {
         params: { week: weekNumber }
       });
-      return transformScheduleResponse(response.data);
+      return transformScheduleResponse(response.data, weekNumber);
     } catch (error) {
       console.warn("Backend unavailable, using mock schedule data:", error);
       const allWeeks = mockScheduleData.weeks;
@@ -440,7 +483,7 @@ const scheduleService = {
       return transformScheduleResponse({
         ...mockScheduleData,
         weeks: [week]
-      });
+      }, weekNumber);
     }
   }
 };

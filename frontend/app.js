@@ -51,7 +51,6 @@ const DEFAULT_STATE = {
       }
     ],
     insights: [
-      { title: "You learn best at 9:00 AM", subtitle: "Based on your completion patterns" },
       { title: "20% ahead of average pace", subtitle: "You're making excellent progress!" },
       { title: "Estimated completion: May 22, 2026", subtitle: "2 days earlier than scheduled" }
     ]
