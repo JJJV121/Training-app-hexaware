@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, text
 
 # =====================================================
 
-DATABASE_URL = "postgresql://neondb_owner:npg_RGdnVHkb34vC@ep-weathered-flower-aowym7f1-pooler.c-2.ap-southeast-1.aws.neon.tech/hexaware"
+DATABASE_URL = ""
 
 
 EXCEL_FILE = r"C:\Users\daksh\Videos\course-module\backend\app\scripts\2026_Mavericks_Segue_Training Plan - Java.xlsx"
