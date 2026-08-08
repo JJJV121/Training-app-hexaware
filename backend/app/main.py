@@ -1,11 +1,6 @@
 from fastapi import FastAPI
 
 from app.core.config import settings
-from app.routers.auth import router as auth_router
-from app.routers.course import router as course_router
-from app.routers.progress import router as progress_router
-from app.routers.dashoboard import router as dashboard_router
-from app.routers.schedule import router as schedule_router
 from app.routers.assessment_attempt import router as assessment_attempt_router
 from app.routers.assessment import router as assessment_router
 from app.routers.coding_problem import router as coding_problem_router
