@@ -1,0 +1,19 @@
+services:
+
+  python-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.python
+    image: student-python-runner
+
+  c-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.c
+    image: student-c-runner
+
+  java-runner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.java
+    image: student-java-runner
