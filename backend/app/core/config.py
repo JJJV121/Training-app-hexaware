@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: str
+    CODE_RUNNER: str
+    JUDGE0_URL: str
+
 
     class Config:
         env_file = ".env"
