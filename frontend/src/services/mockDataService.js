@@ -3,11 +3,13 @@
 // Acts as an in-memory database simulation to represent REST API states.
 
 // 1. Initial Data Store
+let colleges = ['IIT Madras', 'BITS Pilani', 'PSG Tech', 'Anna University', 'VIT Vellore'];
+
 let students = [
-  { id: 1, name: 'Ethan Carter', email: 'ethan.carter@hexaware.com', course: 'Core Java Foundations', progress: 48, attendance: '96%', active: true, joinDate: '10 May, 2026', certUnlocked: false, grade: 'B+' },
-  { id: 2, name: 'Olivia Bennett', email: 'olivia.bennett@hexaware.com', course: 'Python for Data Analysis', progress: 75, attendance: '94%', active: true, joinDate: '15 Apr, 2026', certUnlocked: true, grade: 'A' },
-  { id: 3, name: 'Liam Anderson', email: 'liam.anderson@hexaware.com', course: 'SQL & DBMS Essentials', progress: 100, attendance: '99%', active: true, joinDate: '01 Apr, 2026', certUnlocked: true, grade: 'A+' },
-  { id: 4, name: 'Sophia Mitchell', email: 'sophia.mitchell@hexaware.com', course: 'React Frontend Advanced', progress: 20, attendance: '88%', active: false, joinDate: '01 Jun, 2026', certUnlocked: false, grade: 'C' }
+  { id: 1, name: 'Ethan Carter', email: 'ethan.carter@hexaware.com', college: 'IIT Madras', course: 'Core Java Foundations', progress: 48, attendance: '96%', active: true, joinDate: '10 May, 2026', certUnlocked: false, grade: 'B+' },
+  { id: 2, name: 'Olivia Bennett', email: 'olivia.bennett@hexaware.com', college: 'BITS Pilani', course: 'Python for Data Analysis', progress: 75, attendance: '94%', active: true, joinDate: '15 Apr, 2026', certUnlocked: true, grade: 'A' },
+  { id: 3, name: 'Liam Anderson', email: 'liam.anderson@hexaware.com', college: 'PSG Tech', course: 'SQL & DBMS Essentials', progress: 100, attendance: '99%', active: true, joinDate: '01 Apr, 2026', certUnlocked: true, grade: 'A+' },
+  { id: 4, name: 'Sophia Mitchell', email: 'sophia.mitchell@hexaware.com', college: 'Anna University', course: 'React Frontend Advanced', progress: 20, attendance: '88%', active: false, joinDate: '01 Jun, 2026', certUnlocked: false, grade: 'C' }
 ];
 
 let trainers = [
@@ -25,24 +27,25 @@ let courses = [
 ];
 
 let courseAssignments = [
-  { id: 1, course: 'Core Java Foundations', batch: 'Batch B21', trainer: 'Dr. Ava Thompson', capacity: 30, remaining: 5, startDate: '2026-05-10', endDate: '2026-05-22' },
-  { id: 2, course: 'Python for Data Analysis', batch: 'Batch B25', trainer: 'Prof. Noah Parker', capacity: 40, remaining: 12, startDate: '2026-04-15', endDate: '2026-04-25' },
-  { id: 3, course: 'SQL & DBMS Essentials', batch: 'Batch B20', trainer: 'Dr. Mason Cooper', capacity: 25, remaining: 0, startDate: '2026-04-01', endDate: '2026-04-09' }
+  { id: 1, type: 'Batch', targetName: 'Batch B21', course: 'Core Java Foundations', trainer: 'Dr. Ava Thompson', capacity: 30, remaining: 5, startDate: '2026-05-10', endDate: '2026-05-22' },
+  { id: 2, type: 'Batch', targetName: 'Batch B25', course: 'Python for Data Analysis', trainer: 'Prof. Noah Parker', capacity: 40, remaining: 12, startDate: '2026-04-15', endDate: '2026-04-25' },
+  { id: 3, type: 'Trainee', targetName: 'Ethan Carter', course: 'Core Java Foundations', trainer: 'Dr. Ava Thompson', capacity: 1, remaining: 0, startDate: '2026-05-10', endDate: '2026-06-10' },
+  { id: 4, type: 'Trainee', targetName: 'Olivia Bennett', course: 'Python for Data Analysis', trainer: 'Prof. Noah Parker', capacity: 1, remaining: 0, startDate: '2026-04-15', endDate: '2026-05-15' }
 ];
 
 let batches = [
-  { id: 1, code: 'Batch B21', course: 'Core Java Foundations', trainer: 'Dr. Ava Thompson', strength: 25, timing: '09:00 AM - 11:00 AM', progress: 85, schedule: 'Mon, Wed, Fri' },
-  { id: 2, code: 'Batch B22', course: 'Core Java Foundations', trainer: 'Dr. Ava Thompson', strength: 20, timing: '02:00 PM - 04:00 PM', progress: 48, schedule: 'Mon, Wed, Fri' },
-  { id: 3, code: 'Batch B25', course: 'Python for Data Analysis', trainer: 'Prof. Noah Parker', strength: 28, timing: '11:00 AM - 01:00 PM', progress: 75, schedule: 'Tue, Thu, Sat' },
-  { id: 4, code: 'Batch B20', course: 'SQL & DBMS Essentials', trainer: 'Dr. Mason Cooper', strength: 25, timing: '10:00 AM - 12:00 PM', progress: 100, schedule: 'Mon, Wed, Fri' },
-  { id: 5, code: 'Batch B24', course: 'React Frontend Advanced', trainer: 'Amelia Scott', strength: 28, timing: '03:00 PM - 05:00 PM', progress: 20, schedule: 'Tue, Thu' }
+  { id: 1, code: 'Batch B21', college: 'IIT Madras', course: 'Core Java Foundations', trainer: 'Dr. Ava Thompson', trainees: ['Ethan Carter', 'Sophia Mitchell'], strength: 25, timing: '09:00 AM - 11:00 AM', progress: 85, schedule: 'Mon, Wed, Fri' },
+  { id: 2, code: 'Batch B22', college: 'BITS Pilani', course: 'Core Java Foundations', trainer: 'Dr. Ava Thompson', trainees: ['Olivia Bennett'], strength: 20, timing: '02:00 PM - 04:00 PM', progress: 48, schedule: 'Mon, Wed, Fri' },
+  { id: 3, code: 'Batch B25', college: 'BITS Pilani', course: 'Python for Data Analysis', trainer: 'Prof. Noah Parker', trainees: ['Olivia Bennett', 'Liam Anderson'], strength: 28, timing: '11:00 AM - 01:00 PM', progress: 75, schedule: 'Tue, Thu, Sat' },
+  { id: 4, code: 'Batch B20', college: 'PSG Tech', course: 'SQL & DBMS Essentials', trainer: 'Dr. Mason Cooper', trainees: ['Liam Anderson'], strength: 25, timing: '10:00 AM - 12:00 PM', progress: 100, schedule: 'Mon, Wed, Fri' },
+  { id: 5, code: 'Batch B24', college: 'Anna University', course: 'React Frontend Advanced', trainer: 'Amelia Scott', trainees: ['Sophia Mitchell'], strength: 28, timing: '03:00 PM - 05:00 PM', progress: 20, schedule: 'Tue, Thu' }
 ];
 
 let assignments = [
-  { id: 1, title: 'Object-Oriented Design Principles', course: 'Core Java Foundations', deadline: '2026-07-20', submissions: '22/25', pending: 3 },
-  { id: 2, title: 'Data Structures Implementation', course: 'Core Java Foundations', deadline: '2026-07-25', submissions: '18/25', pending: 7 },
-  { id: 3, title: 'Pandas Data Cleansing Exercise', course: 'Python for Data Analysis', deadline: '2026-07-18', submissions: '28/28', pending: 0 },
-  { id: 4, title: 'Advanced React Lifecycle Hooks', course: 'React Frontend Advanced', deadline: '2026-07-30', submissions: '10/28', pending: 18 }
+  { id: 1, type: 'Assignment', title: 'Object-Oriented Design Principles', course: 'Core Java Foundations', batch: 'Batch B21', deadline: '2026-07-20', totalMarks: 100, status: 'Posted', submissions: '22/25', pending: 3 },
+  { id: 2, type: 'Assessment', title: 'Midterm Java Coding Skills Assessment', course: 'Core Java Foundations', batch: 'Batch B21', deadline: '2026-07-25', totalMarks: 50, status: 'Posted', submissions: '18/25', pending: 7 },
+  { id: 3, type: 'Assignment', title: 'Pandas Data Cleansing Exercise', course: 'Python for Data Analysis', batch: 'Batch B25', deadline: '2026-07-18', totalMarks: 100, status: 'Posted', submissions: '28/28', pending: 0 },
+  { id: 4, type: 'Assessment', title: 'React Hooks & State Management Quiz', course: 'React Frontend Advanced', batch: 'Batch B24', deadline: '2026-07-30', totalMarks: 50, status: 'Draft', submissions: '0/28', pending: 28 }
 ];
 
 let submissions = [
@@ -235,6 +238,11 @@ const mockDataService = {
     return settings;
   },
 
+  // Colleges API
+  getColleges() {
+    return [...colleges];
+  },
+
   // Computed Dashboard Stats API
   getDashboardOverviewStats() {
     return [
@@ -243,10 +251,8 @@ const mockDataService = {
       { label: 'Total Courses', value: courses.length.toString(), icon: 'book-open', color: 'blue' },
       { label: 'Active Courses', value: courses.filter(c => c.published).length.toString(), icon: 'activity', color: 'green' },
       { label: 'Total Batches', value: batches.length.toString(), icon: 'layers', color: 'orange' },
-      { label: 'Pending Assignments', value: submissions.filter(s => s.status === 'Pending Review').length.toString(), icon: 'clock', color: 'red' },
-      { label: 'Completed Courses', value: '6', icon: 'check-circle', color: 'green' },
-      { label: 'New Registrations', value: '+' + (students.length * 21).toString(), icon: 'zap', color: 'orange' },
-      { label: 'Active Users', value: (students.filter(s => s.active).length * 100 + 12).toString(), icon: 'users', color: 'blue' }
+      { label: 'Assignments & Assessments', value: assignments.length.toString(), icon: 'file-text', color: 'red' },
+      { label: 'Colleges Onboarded', value: colleges.length.toString(), icon: 'check-circle', color: 'green' }
     ];
   }
 };

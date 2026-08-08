@@ -11,11 +11,17 @@ export default function AdminAssignments() {
   // Load states from mockDataService
   const [assignments, setAssignments] = useState(() => mockDataService.getAssignments());
   const [submissions, setSubmissions] = useState(() => mockDataService.getSubmissions());
+  const allCourses = mockDataService.getCourses();
+  const allBatches = mockDataService.getBatches();
 
   // Form Fields
+  const [formType, setFormType] = useState('Assignment'); // 'Assignment' | 'Assessment'
   const [formTitle, setFormTitle] = useState('');
   const [formCourse, setFormCourse] = useState('Core Java Foundations');
+  const [formBatch, setFormBatch] = useState(allBatches[0]?.code || 'Batch B21');
   const [formDeadline, setFormDeadline] = useState('2026-07-20');
+  const [formTotalMarks, setFormTotalMarks] = useState(100);
+  const [formStatus, setFormStatus] = useState('Posted');
 
   // Grading Form Fields
   const [gradeScore, setGradeScore] = useState('');
@@ -28,28 +34,36 @@ export default function AdminAssignments() {
 
   const handleOpenAdd = () => {
     setEditAssignment(null);
+    setFormType('Assignment');
     setFormTitle('');
-    setFormCourse('Core Java Foundations');
+    setFormCourse(allCourses[0]?.title || 'Core Java Foundations');
+    setFormBatch(allBatches[0]?.code || 'Batch B21');
     setFormDeadline('2026-07-20');
+    setFormTotalMarks(100);
+    setFormStatus('Posted');
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (a, e) => {
     e.stopPropagation();
     setEditAssignment(a);
+    setFormType(a.type || 'Assignment');
     setFormTitle(a.title);
     setFormCourse(a.course);
+    setFormBatch(a.batch || allBatches[0]?.code);
     setFormDeadline(a.deadline);
+    setFormTotalMarks(a.totalMarks || 100);
+    setFormStatus(a.status || 'Posted');
     setIsModalOpen(true);
   };
 
   const handleDelete = (id, e) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this assignment and clear all student submissions?')) {
+    if (confirm('Are you sure you want to delete this item and clear related submissions?')) {
       const updated = assignments.filter(a => a.id !== id);
       setAssignments(updated);
       mockDataService.saveAssignments(updated);
-      triggerToast('Assignment deleted.');
+      triggerToast('Assignment / Assessment deleted.');
     }
   };
 
@@ -60,26 +74,39 @@ export default function AdminAssignments() {
     if (editAssignment) {
       const updated = assignments.map(a => {
         if (a.id === editAssignment.id) {
-          return { ...a, title: formTitle, course: formCourse, deadline: formDeadline };
+          return { 
+            ...a, 
+            type: formType,
+            title: formTitle, 
+            course: formCourse, 
+            batch: formBatch,
+            deadline: formDeadline,
+            totalMarks: parseInt(formTotalMarks),
+            status: formStatus
+          };
         }
         return a;
       });
       setAssignments(updated);
       mockDataService.saveAssignments(updated);
-      triggerToast('Assignment updated.');
+      triggerToast(`${formType} updated successfully.`);
     } else {
       const newAssignment = {
         id: Date.now(),
+        type: formType,
         title: formTitle,
         course: formCourse,
+        batch: formBatch,
         deadline: formDeadline,
+        totalMarks: parseInt(formTotalMarks),
+        status: formStatus,
         submissions: '0/25',
         pending: 25
       };
       const updated = [...assignments, newAssignment];
       setAssignments(updated);
       mockDataService.saveAssignments(updated);
-      triggerToast('New assignment published.');
+      triggerToast(`New ${formType} posted to ${formBatch}!`);
     }
     setIsModalOpen(false);
   };
@@ -119,13 +146,13 @@ export default function AdminAssignments() {
       {/* Banner */}
       <div className="admin-banner">
         <div className="admin-banner-left">
-          <span className="admin-banner-subtitle">ASSESSMENTS COORDINATOR</span>
-          <h2 className="admin-banner-title">Assignment Management</h2>
+          <span className="admin-banner-subtitle">POST & GRADE ASSIGNMENTS AND ASSESSMENTS</span>
+          <h2 className="admin-banner-title">Assignment Management Module</h2>
         </div>
         <div className="admin-banner-right">
           <button className="admin-banner-btn" onClick={handleOpenAdd}>
             <Icon name="plus" style={{ width: '16px', height: '16px' }} />
-            <span>Create Assignment</span>
+            <span>Post Assignment / Assessment</span>
           </button>
         </div>
       </div>
@@ -140,17 +167,17 @@ export default function AdminAssignments() {
             <div className="admin-card-header" style={{ padding: '20px 20px 0 20px' }}>
               <h3 className="admin-card-title">
                 <Icon name="file-text" className="admin-card-title-icon" />
-                <span>Active Assignments</span>
+                <span>Posted Assignments & Assessments</span>
               </h3>
             </div>
 
             <table className="admin-table" style={{ marginTop: '16px' }}>
               <thead>
                 <tr>
-                  <th>Assignment Title</th>
-                  <th>Course</th>
-                  <th>Deadline</th>
-                  <th>Submissions</th>
+                  <th>Type & Title</th>
+                  <th>Target Batch</th>
+                  <th>Deadline & Marks</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -158,24 +185,34 @@ export default function AdminAssignments() {
                 {assignments.map(a => (
                   <tr key={a.id}>
                     <td>
-                      <span style={{ fontWeight: 700 }}>{a.title}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className={`admin-badge ${a.type === 'Assessment' ? 'red' : 'blue'}`} style={{ fontSize: '10px' }}>
+                            {a.type || 'Assignment'}
+                          </span>
+                          <span style={{ fontWeight: 700 }}>{a.title}</span>
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--text-medium)' }}>Course: {a.course}</span>
+                      </div>
                     </td>
                     <td>
-                      <span className="admin-badge blue">{a.course}</span>
+                      <span className="admin-badge green">{a.batch || 'All Batches'}</span>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600 }}>ðŸ“… {a.deadline}</span>
+                      <span style={{ fontWeight: 600, display: 'block' }}>📅 {a.deadline}</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-medium)' }}>Max Marks: {a.totalMarks || 100} pts</span>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 700 }}>{a.submissions}</span>
-                      <span style={{ fontSize: '11px', display: 'block', color: 'var(--text-medium)' }}>{a.pending} pending review</span>
+                      <span className={`admin-badge ${a.status === 'Posted' ? 'green' : 'orange'}`}>
+                        {a.status || 'Posted'}
+                      </span>
                     </td>
                     <td>
                       <div className="table-row-actions">
-                        <button className="row-action-btn" title="Modify Assignment" onClick={(e) => handleOpenEdit(a, e)}>
+                        <button className="row-action-btn" title="Modify Item" onClick={(e) => handleOpenEdit(a, e)}>
                           <Icon name="edit-3" style={{ width: '14px', height: '14px' }} />
                         </button>
-                        <button className="row-action-btn delete" title="Remove Assignment" onClick={(e) => handleDelete(a.id, e)}>
+                        <button className="row-action-btn delete" title="Remove Item" onClick={(e) => handleDelete(a.id, e)}>
                           <Icon name="trash-2" style={{ width: '14px', height: '14px' }} />
                         </button>
                       </div>
@@ -199,8 +236,8 @@ export default function AdminAssignments() {
               <thead>
                 <tr>
                   <th>Student Name</th>
-                  <th>Assignment</th>
-                  <th>File Name</th>
+                  <th>Assignment / Assessment</th>
+                  <th>Submitted File</th>
                   <th>Submitted At</th>
                   <th>Status</th>
                 </tr>
@@ -317,49 +354,103 @@ export default function AdminAssignments() {
         <div className="modal-overlay">
           <div className="modal-box">
             <div className="modal-header">
-              <h3 className="modal-title">{editAssignment ? 'Modify Assignment Settings' : 'Create Assignment Task'}</h3>
+              <h3 className="modal-title">{editAssignment ? 'Modify Settings' : 'Post New Assignment / Assessment'}</h3>
               <button className="modal-close-btn" onClick={() => setIsModalOpen(false)}>
                 <Icon name="plus" style={{ transform: 'rotate(45deg)', width: '20px', height: '20px' }} />
               </button>
             </div>
 
             <form onSubmit={handleSaveAssignment} className="modal-form">
+              {/* Type Switch */}
               <div className="form-group">
-                <label className="form-label">Assignment Title</label>
+                <label className="form-label">Posting Type</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className={formType === 'Assignment' ? 'action-btn-primary' : 'action-btn-secondary'}
+                    style={{ flex: 1, padding: '8px', fontSize: '12px' }}
+                    onClick={() => setFormType('Assignment')}
+                  >
+                    📝 Assignment
+                  </button>
+                  <button
+                    type="button"
+                    className={formType === 'Assessment' ? 'action-btn-primary' : 'action-btn-secondary'}
+                    style={{ flex: 1, padding: '8px', fontSize: '12px' }}
+                    onClick={() => setFormType('Assessment')}
+                  >
+                    🎓 Assessment Exam
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Title</label>
                 <input 
                   type="text" 
                   className="form-input" 
-                  placeholder="e.g. Design Pattern Implementation"
+                  placeholder="e.g. Midterm Coding Skills Exam"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   required
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Associated Course</label>
-                <select className="form-input" value={formCourse} onChange={(e) => setFormCourse(e.target.value)}>
-                  <option value="Core Java Foundations">Core Java Foundations</option>
-                  <option value="Python for Data Analysis">Python for Data Analysis</option>
-                  <option value="SQL & DBMS Essentials">SQL & DBMS Essentials</option>
-                  <option value="React Frontend Advanced">React Frontend Advanced</option>
-                </select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label">Course</label>
+                  <select className="form-input" value={formCourse} onChange={(e) => setFormCourse(e.target.value)}>
+                    {allCourses.map(c => (
+                      <option key={c.id} value={c.title}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Target Batch</label>
+                  <select className="form-input" value={formBatch} onChange={(e) => setFormBatch(e.target.value)}>
+                    {allBatches.map(b => (
+                      <option key={b.id} value={b.code}>{b.code} ({b.college})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label">Submission Deadline</label>
+                  <input 
+                    type="date" 
+                    className="form-input" 
+                    value={formDeadline}
+                    onChange={(e) => setFormDeadline(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Total Marks / Points</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    value={formTotalMarks}
+                    onChange={(e) => setFormTotalMarks(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Submission Deadline Date</label>
-                <input 
-                  type="date" 
-                  className="form-input" 
-                  value={formDeadline}
-                  onChange={(e) => setFormDeadline(e.target.value)}
-                  required
-                />
+                <label className="form-label">Posting Status</label>
+                <select className="form-input" value={formStatus} onChange={(e) => setFormStatus(e.target.value)}>
+                  <option value="Posted">Posted (Visible to Trainees)</option>
+                  <option value="Draft">Draft (Hidden)</option>
+                </select>
               </div>
 
               <div className="modal-footer">
                 <button type="button" className="action-btn-secondary" style={{ padding: '8px 16px' }} onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="action-btn-primary" style={{ padding: '8px 16px' }}>Publish Task</button>
+                <button type="submit" className="action-btn-primary" style={{ padding: '8px 16px' }}>Publish {formType}</button>
               </div>
             </form>
           </div>

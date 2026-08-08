@@ -13,24 +13,22 @@ export default function AdminDashboard() {
   // Mock Overview stats dynamically computed from central service
   const stats = mockDataService.getDashboardOverviewStats();
 
-  // Quick Action items
+  // Quick Action items representing core modules
   const quickActions = [
-    { label: 'Add Trainer', icon: 'plus', page: 'trainers' },
-    { label: 'Add Student', icon: 'plus', page: 'students' },
-    { label: 'Create Course', icon: 'plus', page: 'courses' },
-    { label: 'New Batch', icon: 'plus', page: 'batches' }
+    { label: 'Trainer Management', icon: 'user', page: 'admin-trainers', desc: 'Manage trainers & workload' },
+    { label: 'Student Management', icon: 'users', page: 'admin-students', desc: 'Manage trainees & colleges' },
+    { label: 'Course Management', icon: 'book-open', page: 'admin-courses', desc: 'Manage course catalog & syllabus' },
+    { label: 'Course Assignment', icon: 'sliders', page: 'admin-course-assignment', desc: 'Assign courses to batches/trainees' },
+    { label: 'Batch Management', icon: 'layers', page: 'admin-batches', desc: 'College-based batch & trainer formation' },
+    { label: 'Assignments & Assessments', icon: 'file-text', page: 'admin-assignments', desc: 'Post assignments & assessments' },
+    { label: 'Calendar & Schedule', icon: 'calendar', page: 'admin-calendar', desc: 'Schedule classes & timetable' }
   ];
-
-  const recentActivities = mockDataService.getActivityLogs().slice(0, 3);
 
   const upcomingSessions = mockDataService.getCalendarEvents()
-    .filter(e => e.type === 'Session')
-    .slice(0, 2);
+    .filter(e => e.type === 'Session' || e.type === 'Exam')
+    .slice(0, 3);
 
-  const pendingTasks = [
-    { task: 'Approve Syllabus for Python Course', deadline: 'Today', status: 'High' },
-    { task: 'Grade Java Assignment #3 Submissions', deadline: 'Tomorrow', status: 'Medium' }
-  ];
+  const activeBatches = mockDataService.getBatches().slice(0, 3);
 
   return (
     <div className="page-view admin-container">
@@ -47,21 +45,18 @@ export default function AdminDashboard() {
       <div className="admin-banner">
         <div className="admin-banner-left">
           <span className="admin-banner-subtitle">HEXAWARE ADMIN PLATFORM</span>
-          <h2 className="admin-banner-title">Welcome Back, Administrator! ðŸ‘‹</h2>
+          <h2 className="admin-banner-title">Welcome Back, Administrator! 👋</h2>
+          <p style={{ margin: '4px 0 0 0', fontSize: '13px', opacity: 0.9 }}>Streamlined Management Portal with Core Operational Modules</p>
         </div>
         <div className="admin-banner-right">
-          <button className="admin-banner-btn" onClick={() => triggerToast('System Health Report Generated!')}>
+          <button className="admin-banner-btn" onClick={() => triggerToast('System Health: All 7 Core Modules Operational')}>
             <Icon name="activity" style={{ width: '16px', height: '16px' }} />
-            <span>Health Check</span>
-          </button>
-          <button className="admin-banner-btn" onClick={() => triggerToast('All data exported to admin_export.csv')}>
-            <Icon name="download" style={{ width: '16px', height: '16px' }} />
-            <span>Export CSV</span>
+            <span>System Status</span>
           </button>
         </div>
       </div>
 
-      {/* 9 Stats Grid */}
+      {/* Stats Grid */}
       <div className="admin-stats-grid-9">
         {stats.map((stat, i) => (
           <div key={i} className="admin-stat-card">
@@ -76,85 +71,60 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Row 1: Quick Actions & Pending Tasks side-by-side */}
-      <div className="admin-dashboard-row-equal">
-        
-        {/* Quick Actions widget */}
-        <div className="admin-card">
-          <div className="admin-card-header">
-            <h3 className="admin-card-title">
-              <Icon name="sliders" className="admin-card-title-icon" />
-              <span>Quick Actions</span>
-            </h3>
-          </div>
-
-          <div className="quick-actions-grid">
-            {quickActions.map((qa, i) => (
-              <a 
-                href={`#${qa.page}`} 
-                key={i} 
-                className="quick-action-card"
-                onClick={() => triggerToast(`Navigating to ${qa.label}`)}
-              >
-                <Icon name={qa.icon} className="quick-action-icon" style={{ width: '20px', height: '20px' }} />
-                <span className="quick-action-label">{qa.label}</span>
-              </a>
-            ))}
-          </div>
+      {/* Core Modules Quick Hub */}
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <h3 className="admin-card-title">
+            <Icon name="sliders" className="admin-card-title-icon" />
+            <span>Core Operational Modules</span>
+          </h3>
         </div>
 
-        {/* Pending Tasks widget */}
-        <div className="admin-card">
-          <div className="admin-card-header">
-            <h3 className="admin-card-title">
-              <Icon name="clock" className="admin-card-title-icon" />
-              <span>Pending Tasks</span>
-            </h3>
-          </div>
-
-          <div className="widget-list">
-            {pendingTasks.map((t, idx) => (
-              <div key={idx} className="widget-item-row" style={{ cursor: 'pointer' }} onClick={() => triggerToast(`Task Action triggered: ${t.task}`)}>
-                <div className="widget-item-left">
-                  <div className="widget-item-info">
-                    <span className="widget-item-title">{t.task}</span>
-                    <span className="widget-item-desc">Due: {t.deadline}</span>
-                  </div>
-                </div>
-                <span className={`admin-badge ${t.status === 'High' ? 'red' : 'orange'}`}>{t.status}</span>
+        <div className="quick-actions-grid" style={{ gridTemplateColumns: 'repeat( auto-fit, minmax(220px, 1fr) )' }}>
+          {quickActions.map((qa, i) => (
+            <a 
+              href={`#${qa.page}`} 
+              key={i} 
+              className="quick-action-card"
+              onClick={() => triggerToast(`Opening ${qa.label}`)}
+              style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '16px', gap: '8px' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Icon name={qa.icon} className="quick-action-icon" style={{ width: '20px', height: '20px', color: 'var(--primary-blue)' }} />
+                <span className="quick-action-label" style={{ fontWeight: 700, fontSize: '13px' }}>{qa.label}</span>
               </div>
-            ))}
-          </div>
+              <span style={{ fontSize: '11px', color: 'var(--text-medium)' }}>{qa.desc}</span>
+            </a>
+          ))}
         </div>
-
       </div>
 
-      {/* Row 2: Recent Activities & Upcoming Sessions widgets */}
+      {/* Row: Active College Batches & Upcoming Timetable */}
       <div className="admin-dashboard-row-equal">
         
-        {/* Recent Activity widget */}
+        {/* Active Batches by College */}
         <div className="admin-card">
           <div className="admin-card-header">
             <h3 className="admin-card-title">
-              <Icon name="history" className="admin-card-title-icon" />
-              <span>Recent Activity Logs</span>
+              <Icon name="layers" className="admin-card-title-icon" />
+              <span>College Batch Formation Summary</span>
             </h3>
-            <a href="#activity-logs" className="action-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px' }}>View Logs</a>
+            <a href="#admin-batches" className="action-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px' }}>Manage Batches</a>
           </div>
 
           <div className="widget-list">
-            {recentActivities.map((act, idx) => (
+            {activeBatches.map((b, idx) => (
               <div key={idx} className="widget-item-row">
                 <div className="widget-item-left">
                   <div className="widget-item-icon-circle" style={{ backgroundColor: 'var(--primary-blue-light)', color: 'var(--primary-blue)' }}>
-                    <Icon name="activity" style={{ width: '16px', height: '16px' }} />
+                    <Icon name="layers" style={{ width: '16px', height: '16px' }} />
                   </div>
                   <div className="widget-item-info">
-                    <span className="widget-item-title">{act.title}</span>
-                    <span className="widget-item-desc">{act.desc}</span>
+                    <span className="widget-item-title">{b.code} ({b.college})</span>
+                    <span className="widget-item-desc">{b.course} • Trainer: {b.trainer}</span>
                   </div>
                 </div>
-                <span className="widget-time">{act.time}</span>
+                <span className="admin-badge green" style={{ fontSize: '10px' }}>{b.trainees ? b.trainees.length : 0} Trainees</span>
               </div>
             ))}
           </div>
@@ -165,9 +135,9 @@ export default function AdminDashboard() {
           <div className="admin-card-header">
             <h3 className="admin-card-title">
               <Icon name="calendar" className="admin-card-title-icon" />
-              <span>Upcoming Batches Sessions</span>
+              <span>Upcoming Scheduled Sessions</span>
             </h3>
-            <a href="#calendar" className="action-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px' }}>View Calendar</a>
+            <a href="#admin-calendar" className="action-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px' }}>View Calendar</a>
           </div>
 
           <div className="widget-list">
@@ -179,7 +149,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="widget-item-info">
                     <span className="widget-item-title">{sess.title}</span>
-                    <span className="widget-item-desc">{sess.batch} â€¢ {sess.trainer}</span>
+                    <span className="widget-item-desc">{sess.batch} • {sess.trainer}</span>
                   </div>
                 </div>
                 <span className="widget-time" style={{ color: 'var(--accent-orange)' }}>{sess.time}</span>

@@ -16,9 +16,12 @@ export default function AdminStudents() {
   // Form Fields
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formCollege, setFormCollege] = useState('IIT Madras');
   const [formCourse, setFormCourse] = useState('Core Java Foundations');
   const [formProgress, setFormProgress] = useState(0);
   const [formAttendance, setFormAttendance] = useState('95%');
+
+  const collegesList = mockDataService.getColleges();
 
   const triggerToast = (msg) => {
     setToastMsg(msg);
@@ -29,6 +32,7 @@ export default function AdminStudents() {
     setEditStudent(null);
     setFormName('');
     setFormEmail('');
+    setFormCollege(collegesList[0] || 'IIT Madras');
     setFormCourse('Core Java Foundations');
     setFormProgress(0);
     setFormAttendance('95%');
@@ -40,6 +44,7 @@ export default function AdminStudents() {
     setEditStudent(student);
     setFormName(student.name);
     setFormEmail(student.email);
+    setFormCollege(student.college || collegesList[0]);
     setFormCourse(student.course);
     setFormProgress(student.progress);
     setFormAttendance(student.attendance);
@@ -99,6 +104,7 @@ export default function AdminStudents() {
             ...s,
             name: formName,
             email: formEmail,
+            college: formCollege,
             course: formCourse,
             progress: parseInt(formProgress),
             attendance: formAttendance
@@ -113,6 +119,7 @@ export default function AdminStudents() {
           ...selectedStudent,
           name: formName,
           email: formEmail,
+          college: formCollege,
           course: formCourse,
           progress: parseInt(formProgress),
           attendance: formAttendance
@@ -125,6 +132,7 @@ export default function AdminStudents() {
         id: newId,
         name: formName,
         email: formEmail,
+        college: formCollege,
         course: formCourse,
         progress: parseInt(formProgress),
         attendance: formAttendance,
@@ -144,6 +152,7 @@ export default function AdminStudents() {
   const filteredStudents = students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           s.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (s.college && s.college.toLowerCase().includes(searchQuery.toLowerCase())) ||
                           s.course.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCourse = courseFilter === 'All' || s.course === courseFilter;
     return matchesSearch && matchesCourse;
@@ -162,8 +171,8 @@ export default function AdminStudents() {
       {/* Banner */}
       <div className="admin-banner">
         <div className="admin-banner-left">
-          <span className="admin-banner-subtitle">USER MANAGEMENT</span>
-          <h2 className="admin-banner-title">Student Registry & Progress</h2>
+          <span className="admin-banner-subtitle">STUDENT MANAGEMENT MODULE</span>
+          <h2 className="admin-banner-title">Student Registry & College Mapping</h2>
         </div>
         <div className="admin-banner-right">
           <button className="admin-banner-btn" onClick={handleOpenAddModal}>
@@ -180,7 +189,7 @@ export default function AdminStudents() {
             <Icon name="search" className="search-input-icon" />
             <input 
               type="text" 
-              placeholder="Search students by name, email, or course..." 
+              placeholder="Search students by name, college, email, or course..." 
               className="search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -196,10 +205,9 @@ export default function AdminStudents() {
               onChange={(e) => setCourseFilter(e.target.value)}
             >
               <option value="All">All Courses</option>
-              <option value="Core Java Foundations">Core Java Foundations</option>
-              <option value="Python for Data Analysis">Python for Data Analysis</option>
-              <option value="SQL & DBMS Essentials">SQL & DBMS Essentials</option>
-              <option value="React Frontend Advanced">React Frontend Advanced</option>
+              {mockDataService.getCourses().map(c => (
+                <option key={c.id} value={c.title}>{c.title}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -213,7 +221,7 @@ export default function AdminStudents() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Student Name</th>
+                <th>Student & College</th>
                 <th>Enrolled Course</th>
                 <th>Attendance</th>
                 <th>Account Status</th>
@@ -235,7 +243,7 @@ export default function AdminStudents() {
                         </div>
                         <div className="user-details">
                           <span className="user-cell-name">{s.name}</span>
-                          <span className="user-cell-email">{s.email}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--primary-blue)', fontWeight: 600 }}>🏛️ {s.college || 'Unassigned'}</span>
                         </div>
                       </div>
                     </td>
@@ -392,16 +400,31 @@ export default function AdminStudents() {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input 
-                  type="email" 
-                  className="form-input" 
-                  placeholder="e.g. g.mohan@hexaware.com"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  required
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input 
+                    type="email" 
+                    className="form-input" 
+                    placeholder="e.g. g.mohan@hexaware.com"
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Select College</label>
+                  <select 
+                    className="form-input"
+                    value={formCollege}
+                    onChange={(e) => setFormCollege(e.target.value)}
+                  >
+                    {collegesList.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="form-group">

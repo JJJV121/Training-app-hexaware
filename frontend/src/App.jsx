@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Icon from './components/Icon';
 import Placeholder from './pages/Placeholder';
 
-// Import Admin Pages
+// Import Core Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminTrainers from './pages/admin/AdminTrainers';
 import AdminStudents from './pages/admin/AdminStudents';
@@ -11,12 +11,6 @@ import AdminCourseAssignment from './pages/admin/AdminCourseAssignment';
 import AdminBatches from './pages/admin/AdminBatches';
 import AdminAssignments from './pages/admin/AdminAssignments';
 import AdminCalendar from './pages/admin/AdminCalendar';
-import AdminAnnouncements from './pages/admin/AdminAnnouncements';
-import AdminReports from './pages/admin/AdminReports';
-import AdminFeedback from './pages/admin/AdminFeedback';
-import AdminNotifications from './pages/admin/AdminNotifications';
-import AdminActivityLogs from './pages/admin/AdminActivityLogs';
-import AdminSettings from './pages/admin/AdminSettings';
 
 // Import Admin Styles
 import './styles/admin.css';
@@ -64,18 +58,6 @@ export default function App() {
         return <AdminAssignments />;
       case 'admin-calendar':
         return <AdminCalendar />;
-      case 'admin-announcements':
-        return <AdminAnnouncements />;
-      case 'admin-reports':
-        return <AdminReports />;
-      case 'admin-feedback':
-        return <AdminFeedback />;
-      case 'admin-notifications':
-        return <AdminNotifications />;
-      case 'admin-activity-logs':
-        return <AdminActivityLogs />;
-      case 'admin-settings':
-        return <AdminSettings />;
       case 'logout':
         return <Placeholder title="Logged Out" description="You have been successfully logged out." />;
       default:
@@ -85,21 +67,14 @@ export default function App() {
 
   const adminNavItems = [
     { page: 'admin-dashboard', icon: 'home', label: 'Dashboard' },
-    { type: 'header', label: 'User Management' },
-    { page: 'admin-students', icon: 'users', label: 'Students', isSub: true },
-    { page: 'admin-trainers', icon: 'user', label: 'Trainers', isSub: true },
-    { type: 'divider' },
+    { type: 'header', label: 'Core Modules' },
+    { page: 'admin-trainers', icon: 'user', label: 'Trainer Management' },
+    { page: 'admin-students', icon: 'users', label: 'Student Management' },
     { page: 'admin-courses', icon: 'book-open', label: 'Course Management' },
     { page: 'admin-course-assignment', icon: 'sliders', label: 'Course Assignment' },
     { page: 'admin-batches', icon: 'layers', label: 'Batch Management' },
-    { page: 'admin-assignments', icon: 'file-text', label: 'Assignments' },
-    { page: 'admin-calendar', icon: 'calendar', label: 'Calendar' },
-    { page: 'admin-announcements', icon: 'send', label: 'Announcements' },
-    { page: 'admin-reports', icon: 'file-text', label: 'Reports' },
-    { page: 'admin-feedback', icon: 'message-square', label: 'Feedback' },
-    { page: 'admin-notifications', icon: 'bell', label: 'Notifications' },
-    { page: 'admin-activity-logs', icon: 'history', label: 'Activity Logs' },
-    { page: 'admin-settings', icon: 'settings', label: 'Settings' }
+    { page: 'admin-assignments', icon: 'file-text', label: 'Assignment & Assessment' },
+    { page: 'admin-calendar', icon: 'calendar', label: 'Calendar & Schedule' }
   ];
 
   return (

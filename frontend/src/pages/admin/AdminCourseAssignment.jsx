@@ -7,10 +7,16 @@ export default function AdminCourseAssignment() {
   
   // Load state from mockDataService
   const [assignments, setAssignments] = useState(() => mockDataService.getCourseAssignments());
+  const allCourses = mockDataService.getCourses();
+  const allBatches = mockDataService.getBatches();
+  const allTrainers = mockDataService.getTrainers();
+  const allStudents = mockDataService.getStudents();
 
   // Form states for making a new assignment
+  const [assignType, setAssignType] = useState('Batch'); // 'Batch' or 'Trainee'
   const [selectedCourse, setSelectedCourse] = useState('Core Java Foundations');
-  const [selectedBatch, setSelectedBatch] = useState('Batch B22');
+  const [selectedBatch, setSelectedBatch] = useState(allBatches[0]?.code || 'Batch B21');
+  const [selectedTrainee, setSelectedTrainee] = useState(allStudents[0]?.name || 'Ethan Carter');
   const [selectedTrainer, setSelectedTrainer] = useState('Dr. Ava Thompson');
   const [capacity, setCapacity] = useState(30);
   const [startDate, setStartDate] = useState('2026-07-15');
@@ -23,21 +29,23 @@ export default function AdminCourseAssignment() {
 
   const handleAssign = (e) => {
     e.preventDefault();
+    const targetName = assignType === 'Batch' ? selectedBatch : selectedTrainee;
 
-    // Check if batch is already assigned
-    const exists = assignments.some(a => a.batch === selectedBatch && a.course === selectedCourse);
+    // Check if target is already assigned to this course
+    const exists = assignments.some(a => a.targetName === targetName && a.course === selectedCourse);
     if (exists) {
-      alert('This batch is already assigned to this course. Try reassigning.');
+      alert(`This ${assignType.toLowerCase()} (${targetName}) is already assigned to ${selectedCourse}.`);
       return;
     }
 
     const newAssignment = {
       id: Date.now(),
+      type: assignType,
+      targetName: targetName,
       course: selectedCourse,
-      batch: selectedBatch,
       trainer: selectedTrainer,
-      capacity: parseInt(capacity),
-      remaining: parseInt(capacity),
+      capacity: assignType === 'Batch' ? parseInt(capacity) : 1,
+      remaining: assignType === 'Batch' ? parseInt(capacity) : 0,
       startDate: startDate,
       endDate: endDate
     };
@@ -45,23 +53,22 @@ export default function AdminCourseAssignment() {
     const updated = [...assignments, newAssignment];
     setAssignments(updated);
     mockDataService.saveCourseAssignments(updated);
-    triggerToast(`Assigned ${selectedTrainer} to ${selectedCourse} (${selectedBatch})`);
+    triggerToast(`Course ${selectedCourse} assigned to ${assignType} (${targetName}) with ${selectedTrainer}`);
   };
 
   const handleUnassign = (id) => {
-    if (confirm('Are you sure you want to remove this trainer assignment?')) {
+    if (confirm('Are you sure you want to remove this course allocation?')) {
       const updated = assignments.filter(a => a.id !== id);
       setAssignments(updated);
       mockDataService.saveCourseAssignments(updated);
-      triggerToast('Assignment removed successfully.');
+      triggerToast('Allocation removed successfully.');
     }
   };
 
-  // Reassignment simulator
   const handleReassign = (id, newTrainer) => {
     const updated = assignments.map(a => {
       if (a.id === id) {
-        triggerToast(`Reassigned ${a.course} (${a.batch}) to ${newTrainer}`);
+        triggerToast(`Reassigned ${a.course} (${a.targetName || a.batch}) to ${newTrainer}`);
         return { ...a, trainer: newTrainer };
       }
       return a;
@@ -83,8 +90,8 @@ export default function AdminCourseAssignment() {
       {/* Banner */}
       <div className="admin-banner">
         <div className="admin-banner-left">
-          <span className="admin-banner-subtitle">TRAINERS ALLOCATION</span>
-          <h2 className="admin-banner-title">Trainer & Course Allocations</h2>
+          <span className="admin-banner-subtitle">TRAINEE & BATCH COURSE ALLOCATION</span>
+          <h2 className="admin-banner-title">Course Assignment Module</h2>
         </div>
       </div>
 
@@ -95,16 +102,16 @@ export default function AdminCourseAssignment() {
           <div className="admin-card-header" style={{ padding: '20px 20px 0 20px' }}>
             <h3 className="admin-card-title">
               <Icon name="activity" className="admin-card-title-icon" />
-              <span>Active Allocations</span>
+              <span>Active Course Allocations</span>
             </h3>
           </div>
           <table className="admin-table" style={{ marginTop: '16px' }}>
             <thead>
               <tr>
-                <th>Course & Batch</th>
+                <th>Target & Type</th>
+                <th>Course Name</th>
                 <th>Assigned Trainer</th>
-                <th>Capacity / Remaining</th>
-                <th>Duration Dates</th>
+                <th>Capacity / Duration</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -112,39 +119,37 @@ export default function AdminCourseAssignment() {
               {assignments.map(a => (
                 <tr key={a.id}>
                   <td>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontWeight: 700 }}>{a.course}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-medium)' }}>{a.batch}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--primary-blue)' }}>{a.targetName || a.batch}</span>
+                      <span className={`admin-badge ${a.type === 'Trainee' ? 'orange' : 'blue'}`} style={{ fontSize: '10px', width: 'fit-content' }}>
+                        {a.type || 'Batch'} Level
+                      </span>
                     </div>
                   </td>
                   <td>
+                    <span style={{ fontWeight: 600 }}>{a.course}</span>
+                  </td>
+                  <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="user-avatar-circle" style={{ width: '28px', height: '28px', fontSize: '11px' }}>
-                        {a.trainer.split(' ').filter(n => n.includes('.')).length > 0 ? a.trainer.split(' ').slice(1).map(n => n[0]).join('') : a.trainer.split(' ').map(n => n[0]).join('')}
-                      </span>
                       <select 
-                        style={{ background: 'none', border: 'none', fontWeight: 600, fontSize: '13px', color: 'var(--text-dark)', cursor: 'pointer' }}
+                        style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontWeight: 600, fontSize: '12px', color: 'var(--text-dark)', cursor: 'pointer' }}
                         value={a.trainer}
                         onChange={(e) => handleReassign(a.id, e.target.value)}
                       >
-                        <option value="Dr. Ava Thompson">Dr. Ava Thompson</option>
-                        <option value="Prof. Noah Parker">Prof. Noah Parker</option>
-                        <option value="Dr. Mason Cooper">Dr. Mason Cooper</option>
-                        <option value="Amelia Scott">Amelia Scott</option>
+                        {allTrainers.map(t => (
+                          <option key={t.id} value={t.name}>{t.name}</option>
+                        ))}
                       </select>
                     </div>
                   </td>
                   <td>
                     <span style={{ fontWeight: 700 }}>{a.capacity} Seats</span>
-                    <span style={{ fontSize: '11px', color: a.remaining === 0 ? 'var(--accent-red)' : 'var(--accent-green)', display: 'block' }}>
-                      {a.remaining === 0 ? 'Full' : `${a.remaining} seats left`}
+                    <span style={{ fontSize: '11px', color: 'var(--text-medium)', display: 'block' }}>
+                      {a.startDate} to {a.endDate}
                     </span>
                   </td>
                   <td>
-                    <span style={{ fontSize: '12px' }}>{a.startDate} to {a.endDate}</span>
-                  </td>
-                  <td>
-                    <button className="row-action-btn delete" title="Unassign Trainer" onClick={() => handleUnassign(a.id)}>
+                    <button className="row-action-btn delete" title="Remove Allocation" onClick={() => handleUnassign(a.id)}>
                       <Icon name="trash-2" style={{ width: '14px', height: '14px' }} />
                     </button>
                   </td>
@@ -159,45 +164,78 @@ export default function AdminCourseAssignment() {
           <div className="admin-card-header">
             <h3 className="admin-card-title">
               <Icon name="sliders" className="admin-card-title-icon" />
-              <span>Assign Trainer & Batch</span>
+              <span>Assign Course</span>
             </h3>
           </div>
 
           <form onSubmit={handleAssign} className="modal-form">
+            {/* Allocation Target Toggle */}
+            <div className="form-group">
+              <label className="form-label">Allocation Scope</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className={assignType === 'Batch' ? 'action-btn-primary' : 'action-btn-secondary'}
+                  style={{ flex: 1, padding: '8px', fontSize: '12px' }}
+                  onClick={() => setAssignType('Batch')}
+                >
+                  🏢 Batch Allocation
+                </button>
+                <button
+                  type="button"
+                  className={assignType === 'Trainee' ? 'action-btn-primary' : 'action-btn-secondary'}
+                  style={{ flex: 1, padding: '8px', fontSize: '12px' }}
+                  onClick={() => setAssignType('Trainee')}
+                >
+                  👨‍🎓 Trainee Course Assigning
+                </button>
+              </div>
+            </div>
+
             <div className="form-group">
               <label className="form-label">Select Course</label>
               <select className="form-input" value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
-                <option value="Core Java Foundations">Core Java Foundations</option>
-                <option value="Python for Data Analysis">Python for Data Analysis</option>
-                <option value="SQL & DBMS Essentials">SQL & DBMS Essentials</option>
-                <option value="React Frontend Advanced">React Frontend Advanced</option>
+                {allCourses.map(c => (
+                  <option key={c.id} value={c.title}>{c.title}</option>
+                ))}
               </select>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Select Batch</label>
-              <select className="form-input" value={selectedBatch} onChange={(e) => setSelectedBatch(e.target.value)}>
-                <option value="Batch B22">Batch B22</option>
-                <option value="Batch B23">Batch B23</option>
-                <option value="Batch B24">Batch B24</option>
-                <option value="Batch B26">Batch B26</option>
-              </select>
-            </div>
+            {assignType === 'Batch' ? (
+              <div className="form-group">
+                <label className="form-label">Select Target Batch</label>
+                <select className="form-input" value={selectedBatch} onChange={(e) => setSelectedBatch(e.target.value)}>
+                  {allBatches.map(b => (
+                    <option key={b.id} value={b.code}>{b.code} ({b.college})</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label className="form-label">Select Trainee / Student</label>
+                <select className="form-input" value={selectedTrainee} onChange={(e) => setSelectedTrainee(e.target.value)}>
+                  {allStudents.map(s => (
+                    <option key={s.id} value={s.name}>{s.name} ({s.college})</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="form-group">
-              <label className="form-label">Select Trainer</label>
+              <label className="form-label">Assign Lead Trainer</label>
               <select className="form-input" value={selectedTrainer} onChange={(e) => setSelectedTrainer(e.target.value)}>
-                <option value="Dr. Ava Thompson">Dr. Ava Thompson (Workload: 85%)</option>
-                <option value="Prof. Noah Parker">Prof. Noah Parker (Workload: 92%)</option>
-                <option value="Dr. Mason Cooper">Dr. Mason Cooper (Workload: 70%)</option>
-                <option value="Amelia Scott">Amelia Scott (Workload: 60%)</option>
+                {allTrainers.map(t => (
+                  <option key={t.id} value={t.name}>{t.name} ({t.expertise})</option>
+                ))}
               </select>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Batch Seat Capacity</label>
-              <input type="number" className="form-input" value={capacity} onChange={(e) => setCapacity(e.target.value)} required />
-            </div>
+            {assignType === 'Batch' && (
+              <div className="form-group">
+                <label className="form-label">Batch Seat Capacity</label>
+                <input type="number" className="form-input" value={capacity} onChange={(e) => setCapacity(e.target.value)} required />
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="form-group">
@@ -211,7 +249,7 @@ export default function AdminCourseAssignment() {
             </div>
 
             <button type="submit" className="action-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px' }}>
-              Assign Trainer
+              Assign Course to {assignType}
             </button>
           </form>
         </div>
