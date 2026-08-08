@@ -9,11 +9,20 @@ from app.routers.schedule import router as schedule_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.profile import router as profile_router
 from app.routers.note import router as note_router
+from app.routers.coding_problem_router import router as coding_problem_router
+from app.routers.submission_router import router as submission_router
+from app.routers.assignment import router as assignment_router
+from app.routers.assignment_submission import router as assignment_submission_router
 
 from app.database.session import test_connection
 
 app = FastAPI()
 
+app.mount(
+    "/assignment_files",
+    StaticFiles(directory="assignment_files"),
+    name="assignment_files",
+)
 
 @app.on_event("startup")
 async def startup():
@@ -42,6 +51,10 @@ app.include_router(progress_router)
 app.include_router(schedule_router)
 app.include_router(dashboard_router)
 app.include_router(note_router)
+app.include_router(coding_problem_router)
+app.include_router(submission_router)
+app.include_router(assignment_router)
+app.include_router(assignment_submission_router)
 
 
 @app.get("/")
