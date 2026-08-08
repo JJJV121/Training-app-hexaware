@@ -7,3 +7,30 @@ from app.schemas.auth import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
 )
+
+from .batch import (
+    BatchBase,
+    BatchCreate,
+    BatchUpdate,
+    BatchResponse,
+)
+
+from .batch_trainee import (
+    BatchTraineeBase,
+    BatchTraineeCreate,
+    BatchTraineeResponse,
+)
+
+from .live_session import (
+    LiveSessionBase,
+    LiveSessionCreate,
+    LiveSessionUpdate,
+    LiveSessionResponse,
+)
+
+from .attendance_record import (
+    AttendanceRecordBase,
+    AttendanceRecordCreate,
+    AttendanceRecordUpdate,
+    AttendanceRecordResponse,
+)
