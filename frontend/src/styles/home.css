@@ -1,0 +1,519 @@
+/* home.css */
+/* Dashboard specific styles matching Figma screens */
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Banner Header Card */
+.dashboard-banner {
+  background-color: var(--primary-blue);
+  border-radius: 24px;
+  padding: 40px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  height: 200px;
+  box-shadow: 0 10px 30px rgba(53, 99, 233, 0.15);
+}
+
+/* Abstract design blobs in banner background */
+.dashboard-banner::before {
+  content: '';
+  position: absolute;
+  top: -10%;
+  right: -5%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.banner-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.banner-greeting {
+  font-family: var(--font-family-header);
+  font-size: 28px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.banner-subtitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* Stats Row - Overlapping Banner */
+.stats-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: -60px; /* Overlap the blue banner */
+  position: relative;
+  z-index: 10;
+  padding: 0 16px;
+}
+
+.stat-card {
+  background-color: #ffffff;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.stat-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* Custom icon colors matching Figma */
+.stat-card.color-blue .stat-icon-wrapper {
+  background-color: #eef2ff;
+  color: var(--primary-blue);
+}
+
+.stat-card.color-green .stat-icon-wrapper {
+  background-color: #e6fcf5;
+  color: var(--accent-green);
+}
+
+.stat-card.color-red .stat-icon-wrapper {
+  background-color: #fff0f6;
+  color: var(--accent-red);
+}
+
+.stat-card .stat-icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
+}
+
+.stat-title {
+  font-family: var(--font-family-header);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-dark);
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-medium);
+  font-weight: 500;
+}
+
+/* Two Columns Layout */
+.dashboard-row-mid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+}
+
+/* Keep Going Card */
+.keep-going-card {
+  background: linear-gradient(135deg, #3563e9 0%, #1e40af 100%);
+  border-radius: 24px;
+  padding: 32px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(53, 99, 233, 0.15);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 240px;
+}
+
+/* Add circles as background decorative blobs in keep-going-card */
+.keep-going-card::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  left: -20px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.keep-going-card::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.card-badge-pill {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.keep-going-content {
+  margin-top: 16px;
+  margin-bottom: 24px;
+  z-index: 2;
+}
+
+.keep-going-title {
+  font-family: var(--font-family-header);
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.keep-going-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+  max-width: 380px;
+}
+
+.continue-btn {
+  background-color: #ffffff;
+  color: var(--primary-blue);
+  border: none;
+  border-radius: 50px;
+  padding: 12px 24px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  width: fit-content;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  z-index: 2;
+  text-decoration: none;
+}
+
+.continue-btn:hover {
+  background-color: #f8fafc;
+  transform: translateX(3px);
+}
+
+/* Time Spent Card */
+.time-spent-card {
+  background-color: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.time-spent-badge {
+  background-color: #e2e8f0;
+  color: var(--text-dark);
+  align-self: flex-start;
+}
+
+/* Venn Diagram Container */
+.venn-container {
+  flex-grow: 1;
+  position: relative;
+  height: 180px;
+  margin-top: 10px;
+}
+
+/* Overlapping circles style */
+.venn-circle {
+  border-radius: 50%;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  text-align: center;
+  font-family: var(--font-family-body);
+  transition: transform 0.2s ease;
+}
+
+.venn-circle:hover {
+  transform: scale(1.03);
+  z-index: 30 !important;
+}
+
+.venn-circle.circle-learning {
+  width: 140px;
+  height: 140px;
+  background-color: rgba(53, 99, 233, 0.85); /* Blue */
+  left: 20px;
+  top: 15px;
+  z-index: 10;
+}
+
+.venn-circle.circle-assessment {
+  width: 110px;
+  height: 110px;
+  background-color: rgba(90, 105, 120, 0.85); /* Charcoal Gray */
+  left: 130px;
+  top: 10px;
+  z-index: 5;
+}
+
+.venn-circle.circle-practice {
+  width: 90px;
+  height: 90px;
+  background-color: rgba(13, 205, 148, 0.85); /* Green */
+  left: 140px;
+  top: 80px;
+  z-index: 15;
+}
+
+.venn-circle-title {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.venn-circle-hours {
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.venn-circle-label {
+  font-size: 9px;
+  opacity: 0.9;
+  max-width: 80px;
+}
+
+/* Bottom Course Progress Details Card */
+.course-progress-card {
+  background-color: #ffffff;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.course-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.course-progress-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.course-icon-bg {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: #eef2ff;
+  color: var(--primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.course-title-sub {
+  display: flex;
+  flex-direction: column;
+}
+
+.course-title-sub h3 {
+  font-family: var(--font-family-header);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.course-title-sub span {
+  font-size: 12px;
+  color: var(--text-medium);
+}
+
+.progress-percent-label {
+  font-family: var(--font-family-header);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+/* SVG Line Chart Style */
+.line-chart-container {
+  width: 100%;
+  height: 120px;
+  position: relative;
+  margin: 10px 0;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.chart-baseline {
+  stroke: var(--primary-blue);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.chart-line {
+  stroke: var(--primary-blue);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.chart-point {
+  fill: var(--primary-blue);
+  stroke: #ffffff;
+  stroke-width: 2;
+  cursor: pointer;
+  transition: r 0.2s ease, fill 0.2s ease;
+}
+
+.chart-point:hover {
+  r: 6px;
+}
+
+.chart-label {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--primary-blue);
+  font-family: var(--font-family-body);
+}
+
+/* Course Progress Footer */
+.course-progress-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border-color);
+  padding-top: 24px;
+}
+
+.date-ranges {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.date-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dark);
+  font-size: 12px;
+}
+
+.date-item i {
+  color: var(--primary-blue);
+  width: 18px;
+  height: 18px;
+}
+
+.date-item div {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-item span.date-lbl {
+  font-size: 10px;
+  color: var(--text-medium);
+  font-weight: 500;
+}
+
+.date-item span.date-val {
+  font-weight: 700;
+}
+
+.date-separator {
+  width: 5px;
+  height: 5px;
+  background-color: var(--text-medium);
+  border-radius: 50%;
+}
+
+.view-course-btn {
+  background-color: var(--primary-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 28px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+}
+
+.view-course-btn:hover {
+  background-color: var(--primary-blue-hover);
+}
+
+/* Responsive grid changes */
+@media (max-width: 1024px) {
+  .stats-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: -40px;
+  }
+  .dashboard-banner {
+    height: 180px;
+  }
+  .dashboard-row-mid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .stats-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
