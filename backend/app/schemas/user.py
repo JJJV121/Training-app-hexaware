@@ -9,6 +9,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     course_id: int
     role: Literal["admin", "trainer", "trainee"]
+    password: str | None = None
 
 
 class UserResponse(BaseModel):
