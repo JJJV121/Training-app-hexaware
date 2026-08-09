@@ -4,6 +4,7 @@
 @import "./styles/home.css";
 @import "./styles/course.css";
 @import "./styles/schedule.css";
+
 @import "./styles/StudyNotes.css";
 @import "./styles/loginscreen.css";
 @import "tailwindcss";
@@ -562,3 +563,4 @@
 .app-container.dark-theme .auth-page button:not(.submit-btn) {
   border-color: var(--border-color);
 }
+
