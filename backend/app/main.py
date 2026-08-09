@@ -11,7 +11,8 @@ from app.routers.profile import router as profile_router
 from app.routers.note import router as note_router
 from app.routers import trainer
 from app.database.session import test_connection
-
+from app.routers import live_session
+from app.routers import attendance_record
 app = FastAPI()
 
 
@@ -43,6 +44,8 @@ app.include_router(schedule_router)
 app.include_router(dashboard_router)
 app.include_router(note_router)
 app.include_router(trainer.router)
+app.include_router(live_session.router)
+app.include_router(attendance_record.router)
 
 
 @app.get("/")

@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class LiveSessionBase(BaseModel):
@@ -12,6 +12,13 @@ class LiveSessionBase(BaseModel):
     start_time: datetime
     end_time: datetime
     meeting_link: str | None = None
+
+    @field_validator("start_time", "end_time")
+    @classmethod
+    def make_naive(cls, value: datetime) -> datetime:
+        if value.tzinfo is not None:
+            value = value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
 
 
 class LiveSessionCreate(LiveSessionBase):
@@ -25,6 +32,13 @@ class LiveSessionUpdate(BaseModel):
     start_time: datetime | None = None
     end_time: datetime | None = None
     meeting_link: str | None = None
+
+    @field_validator("start_time", "end_time")
+    @classmethod
+    def make_naive(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is not None:
+            value = value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
 
 
 class LiveSessionResponse(LiveSessionBase):
