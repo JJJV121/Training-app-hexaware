@@ -232,12 +232,11 @@ const dashboardService = {
       const data = await this.getDashboard(userId);
       return {
         name: data?.name || data?.employee_id || "Student",
-        email: data?.email || "",
-        courseName: data?.course?.name || null
+        email: data?.email || ""
       };
     } catch (error) {
       console.error(error);
-      return { name: "Student", email: "", courseName: null };
+      return { name: "Student", email: "" };
     }
   }
 };

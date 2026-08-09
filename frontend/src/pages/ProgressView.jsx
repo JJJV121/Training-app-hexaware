@@ -273,53 +273,18 @@ export default function ProgressView() {
                   <h4 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)' }}>{item.title}</h4>
                   <span style={{ color: 'var(--text-medium)', fontSize: '12px', fontWeight: '500' }}>{item.details}</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {item.status === 'Upcoming' ? (
-                    <>
-                      <a 
-                        href="#assessment-mcq" 
-                        style={{ 
-                          backgroundColor: 'var(--primary-blue)', 
-                          color: '#fff', 
-                          padding: '6px 14px', 
-                          borderRadius: '20px', 
-                          fontSize: '12px', 
-                          fontWeight: '700',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        Attempt MCQ
-                      </a>
-                      <a 
-                        href="#assessment-coding" 
-                        style={{ 
-                          backgroundColor: 'var(--primary-blue)', 
-                          color: '#fff', 
-                          padding: '6px 14px', 
-                          borderRadius: '20px', 
-                          fontSize: '12px', 
-                          fontWeight: '700',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        Attempt Coding
-                      </a>
-                    </>
-                  ) : (
-                    <span 
-                      style={{ 
-                        backgroundColor: item.status === 'Passed' ? 'var(--accent-green-light)' : 'var(--border-color)', 
-                        color: item.status === 'Passed' ? 'var(--accent-green)' : 'var(--text-medium)', 
-                        padding: '6px 14px', 
-                        borderRadius: '20px', 
-                        fontSize: '12px', 
-                        fontWeight: '700' 
-                      }}
-                    >
-                      {item.status}
-                    </span>
-                  )}
-                </div>
+                <span 
+                  style={{ 
+                    backgroundColor: item.status === 'Passed' ? 'var(--accent-green-light)' : 'var(--border-color)', 
+                    color: item.status === 'Passed' ? 'var(--accent-green)' : 'var(--text-medium)', 
+                    padding: '6px 14px', 
+                    borderRadius: '20px', 
+                    fontSize: '12px', 
+                    fontWeight: '700' 
+                  }}
+                >
+                  {item.status}
+                </span>
               </div>
               {item.status === 'Passed' && item.score !== null && (
                 <div style={{ width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '9999px', height: '6px', overflow: 'hidden' }}>

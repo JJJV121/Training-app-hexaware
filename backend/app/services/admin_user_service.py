@@ -2,7 +2,14 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
-from app.schemas.admin_user import AdminUserUpdate
+from app.models.activation_token import ActivationToken
+from app.schemas.user import UserCreate
+from app.schemas.admin_user import (
+    TrainerCreate,
+    TraineeCreate,
+    AdminUserUpdate,
+)
+from app.services.auth_service import create_user
 
 
 async def get_users_by_role(
@@ -11,7 +18,7 @@ async def get_users_by_role(
 ):
     result = await db.execute(
         select(User)
-        .where(User.role == role)
+        .where(User.role == role.lower())
         .order_by(User.name)
     )
 
@@ -26,11 +33,43 @@ async def get_user_by_id_and_role(
     result = await db.execute(
         select(User).where(
             User.id == user_id,
-            User.role == role,
+            User.role == role.lower(),
         )
     )
 
     return result.scalar_one_or_none()
+
+
+async def create_trainer(
+    db: AsyncSession,
+    trainer_data: TrainerCreate,
+):
+    user = UserCreate(
+        employee_id=trainer_data.employee_id,
+        name=trainer_data.name,
+        email=trainer_data.email,
+        course_id=trainer_data.course_id,
+        role="trainer",
+        password=trainer_data.password,
+    )
+
+    return await create_user(db, user)
+
+
+async def create_trainee(
+    db: AsyncSession,
+    trainee_data: TraineeCreate,
+):
+    user = UserCreate(
+        employee_id=trainee_data.employee_id,
+        name=trainee_data.name,
+        email=trainee_data.email,
+        course_id=trainee_data.course_id,
+        role="trainee",
+        password=None,
+    )
+
+    return await create_user(db, user)
 
 
 async def update_user(
@@ -73,6 +112,18 @@ async def delete_user(
     if not user:
         return False
 
+    # Delete activation tokens first.
+    # Trainees may have an activation token before
+    # they activate their account.
+    activation_tokens = await db.execute(
+        select(ActivationToken).where(
+            ActivationToken.user_id == user_id
+        )
+    )
+
+    for token in activation_tokens.scalars().all():
+        await db.delete(token)
+
     await db.delete(user)
     await db.commit()
 
@@ -86,7 +137,7 @@ async def search_users(
 ):
     result = await db.execute(
         select(User).where(
-            User.role == role,
+            User.role == role.lower(),
             or_(
                 User.name.ilike(f"%{keyword}%"),
                 User.email.ilike(f"%{keyword}%"),
@@ -104,7 +155,7 @@ async def filter_users(
     course_id: int | None = None,
     is_active: bool | None = None,
 ):
-    filters = [User.role == role]
+    filters = [User.role == role.lower()]
 
     if course_id is not None:
         filters.append(User.course_id == course_id)

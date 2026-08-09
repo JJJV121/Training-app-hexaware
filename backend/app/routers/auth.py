@@ -27,11 +27,6 @@ async def create_user_endpoint(
             user_data
         )
 
-        await generate_activation_token(
-            db,
-            user.id
-        )
-
         return user
 
     except ValueError as e:

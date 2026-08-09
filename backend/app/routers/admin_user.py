@@ -5,11 +5,15 @@ from app.database.session import get_db
 from app.schemas.admin_user import (
     AdminUserResponse,
     AdminUserUpdate,
+    TrainerCreate,
+    TraineeCreate,
     UserStatusUpdate,
 )
 from app.services.admin_user_service import (
     get_users_by_role,
     get_user_by_id_and_role,
+    create_trainer,
+    create_trainee,
     update_user,
     delete_user,
     search_users,
@@ -21,6 +25,7 @@ router = APIRouter(
     prefix="/admin",
     tags=["Admin User Management"],
 )
+
 
 # ==================================================
 # Trainer Management
@@ -34,7 +39,51 @@ router = APIRouter(
 async def view_all_trainers(
     db: AsyncSession = Depends(get_db),
 ):
-    return await get_users_by_role(db, "Trainer")
+    return await get_users_by_role(db, "trainer")
+
+
+@router.post(
+    "/trainers",
+    response_model=AdminUserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_trainer(
+    trainer: TrainerCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    return await create_trainer(db, trainer)
+
+
+@router.get(
+    "/trainers/search",
+    response_model=list[AdminUserResponse],
+)
+async def search_trainers(
+    keyword: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    return await search_users(
+        db,
+        "trainer",
+        keyword,
+    )
+
+
+@router.get(
+    "/trainers/filter",
+    response_model=list[AdminUserResponse],
+)
+async def filter_trainers(
+    course_id: int | None = Query(None),
+    is_active: bool | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    return await filter_users(
+        db,
+        "trainer",
+        course_id,
+        is_active,
+    )
 
 
 @router.get(
@@ -49,7 +98,7 @@ async def view_trainer_profile(
     trainer = await get_user_by_id_and_role(
         db,
         trainer_id,
-        "Trainer",
+        "trainer",
     )
 
     if not trainer:
@@ -73,7 +122,7 @@ async def edit_trainer(
     updated = await update_user(
         db,
         trainer_id,
-        "Trainer",
+        "trainer",
         trainer,
     )
 
@@ -96,7 +145,7 @@ async def remove_trainer(
     deleted = await delete_user(
         db,
         trainer_id,
-        "Trainer",
+        "trainer",
     )
 
     if not deleted:
@@ -108,38 +157,6 @@ async def remove_trainer(
     return {
         "message": "Trainer deleted successfully"
     }
-
-
-@router.get(
-    "/trainers/search",
-    response_model=list[AdminUserResponse],
-)
-async def search_trainers(
-    keyword: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-):
-    return await search_users(
-        db,
-        "Trainer",
-        keyword,
-    )
-
-
-@router.get(
-    "/trainers/filter",
-    response_model=list[AdminUserResponse],
-)
-async def filter_trainers(
-    course_id: int | None = Query(None),
-    is_active: bool | None = Query(None),
-    db: AsyncSession = Depends(get_db),
-):
-    return await filter_users(
-        db,
-        "Trainer",
-        course_id,
-        is_active,
-    )
 
 
 # ==================================================
@@ -155,7 +172,54 @@ async def view_all_trainees(
 ):
     return await get_users_by_role(
         db,
-        "Trainee",
+        "trainee",
+    )
+
+
+@router.post(
+    "/trainees",
+    response_model=AdminUserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_trainee(
+    trainee: TraineeCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    return await create_trainee(
+        db,
+        trainee,
+    )
+
+
+@router.get(
+    "/trainees/search",
+    response_model=list[AdminUserResponse],
+)
+async def search_trainees(
+    keyword: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    return await search_users(
+        db,
+        "trainee",
+        keyword,
+    )
+
+
+@router.get(
+    "/trainees/filter",
+    response_model=list[AdminUserResponse],
+)
+async def filter_trainees(
+    course_id: int | None = Query(None),
+    is_active: bool | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    return await filter_users(
+        db,
+        "trainee",
+        course_id,
+        is_active,
     )
 
 
@@ -170,7 +234,7 @@ async def view_trainee_profile(
     trainee = await get_user_by_id_and_role(
         db,
         trainee_id,
-        "Trainee",
+        "trainee",
     )
 
     if not trainee:
@@ -194,7 +258,7 @@ async def edit_trainee(
     updated = await update_user(
         db,
         trainee_id,
-        "Trainee",
+        "trainee",
         trainee,
     )
 
@@ -217,7 +281,7 @@ async def remove_trainee(
     deleted = await delete_user(
         db,
         trainee_id,
-        "Trainee",
+        "trainee",
     )
 
     if not deleted:
@@ -243,7 +307,7 @@ async def change_trainee_status(
     trainee = await update_user_status(
         db,
         trainee_id,
-        "Trainee",
+        "trainee",
         status_data.is_active,
     )
 
@@ -254,35 +318,3 @@ async def change_trainee_status(
         )
 
     return trainee
-
-
-@router.get(
-    "/trainees/search",
-    response_model=list[AdminUserResponse],
-)
-async def search_trainees(
-    keyword: str = Query(...),
-    db: AsyncSession = Depends(get_db),
-):
-    return await search_users(
-        db,
-        "Trainee",
-        keyword,
-    )
-
-
-@router.get(
-    "/trainees/filter",
-    response_model=list[AdminUserResponse],
-)
-async def filter_trainees(
-    course_id: int | None = Query(None),
-    is_active: bool | None = Query(None),
-    db: AsyncSession = Depends(get_db),
-):
-    return await filter_users(
-        db,
-        "Trainee",
-        course_id,
-        is_active,
-    )

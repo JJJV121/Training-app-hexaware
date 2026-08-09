@@ -29,7 +29,25 @@ import {
   Edit3,
   Plus,
   Menu,
-  X
+  X,
+  Users,
+  Trash2,
+  Shield,
+  BarChart2,
+  MessageSquare,
+  Sliders,
+  Eye,
+  EyeOff,
+  Search,
+  Filter,
+  Send,
+  Pin,
+  MoreVertical,
+  Settings,
+  History,
+  Award,
+  Upload,
+  Unlock
 } from 'lucide-react';
 
 const iconMap = {
@@ -63,7 +81,25 @@ const iconMap = {
   'edit-3': Edit3,
   'plus': Plus,
   'menu': Menu,
-  'x': X
+  'x': X,
+  'users': Users,
+  'trash-2': Trash2,
+  'shield': Shield,
+  'bar-chart-2': BarChart2,
+  'message-square': MessageSquare,
+  'sliders': Sliders,
+  'eye': Eye,
+  'eye-off': EyeOff,
+  'search': Search,
+  'filter': Filter,
+  'send': Send,
+  'pin': Pin,
+  'more-vertical': MoreVertical,
+  'settings': Settings,
+  'history': History,
+  'award': Award,
+  'upload': Upload,
+  'unlock': Unlock
 };
 
 export default function Icon({ name, ...props }) {

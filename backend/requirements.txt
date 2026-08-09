@@ -20,3 +20,5 @@ pydantic_settings==2.14.1
 email-validator==2.3.0
 
 pandas==3.0.3
+
+python-multipart==0.0.32

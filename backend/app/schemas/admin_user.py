@@ -18,6 +18,21 @@ class AdminUserResponse(BaseModel):
     }
 
 
+class TrainerCreate(BaseModel):
+    employee_id: str
+    name: str
+    email: EmailStr
+    course_id: int
+    password: str
+
+
+class TraineeCreate(BaseModel):
+    employee_id: str
+    name: str
+    email: EmailStr
+    course_id: int
+
+
 class AdminUserUpdate(BaseModel):
     employee_id: str | None = None
     name: str | None = None
