@@ -31,27 +31,51 @@ async def create_user(
             "User with this email already exists"
         )
 
+    if user_data.role in ["trainer", "admin"] and not user_data.password:
+        raise ValueError(
+            "Password is required for trainer/admin"
+        )
+
     user = User(
         employee_id=user_data.employee_id,
         name=user_data.name,
         email=user_data.email,
         course_id=user_data.course_id,
         role=user_data.role,
-        is_active=False
+        is_active=(
+            user_data.role in ["trainer", "admin"]
+        )
     )
+
+    if user_data.role in ["trainer", "admin"]:
+        user.password_hash = hash_password(
+            user_data.password
+        )
 
     db.add(user)
 
     await db.commit()
     await db.refresh(user)
 
-    token_obj = await generate_activation_token(db, user.id)
+    if user.role == "trainee":
+        token_obj = await generate_activation_token(
+            db,
+            user.id
+        )
 
+<<<<<<< HEAD
     # 3. create link
     activation_link = f"http://localhost:5173/create-password?token={token_obj.token}"
+=======
+        activation_link = (
+            f"http://localhost:3000/create-password?token={token_obj.token}"
+        )
+>>>>>>> origin/feature/backend-authentication
 
-    # 4. send email (Mailtrap later)
-    await send_activation_email(user.email, activation_link)
+        await send_activation_email(
+            user.email,
+            activation_link
+        )
 
     return user
 

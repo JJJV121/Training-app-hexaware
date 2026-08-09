@@ -9,6 +9,8 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.core.dependencies import get_current_user
+from app.models.user import User
 from app.schemas.assignment_submission import (
     AssignmentSubmissionResponse,
     AssignmentEvaluation,
@@ -18,9 +20,9 @@ from app.services.assignment_submission_service import (
     evaluate_submission,
     get_submission_by_id,
     get_user_submissions,
-    get_assignment_submissions,
 )
 from app.utils.file_upload import save_uploaded_file
+
 
 router = APIRouter(
     prefix="/assignment-submissions",
@@ -28,16 +30,24 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=AssignmentSubmissionResponse)
+@router.post(
+    "/",
+    response_model=AssignmentSubmissionResponse,
+)
 async def submit_assignment_api(
     assignment_id: int = Form(...),
     submission_text: str | None = Form(None),
     github_url: str | None = Form(None),
     file: UploadFile = File(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    # Mock trainee until authentication is merged
-    trainee_id = 2
+    # Only trainees can submit assignments
+    if current_user.role != "trainee":
+        raise HTTPException(
+            status_code=403,
+            detail="Only trainees can submit assignments.",
+        )
 
     submission_path = None
 
@@ -50,21 +60,29 @@ async def submit_assignment_api(
     return await submit_assignment(
         db=db,
         assignment_id=assignment_id,
-        user_id=trainee_id,
+        user_id=current_user.id,
         submission_text=submission_text,
         github_url=github_url,
         submission_path=submission_path,
     )
 
 
-@router.put("/{submission_id}/evaluate",
-            response_model=AssignmentSubmissionResponse)
+@router.put(
+    "/{submission_id}/evaluate",
+    response_model=AssignmentSubmissionResponse,
+)
 async def evaluate_submission_api(
     submission_id: int,
     data: AssignmentEvaluation,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    trainer_id = 1
+    # Only trainers can evaluate submissions
+    if current_user.role != "trainer":
+        raise HTTPException(
+            status_code=403,
+            detail="Only trainers can evaluate submissions.",
+        )
 
     submission = await get_submission_by_id(
         db,
@@ -80,19 +98,27 @@ async def evaluate_submission_api(
     return await evaluate_submission(
         db,
         submission,
-        trainer_id,
+        current_user.id,
         data,
     )
 
 
-@router.get("/my",
-            response_model=list[AssignmentSubmissionResponse])
+@router.get(
+    "/my",
+    response_model=list[AssignmentSubmissionResponse],
+)
 async def my_submissions(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    trainee_id = 2
+    # Only trainees can view their own submissions
+    if current_user.role != "trainee":
+        raise HTTPException(
+            status_code=403,
+            detail="Only trainees can view their submissions.",
+        )
 
     return await get_user_submissions(
         db,
-        trainee_id,
+        current_user.id,
     )

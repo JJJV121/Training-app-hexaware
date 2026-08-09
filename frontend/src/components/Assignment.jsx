@@ -122,7 +122,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true }) {
   if (assignments.length === 0) return <div style={styles.stateBox}>No tasks assigned to this module.</div>;
 
   return (
-    <div style={styles.container}>
+    <div className="assignment-panel" style={styles.container}>
       <h3 style={styles.header}>Module Assignment Pipeline</h3>
 
       {assignments.map(task => {
@@ -132,14 +132,14 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true }) {
         const downloaded = hasDownloaded[task.id] || !!record;
 
         return (
-          <div key={task.id} style={styles.taskCard}>
-            <div style={styles.infoBanner}>
+          <div key={task.id} className="assignment-task-card" style={styles.taskCard}>
+            <div className="assignment-info-banner" style={styles.infoBanner}>
               <h4 style={styles.taskTitle}>{task.title}</h4>
               <p style={styles.taskDesc}>{task.description}</p>
             </div>
 
-            <div style={styles.workflowGrid}>
-              <div style={{ ...styles.stepBox, opacity: record ? 0.6 : 1 }}>
+            <div className="assignment-workflow-grid" style={styles.workflowGrid}>
+              <div className="assignment-step-box" style={{ ...styles.stepBox, opacity: record ? 0.6 : 1 }}>
                 <span style={styles.stepBadge}>Step 1</span>
                 <p style={styles.stepText}>Download the official setup files and prompt documents directly to your workspace.</p>
                 <button
@@ -152,7 +152,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true }) {
                 {downloaded && <span style={styles.successIndicator}>Package Acquired</span>}
               </div>
 
-              <div style={{
+              <div className="assignment-step-box" style={{
                 ...styles.stepBox,
                 opacity: !downloaded ? 0.4 : 1
               }}>
@@ -161,7 +161,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true }) {
 
                 {!record ? (
                   <div style={styles.actionRow}>
-                    <label htmlFor={`input-${task.id}`} style={styles.uploadLabel}>
+                    <label className="assignment-upload-label" htmlFor={`input-${task.id}`} style={styles.uploadLabel}>
                       {fileChoice ? fileChoice.name : "Select Solution File..."}
                     </label>
                     <input

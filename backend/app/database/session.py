@@ -12,9 +12,6 @@ from app.core.config import settings
 
 
 ssl_context = ssl.create_default_context()
-
-
-
 db_url = settings.DATABASE_URL
 
 if db_url.startswith("postgresql://"):

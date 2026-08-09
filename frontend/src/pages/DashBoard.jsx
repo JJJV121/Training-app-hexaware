@@ -9,20 +9,21 @@ import Placeholder from '../pages/Placeholder';
 import ProgressView from './ProgressView.jsx';
 import StudyNotes from './StudyNotes.jsx';
 import Profile from '../pages/Profile';
-import Assessment from './Assessment.jsx';
+
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function DashBoard() {
   const { courseId: paramCourseId } = useParams();
 
   // 1. Convert profile to a state object to handle asynchronous API loading
   const [profile, setProfile] = useState({ name: "Loading...", email: "" });
-  
+
   // 🌟 Dynamic Course ID State tracking user's enrollment assignment
   const [courseId, setCourseId] = useState(null);
   const [isCourseLoading, setIsCourseLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
-  
+
   // Hash routing state
   const [currentRoute, setCurrentRoute] = useState(() => {
     if (paramCourseId) return 'course';
@@ -56,61 +57,34 @@ export default function DashBoard() {
 
   // 3. Fetch the user profile and assigned course asynchronously when the dashboard mounts
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const data = await dashboardService.getUserProfile(userId);
-        if (data) {
-          setProfile(data);
-        }
-      } catch (error) {
-        console.error("Failed to load user profile in sidebar:", error);
-        
-        // Smart Fallback
-        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-        setProfile({ 
-          name: storedUser.employee_id || "Student", 
-          email: storedUser.email || "student@example.com" 
-        });
-      }
-    };
-
-    // 🌟 New: Fetch the course ID assigned to this user from the API endpoint
-    const fetchUserAssignedCourse = async () => {
+    const fetchDashboardShellData = async () => {
       try {
         setIsCourseLoading(true);
-        const authToken = localStorage.getItem('authToken');
-
-        const response = await fetch(`http://localhost:8000/courses/users/${userId}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
-          }
-        });
-
-        const data = await response.json();
-
-        console.log("Courses API Response:", data);
-
-        // Support multiple possible response formats
-        const assignedId =
-          data?.enrolled_courses?.[0]?.course_id ??
-          data?.course_id ??
-          data?.[0]?.id ??
-          1;
-
-        console.log("Assigned Course ID:", assignedId);
-
-        setCourseId(assignedId);
+        const data = await dashboardService.getDashboard(userId);
+        if (data) {
+          setProfile({
+            name: data.name || data.employee_id || "Student",
+            email: data.email || "student@example.com"
+          });
+          const assignedId = data.course?.id || 1;
+          setCourseId(assignedId);
+        }
       } catch (error) {
-        console.error("Failed to load assigned user course:", error);
-        setCourseId(1); // Production Fallback to default course
+        console.error("Failed to load dashboard shell data:", error);
+
+        // Smart Fallback
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        setProfile({
+          name: storedUser.employee_id || "Student",
+          email: storedUser.email || "student@example.com"
+        });
+        setCourseId(1);
       } finally {
         setIsCourseLoading(false);
       }
     };
 
-    fetchProfile();
-    fetchUserAssignedCourse();
+    fetchDashboardShellData();
   }, [userId]);
 
   // 4. Handle hash-based navigation changes
@@ -118,7 +92,7 @@ export default function DashBoard() {
     const handleHashChange = () => {
       const hash = window.location.hash.substring(1);
       const targetRoute = hash || 'home';
-      
+
       if (isLockedRef.current && targetRoute !== currentRouteRef.current) {
         alert("Assessment is in progress. You must submit the assessment before leaving the page.");
         window.location.hash = currentRouteRef.current;
@@ -128,7 +102,7 @@ export default function DashBoard() {
     };
 
     window.addEventListener('hashchange', handleHashChange);
-    
+
     if (!window.location.hash) {
       window.location.hash = 'home';
     }
@@ -170,13 +144,13 @@ export default function DashBoard() {
       case 'schedule':
         return <Schedule />;
       case 'progress':
-        return <ProgressView/>;
+        return <ProgressView />;
       case 'assessment-mcq':
         return <Assessment assessmentType="MCQ" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
       case 'assessment-coding':
         return <Assessment assessmentType="Coding" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
       case 'notes':
-        return <StudyNotes/>;
+        return <StudyNotes />;
       case 'profile':
         return <Profile />;
       case 'logout':
@@ -226,7 +200,7 @@ export default function DashBoard() {
         <div className="sidebar-header">
           <h1 className="logo">Hexaware</h1>
         </div>
-        
+
         {/* User profile info */}
         <div className="user-profile-card">
           <div className="profile-info">
@@ -235,7 +209,7 @@ export default function DashBoard() {
             <span className="user-email" id="user-display-email">{profile.email}</span>
           </div>
         </div>
-        
+
         {/* Nav menu list */}
         <nav className="nav-menu">
           <ul>
@@ -243,8 +217,8 @@ export default function DashBoard() {
               const isDisabled = isLocked && currentRoute !== item.page;
               return (
                 <li key={item.page}>
-                  <a 
-                    href={isDisabled ? undefined : `#${item.page}`} 
+                  <a
+                    href={isDisabled ? undefined : `#${item.page}`}
                     className={`nav-item ${currentRoute === item.page ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
                     data-page={item.page}
                     onClick={(e) => {
@@ -264,10 +238,11 @@ export default function DashBoard() {
             })}
           </ul>
         </nav>
-        
+
         {/* Logout at bottom — FIX: use <button> not <a href="#logout"> to prevent hash flicker */}
         <div className="sidebar-footer">
-          <button 
+          <ThemeToggle className="theme-toggle-sidebar" />
+          <button
             type="button"
             className={`nav-item logout-btn ${currentRoute === 'logout' ? 'active' : ''} ${isLocked ? 'disabled' : ''}`}
             data-page="logout"
@@ -278,7 +253,7 @@ export default function DashBoard() {
               localStorage.removeItem('user');
               localStorage.removeItem('logged_in_user_id');
               closeMobileMenu();
-              window.location.href = '/'; 
+              window.location.href = '/';
             }}
           >
             <Icon name="log-out" className="nav-icon" />

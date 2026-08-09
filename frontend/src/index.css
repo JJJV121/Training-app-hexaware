@@ -4,9 +4,9 @@
 @import "./styles/home.css";
 @import "./styles/course.css";
 @import "./styles/schedule.css";
+
 @import "./styles/StudyNotes.css";
 @import "./styles/loginscreen.css";
-@import "./styles/assessment.css";
 @import "tailwindcss";
 /* Add your custom background animations here */
 @keyframes floatSlow {
@@ -284,6 +284,192 @@
   color: var(--text-medium) !important;
 }
 
+/* Course video player, tabs, and assignment workflow */
+.app-container.dark-theme .video-tab-rich-text-container-box,
+.app-container.dark-theme .video-tab-assignment-form-box,
+.app-container.dark-theme .video-tab-forum-discussion-stream-box,
+.app-container.dark-theme .assignment-panel {
+  color: var(--text-dark);
+}
+
+.app-container.dark-theme .rich-text-main-header,
+.app-container.dark-theme .assignment-header-title,
+.app-container.dark-theme .forum-main-header-title,
+.app-container.dark-theme .quote-accent-title,
+.app-container.dark-theme .question-card-text-description,
+.app-container.dark-theme .assignment-panel h3,
+.app-container.dark-theme .assignment-panel h4 {
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .quote-body-text,
+.app-container.dark-theme .forum-msg-answer-body,
+.app-container.dark-theme .assignment-panel p,
+.app-container.dark-theme .assignment-panel .stepText {
+  color: var(--text-medium) !important;
+}
+
+.app-container.dark-theme .assignment-panel,
+.app-container.dark-theme .assignment-task-card,
+.app-container.dark-theme .assignment-step-box {
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .assignment-info-banner {
+  background: #1e3a8a !important;
+  color: #dbeafe !important;
+}
+
+.app-container.dark-theme .assignment-info-banner h4,
+.app-container.dark-theme .assignment-info-banner p {
+  color: #dbeafe !important;
+}
+
+.app-container.dark-theme .assignment-workflow-grid,
+.app-container.dark-theme .assignment-upload-label {
+  background: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Schedule page surfaces and navigation */
+.app-container.dark-theme .weekly-view-card,
+.app-container.dark-theme .timetable-grid-container,
+.app-container.dark-theme .timetable-day-column,
+.app-container.dark-theme .weekly-day-card {
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .schedule-stats-card {
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .schedule-banner-btn,
+.app-container.dark-theme .bottom-navigation {
+  background: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .schedule-banner-btn:hover {
+  background: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .timetable-content-row,
+.app-container.dark-theme .timetable-day-column {
+  background: var(--bg-main) !important;
+}
+
+.app-container.dark-theme .timetable-day-column,
+.app-container.dark-theme .timetable-day-header,
+.app-container.dark-theme .timetable-grid-container {
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .weekly-day-card.status-completed,
+.app-container.dark-theme .weekly-day-card.status-in-progress,
+.app-container.dark-theme .weekly-day-card.status-upcoming {
+  background: var(--bg-sidebar) !important;
+}
+
+.app-container.dark-theme .weekly-empty-card {
+  background: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-medium) !important;
+}
+
+/* Study Notes page */
+.app-container.dark-theme .dashboard-wrapper,
+.app-container.dark-theme .study-notes-fullscreen,
+.app-container.dark-theme .notes-search-area,
+.app-container.dark-theme .notes-grid-layout,
+.app-container.dark-theme .notes-preview-page,
+.app-container.dark-theme .workspace-main-panel {
+  background: var(--bg-main) !important;
+  color: var(--text-dark);
+}
+
+.app-container.dark-theme .notes-search-input-premium {
+  background: rgba(15, 23, 42, 0.5) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .notes-search-input-premium::placeholder {
+  color: var(--text-light) !important;
+}
+
+.app-container.dark-theme .search-clear-btn,
+.app-container.dark-theme .preview-back-btn,
+.app-container.dark-theme .preview-action-btn,
+.app-container.dark-theme .dashboard-individual-card,
+.app-container.dark-theme .notes-preview-card,
+.app-container.dark-theme .note-detailed-view,
+.app-container.dark-theme .note-form-workspace,
+.app-container.dark-theme .empty-notes,
+.app-container.dark-theme .custom-modal-box {
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .dashboard-individual-card:hover,
+.app-container.dark-theme .dashboard-individual-card[style] {
+  background: var(--bg-sidebar) !important;
+}
+
+.app-container.dark-theme .card-item-title,
+.app-container.dark-theme .preview-title,
+.app-container.dark-theme .detailed-title,
+.app-container.dark-theme .form-workspace-header h2,
+.app-container.dark-theme .empty-state-title,
+.app-container.dark-theme .empty-notes h3,
+.app-container.dark-theme .custom-modal-box h3 {
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .card-item-body,
+.app-container.dark-theme .preview-copy-text,
+.app-container.dark-theme .detailed-content,
+.app-container.dark-theme .preview-timestamp,
+.app-container.dark-theme .detailed-date-subtitle,
+.app-container.dark-theme .field-label,
+.app-container.dark-theme .empty-state-message,
+.app-container.dark-theme .empty-notes p,
+.app-container.dark-theme .custom-modal-box p {
+  color: var(--text-medium) !important;
+}
+
+.app-container.dark-theme .preview-input,
+.app-container.dark-theme .preview-textarea,
+.app-container.dark-theme .form-grid-fields input,
+.app-container.dark-theme .form-grid-fields textarea,
+.app-container.dark-theme .form-select {
+  background: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .divider {
+  border-top-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .modal-btn-cancel {
+  background: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .notes-filter-bar,
+.app-container.dark-theme .workspace-sidebar,
+.app-container.dark-theme .sidebar-header,
+.app-container.dark-theme .note-list-item {
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+}
+
 /* Disabled navigation items in sidebar during active assessments */
 .nav-item.disabled {
   opacity: 0.45;
@@ -295,3 +481,86 @@
   transform: none !important;
   color: var(--text-light) !important;
 }
+
+/* Authentication screens use utility classes and inline backgrounds, so these
+   shared overrides keep the global toggle visibly useful before login too. */
+.app-container.dark-theme .login-wrapper,
+.app-container.dark-theme .login-wrapper ~ *,
+.app-container.dark-theme .min-h-screen {
+  background-color: var(--bg-main) !important;
+  color: var(--text-dark);
+}
+
+.app-container.dark-theme .form-card {
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+}
+
+.app-container.dark-theme .email-input,
+.app-container.dark-theme .password-input {
+  background: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+/* Authentication pages use several inline light backgrounds and decorative
+   blur circles. Normalize those surfaces when night mode is enabled. */
+.app-container.dark-theme .auth-page {
+  background: var(--bg-main) !important;
+  color: var(--text-dark);
+}
+
+.app-container.dark-theme .auth-page > div[style*="position: absolute"],
+.app-container.dark-theme .auth-page .blur-layer-1,
+.app-container.dark-theme .auth-page .blur-layer-2,
+.app-container.dark-theme .auth-page .blur-layer-3,
+.app-container.dark-theme .auth-page .blur-layer-4 {
+  background-color: #1e3a8a !important;
+  opacity: 0.18 !important;
+}
+
+.app-container.dark-theme .auth-page .form-card,
+.app-container.dark-theme .auth-page .bg-white,
+.app-container.dark-theme .auth-page .auth-detail-panel,
+.app-container.dark-theme .auth-page > div[style*="position: relative"] > div:last-child > div[style*="background"],
+.app-container.dark-theme .auth-page > div:not([style*="position: absolute"]) > div:last-child > div[style*="background"] {
+  background: var(--bg-sidebar) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+.app-container.dark-theme .auth-page input,
+.app-container.dark-theme .auth-page textarea,
+.app-container.dark-theme .auth-page select {
+  background: var(--bg-main) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .auth-page input::placeholder,
+.app-container.dark-theme .auth-page textarea::placeholder {
+  color: var(--text-light) !important;
+}
+
+.app-container.dark-theme .auth-page .text-gray-400,
+.app-container.dark-theme .auth-page .text-gray-500,
+.app-container.dark-theme .auth-page .text-gray-600,
+.app-container.dark-theme .auth-page .text-gray-800 {
+  color: var(--text-medium) !important;
+}
+
+.app-container.dark-theme .auth-page .form-card p,
+.app-container.dark-theme .auth-page .form-card label {
+  color: var(--text-medium) !important;
+}
+
+.app-container.dark-theme .auth-page .form-card h2,
+.app-container.dark-theme .auth-page .form-card h3 {
+  color: var(--text-dark) !important;
+}
+
+.app-container.dark-theme .auth-page button:not(.submit-btn) {
+  border-color: var(--border-color);
+}
+

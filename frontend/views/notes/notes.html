@@ -1,0 +1,84 @@
+<div class="view-section active">
+  <!-- Notes banner -->
+  <div class="banner-card">
+    <div class="banner-left">
+      <div class="banner-icon-container">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+        </svg>
+      </div>
+      <div class="banner-text">
+        <h1>Study Notes</h1>
+        <p>Create and organize your study materials</p>
+      </div>
+    </div>
+    <div class="banner-right">
+      <button class="btn-white add-note-action">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path>
+        </svg>
+        New Note
+      </button>
+    </div>
+  </div>
+
+  <!-- Notes toolbar with search and view toggles -->
+  <div class="notes-toolbar">
+    <div class="search-container">
+      <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      <input type="text" id="notes-search" class="search-input" placeholder="Search notes...">
+    </div>
+    <button class="layout-toggle-btn active" id="layout-grid-btn" title="Grid View">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+    </button>
+    <button class="layout-toggle-btn" id="layout-list-btn" title="List View">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
+  </div>
+
+  <!-- Notes list grid -->
+  <div class="notes-grid" id="notes-container-grid">
+    <!-- Loaded Dynamically -->
+  </div>
+</div>
+
+<!-- Create New Note Modal Dialog -->
+<div class="modal-overlay" id="new-note-modal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3>Create New Study Note</h3>
+      <button class="modal-close-btn" id="modal-close">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="modal-note-title">Note Title</label>
+        <input type="text" id="modal-note-title" class="form-control" placeholder="e.g. Algorithms Midterm">
+      </div>
+      
+      <div class="form-group">
+        <label for="modal-note-content">Note Content</label>
+        <textarea id="modal-note-content" class="form-control" placeholder="Write your notes here..."></textarea>
+      </div>
+
+      <div>
+        <span class="color-selector-label">Choose Card Theme Color</span>
+        <div class="color-options">
+          <span class="color-option selected" data-color="note-purple" style="background-color: var(--note-purple); border-color: var(--note-purple-border)"></span>
+          <span class="color-option" data-color="note-blue" style="background-color: var(--note-blue); border-color: var(--note-blue-border)"></span>
+          <span class="color-option" data-color="note-green" style="background-color: var(--note-green); border-color: var(--note-green-border)"></span>
+          <span class="color-option" data-color="note-yellow" style="background-color: var(--note-yellow); border-color: var(--note-yellow-border)"></span>
+          <span class="color-option" data-color="note-pink" style="background-color: var(--note-pink); border-color: var(--note-pink-border)"></span>
+          <span class="color-option" data-color="note-indigo" style="background-color: var(--note-indigo); border-color: var(--note-indigo-border)"></span>
+          <span class="color-option" data-color="note-cyan" style="background-color: var(--note-cyan); border-color: var(--note-cyan-border)"></span>
+          <span class="color-option" data-color="note-orange" style="background-color: var(--note-orange); border-color: var(--note-orange-border)"></span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="modal-cancel">Cancel</button>
+      <button class="btn-primary-sm" id="modal-save-note">Save Note</button>
+    </div>
+  </div>
+</div>

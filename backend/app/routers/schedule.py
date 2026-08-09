@@ -26,6 +26,7 @@ router = APIRouter(
 )
 async def get_schedule(
     user_id: int,
+    week: int = 0,
     db: AsyncSession = Depends(get_db)
 ):
 
@@ -33,7 +34,8 @@ async def get_schedule(
 
         return await get_user_schedule(
             db,
-            user_id
+            user_id,
+            week
         )
 
     except ValueError as e:

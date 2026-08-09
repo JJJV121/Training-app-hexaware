@@ -11,7 +11,7 @@ const apiClient = axios.create({
 });
 
 // 👉 SET TO TRUE IF BACKEND IS NOT RUNNING YET
-const USE_MOCK_DATA = true; 
+const USE_MOCK_DATA = false; 
 
 const sleep = (ms = 600) => new Promise(resolve => setTimeout(resolve, ms));
 

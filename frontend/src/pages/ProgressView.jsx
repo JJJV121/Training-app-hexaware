@@ -26,7 +26,6 @@ export default function ProgressView() {
             completedAssessments: 2,
             totalAssessments: 3,
             insights: [
-              { title: "You learn best at 9:00 AM", description: "Based on your completion patterns" },
               { title: "20% ahead of average pace", description: "You're making excellent progress!" },
               { title: "Estimated completion: May 22, 2026", description: "2 days earlier than scheduled" }
             ],
@@ -104,27 +103,6 @@ export default function ProgressView() {
             <span style={{ color: 'rgba(255, 255, 255, 0.75)', textTransform: 'uppercase', fontSize: '12px', fontWeight: '600', letterSpacing: '0.8px' }}>Track your progress</span>
           </div>
         </div>
-        <button 
-          className="progress-new-note-btn" 
-          onClick={() => alert('Feature coming soon!')}
-          style={{
-            backgroundColor: '#ffffff',
-            border: 'none',
-            borderRadius: '12px',
-            padding: '12px 20px',
-            color: '#2563eb',
-            fontWeight: '600',
-            fontSize: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-          }}
-        >
-          <Icon name="plus" style={{ width: '16px', height: '16px', strokeWidth: '2.5' }} />
-          <span>New Note</span>
-        </button>
       </div>
 
       {/* 2. Middle Grid Block */}
@@ -177,13 +155,23 @@ export default function ProgressView() {
               
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-medium)', fontWeight: '500' }}>
-                  <span style={{ backgroundColor: 'var(--accent-green-light)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon name="check" style={{ color: 'var(--accent-green)', width: '12px', height: '12px', strokeWidth: '3' }} />
-                  </span>
+                  {progressData.completedModules >= progressData.totalModules && progressData.totalModules > 0 ? (
+                    <span style={{ backgroundColor: 'var(--accent-green-light)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name="check" style={{ color: 'var(--accent-green)', width: '12px', height: '12px', strokeWidth: '3' }} />
+                    </span>
+                  ) : (
+                    <span style={{ border: '2px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'block', boxSizing: 'border-box', flexShrink: 0, backgroundColor: 'var(--bg-sidebar)' }}></span>
+                  )}
                   <span>Complete all {progressData.totalModules} modules</span>
                 </li>
                 <li style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-medium)', fontWeight: '500' }}>
-                  <span style={{ border: '2px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'block', boxSizing: 'border-box', flexShrink: 0, backgroundColor: 'var(--bg-sidebar)' }}></span>
+                  {progressData.completedAssessments >= progressData.totalAssessments ? (
+                    <span style={{ backgroundColor: 'var(--accent-green-light)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name="check" style={{ color: 'var(--accent-green)', width: '12px', height: '12px', strokeWidth: '3' }} />
+                    </span>
+                  ) : (
+                    <span style={{ border: '2px solid var(--border-color)', borderRadius: '50%', width: '18px', height: '18px', display: 'block', boxSizing: 'border-box', flexShrink: 0, backgroundColor: 'var(--bg-sidebar)' }}></span>
+                  )}
                   <span>Pass all assessments ({progressData.completedAssessments}/{progressData.totalAssessments} completed)</span>
                 </li>
               </ul>
@@ -285,53 +273,18 @@ export default function ProgressView() {
                   <h4 style={{ margin: '0 0 2px 0', fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)' }}>{item.title}</h4>
                   <span style={{ color: 'var(--text-medium)', fontSize: '12px', fontWeight: '500' }}>{item.details}</span>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {item.status === 'Upcoming' ? (
-                    <>
-                      <a 
-                        href="#assessment-mcq" 
-                        style={{ 
-                          backgroundColor: 'var(--primary-blue)', 
-                          color: '#fff', 
-                          padding: '6px 14px', 
-                          borderRadius: '20px', 
-                          fontSize: '12px', 
-                          fontWeight: '700',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        Attempt MCQ
-                      </a>
-                      <a 
-                        href="#assessment-coding" 
-                        style={{ 
-                          backgroundColor: 'var(--primary-blue)', 
-                          color: '#fff', 
-                          padding: '6px 14px', 
-                          borderRadius: '20px', 
-                          fontSize: '12px', 
-                          fontWeight: '700',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        Attempt Coding
-                      </a>
-                    </>
-                  ) : (
-                    <span 
-                      style={{ 
-                        backgroundColor: item.status === 'Passed' ? 'var(--accent-green-light)' : 'var(--border-color)', 
-                        color: item.status === 'Passed' ? 'var(--accent-green)' : 'var(--text-medium)', 
-                        padding: '6px 14px', 
-                        borderRadius: '20px', 
-                        fontSize: '12px', 
-                        fontWeight: '700' 
-                      }}
-                    >
-                      {item.status}
-                    </span>
-                  )}
-                </div>
+                <span 
+                  style={{ 
+                    backgroundColor: item.status === 'Passed' ? 'var(--accent-green-light)' : 'var(--border-color)', 
+                    color: item.status === 'Passed' ? 'var(--accent-green)' : 'var(--text-medium)', 
+                    padding: '6px 14px', 
+                    borderRadius: '20px', 
+                    fontSize: '12px', 
+                    fontWeight: '700' 
+                  }}
+                >
+                  {item.status}
+                </span>
               </div>
               {item.status === 'Passed' && item.score !== null && (
                 <div style={{ width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '9999px', height: '6px', overflow: 'hidden' }}>

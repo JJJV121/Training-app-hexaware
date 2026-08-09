@@ -36,7 +36,7 @@ export default function RegisterCourse() {
 
   return (
     // MAIN BACKGROUND CONTAINER
-    <div 
+    <div className="auth-page"
       style={{
         position: 'relative',
         minHeight: '100vh',
@@ -121,7 +121,7 @@ export default function RegisterCourse() {
             </div>
 
             {/* --- FIXED INNER GREY BOX WITH GUARANTEED INLINE PADDING --- */}
-            <div 
+            <div className="auth-detail-panel"
               style={{
                 backgroundColor: '#F4F7FC',
                 borderRadius: '24px',

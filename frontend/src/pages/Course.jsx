@@ -167,6 +167,37 @@ if (Array.isArray(progressData?.completed_learning_units)) {
     syncCourseProgressAndDashboard(true);
   }, [syncCourseProgressAndDashboard]);
 
+  useEffect(() => {
+    if (!isLoading && course) {
+      const targetRaw = localStorage.getItem('continue_learning_target');
+      if (targetRaw) {
+        try {
+          const target = JSON.parse(targetRaw);
+          if (Number(target.course_id) === Number(activeCourseId)) {
+            let targetLesson = null;
+            for (const mod of course.modules) {
+              const lesson = mod.lessons.find(l => Number(l.id) === Number(target.module_id));
+              if (lesson) {
+                targetLesson = lesson;
+                break;
+              }
+            }
+            if (targetLesson) {
+              setExpandedDay(target.day);
+              handleLaunchVideoPlayer(targetLesson, 'Videos');
+            } else {
+              setExpandedDay(target.day);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to automatically redirect to lesson module:", e);
+        } finally {
+          localStorage.removeItem('continue_learning_target');
+        }
+      }
+    }
+  }, [isLoading, course, activeCourseId]);
+
   // Accordion Toggle Handler
   const toggleDayAccordion = (dayId, isLocked) => {
     if (isLocked) return; 
@@ -255,17 +286,6 @@ const handleTimeUpdate = (e) => {
 };
 
 const handleSeeking = (e) => {
-    const currentIndex = unitVideos.findIndex(v => {
-      const videoUrl = normalizeVideoUrl(v.video_url || v.url);
-      return videoUrl === currentVideoUrl;
-    });
-    if (currentIndex !== -1) {
-      const currentVid = unitVideos[currentIndex];
-      const videoId = String(currentVid.id ?? currentVid.video_id ?? currentIndex);
-      if (completedVideos.has(videoId)) {
-        return;
-      }
-    }
     if (e.target.currentTime > lastValidTime.current + 1) {
         e.target.currentTime = lastValidTime.current;
     }
@@ -282,15 +302,6 @@ const handleSeeking = (e) => {
 
     const currentVid = unitVideos[currentIndex];
     const videoId = String(currentVid.id ?? currentVid.video_id ?? currentIndex);
-
-    if (completedVideos.has(videoId)) {
-      const nextIndex = currentIndex + 1;
-      if (nextIndex < unitVideos.length) {
-        const nextVid = unitVideos[nextIndex];
-        setCurrentVideoUrl(normalizeVideoUrl(nextVid.video_url || nextVid.url));
-      }
-      return;
-    }
 
     setCompletedVideos(prev => {
       const next = new Set(prev);
@@ -354,7 +365,7 @@ const handleSeeking = (e) => {
         <div className="course-workspace-scroll-area">
           {activeMainTab === 'Content' ? (
             course.modules.map(module => {
-              const isLocked = Number(module.id) !== Number(currentUnlockedDay);
+              const isLocked = Number(module.id) > Number(currentUnlockedDay);
               const isExpanded = expandedDay === module.id;
 
               return (

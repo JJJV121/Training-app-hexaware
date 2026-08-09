@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 
@@ -52,3 +52,20 @@ def create_access_token(
         SECRET_KEY,
         algorithm=ALGORITHM
     )
+
+def verify_access_token(token: str) -> dict:
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        if payload.get("type") != "access":
+            raise ValueError("Invalid token type")
+
+        return payload
+
+    except JWTError:
+        raise ValueError("Invalid or expired token")

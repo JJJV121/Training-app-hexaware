@@ -28,17 +28,20 @@ async def create_assignment(
     )
 
     assignment = Assignment(
-    course_day_id=data.course_day_id,
-    title=data.title,
-    description=data.description,
-    assignment_type=data.assignment_type,
-    instructions=data.instructions,
-    attachment_path=attachment_path,
-    total_marks=100,
-    passing_marks=75,
-    due_date=data.due_date,
-    created_by=created_by,
-)
+        course_day_id=data.course_day_id,
+        title=data.title,
+        description=data.description,
+        assignment_type=data.assignment_type,
+        instructions=data.instructions,
+        attachment_path=attachment_path,
+        total_marks=data.total_marks,
+        passing_marks=data.passing_marks,
+        due_date=data.due_date,
+        created_by=created_by,
+    )
+
+    if assignment.due_date.tzinfo:
+        assignment.due_date = assignment.due_date.replace(tzinfo=None)
 
     db.add(assignment)
     await db.commit()
@@ -72,6 +75,10 @@ async def update_assignment(
     attachment_path: str | None,
 ):
     update_data = data.model_dump(exclude_unset=True)
+
+    if "due_date" in update_data and update_data["due_date"]:
+        if update_data["due_date"].tzinfo:
+            update_data["due_date"] = update_data["due_date"].replace(tzinfo=None)
 
     for key, value in update_data.items():
         setattr(assignment, key, value)

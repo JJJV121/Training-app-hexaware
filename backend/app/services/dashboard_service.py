@@ -61,60 +61,49 @@ async def get_dashboard(
     db: AsyncSession,
     user_id: int
 ):
-    count_subquery = (
-        select(func.count(Enrollment.id))
+    # Fetch user details
+    user_stmt = select(User).where(User.id == user_id)
+    user_res = await db.execute(user_stmt)
+    user = user_res.scalar_one_or_none()
+    if not user:
+        raise ValueError("User not found")
+
+    # Fetch all enrollments for this user, ordered by enrolled_at desc
+    enrollments_stmt = (
+        select(Enrollment, Course)
+        .join(Course, Course.id == Enrollment.course_id)
         .where(Enrollment.user_id == user_id)
-        .scalar_subquery()
-    )
-
-    stmt = (
-        select(User, Enrollment, Course, count_subquery)
-        .outerjoin(Enrollment, Enrollment.user_id == User.id)
-        .outerjoin(Course, Course.id == Enrollment.course_id)
-        .where(User.id == user_id)
         .order_by(Enrollment.enrolled_at.desc())
-        .limit(1)
     )
+    enrollments_res = await db.execute(enrollments_stmt)
+    user_enrollments = enrollments_res.all()
+    courses_enrolled = len(user_enrollments)
 
-    res = await db.execute(stmt)
-    row = res.first()
-
-    if not row:
-        raise ValueError(
-            "User not found"
-        )
-
-    user, enrollment, course, courses_enrolled = row
-    courses_enrolled = courses_enrolled or 0
-
-    if not enrollment or not course:
+    if courses_enrolled == 0:
         return {
             "name": user.name or user.employee_id,
             "employee_id": user.employee_id,
             "email": user.email,
-            "courses_enrolled": courses_enrolled,
-            "current_course": None
+            "courses_enrolled": 0,
+            "course": None,
+            "progress": None,
+            "time_spent": None,
+            "continue_learning": None,
+            "enrolled_courses": []
         }
 
-    duration_days = course.duration_days
-    start_date = enrollment.enrolled_at.date()
-    end_date = (
-        start_date +
-        timedelta(days=duration_days - 1)
-    )
+    # Primary active course is the first one (most recently enrolled)
+    active_enrollment, active_course = user_enrollments[0]
 
+    # Calculate active course days
     course_days = (
         await db.scalars(
             select(CourseDay)
-            .where(
-                CourseDay.course_id == course.id
-            )
-            .order_by(
-                CourseDay.day_number
-            )
+            .where(CourseDay.course_id == active_course.id)
+            .order_by(CourseDay.day_number)
         )
     ).all()
-
+    
     day_ids = [day.id for day in course_days]
 
     total_map = {}
@@ -144,6 +133,7 @@ async def get_dashboard(
             completed_map[d_id] = (comp, comp_at)
 
     day_progress_map = {}
+    completed_days = 0
     for day in course_days:
         day_total_modules = total_map.get(day.id, 0)
         day_completed_modules, completed_at_max_raw = completed_map.get(day.id, (0, None))
@@ -151,6 +141,7 @@ async def get_dashboard(
         completed_at_max = None
         if day_completed_modules >= day_total_modules and day_total_modules > 0:
             completed_at_max = completed_at_max_raw
+            completed_days += 1
 
         day_progress_map[day.id] = {
             "total_modules": day_total_modules,
@@ -159,110 +150,206 @@ async def get_dashboard(
         }
 
     current_day = calculate_unlocked_day(course_days, day_progress_map)
-
     total_modules = sum(total_map.values())
     completed_modules = sum(val[0] for val in completed_map.values())
     remaining_modules = max(0, total_modules - completed_modules)
 
-    progress_percentage = 0.0
-    if total_modules > 0:
-        progress_percentage = round(
-            (
-                completed_modules
-                / total_modules
-            ) * 100,
-            2
-        )
+    # Calculate completed percentage based on completed_days vs total_days
+    completed_percentage = 0.0
+    total_days = len(course_days)
+    if total_days > 0:
+        completed_percentage = round((completed_days / total_days) * 100, 2)
+    elif total_modules > 0:
+        completed_percentage = round((completed_modules / total_modules) * 100, 2)
 
-    current_day_record = next(
-        (day for day in course_days if day.day_number == current_day),
-        None
-    )
+    duration_days = active_course.duration_days
+    start_date = active_enrollment.enrolled_at.date()
+    end_date = start_date + timedelta(days=duration_days - 1)
 
-    day_progress_percentage = 0.0
-    if current_day_record:
-        current_day_progress = day_progress_map.get(current_day_record.id, {})
-        current_day_total_modules = current_day_progress.get("total_modules", 0)
-        current_day_completed_modules = current_day_progress.get("completed_modules", 0)
+    # Motivation message based on progress percentage
+    if completed_percentage <= 25:
+        motivation_message = "Let's get started!"
+    elif completed_percentage <= 60:
+        motivation_message = "Great Progress!"
+    elif completed_percentage <= 90:
+        motivation_message = "Almost There!"
+    else:
+        motivation_message = "Congratulations!"
 
-        if current_day_total_modules > 0:
-            day_progress_percentage = round(
-                (
-                    current_day_completed_modules
-                    / current_day_total_modules
-                ) * 100,
-                2
-            )
+    course_response_data = {
+        "id": active_course.id,
+        "name": active_course.title,
+        "current_day": current_day,
+        "total_days": total_days if total_days > 0 else duration_days,
+        "total_modules": total_modules,
+        "completed_modules": completed_modules,
+        "remaining_modules": remaining_modules,
+        "completed_percentage": completed_percentage,
+        "start_date": start_date,
+        "end_date": end_date,
+        "motivation_message": motivation_message
+    }
 
-    day_wise_progress = []
-    for day in course_days:
-        if day.day_number > current_day:
-            continue
-        day_progress = day_progress_map.get(day.id, {})
-        day_total_modules = day_progress.get("total_modules", 0)
-        day_completed_modules = day_progress.get("completed_modules", 0)
+    # Progress response data
+    progress_response_data = {
+        "completed_days": completed_days,
+        "remaining_days": max(0, (total_days if total_days > 0 else duration_days) - completed_days)
+    }
 
-        percentage = 0.0
-        if day_total_modules > 0:
-            percentage = round(
-                (
-                    day_completed_modules
-                    / day_total_modules
-                ) * 100,
-                2
-            )
+    # Time spent response data
+    learning_mins = 0
+    assessment_mins = 0
+    practice_mins = 0
+    revision_mins = 0
 
-        day_wise_progress.append(
-            {
-                "day": day.day_number,
-                "progress_percentage": percentage
-            }
-        )
-
-    estimated_learning_minutes = 0
     if day_ids:
-        estimated_learning_minutes = await db.scalar(
-            select(
-                func.coalesce(
-                    func.sum(
-                        LearningUnit.duration_minutes
-                    ),
-                    0
-                )
-            )
-            .join(
-                Progress,
-                Progress.learning_unit_id == LearningUnit.id
-            )
+        # Fetch titles and durations of completed learning units
+        stmt = (
+            select(LearningUnit.title, LearningUnit.duration_minutes)
+            .join(Progress, Progress.learning_unit_id == LearningUnit.id)
             .where(
                 Progress.user_id == user_id,
                 Progress.is_completed.is_(True),
                 LearningUnit.day_id.in_(day_ids)
             )
         )
-        estimated_learning_minutes = estimated_learning_minutes or 0
+        res_units = await db.execute(stmt)
+        for title, duration_minutes in res_units.all():
+            dur = duration_minutes or 0
+            title_lower = title.lower() if title else ""
+            
+            if any(word in title_lower for word in ["assessment", "challenge", "quiz", "exam", "test"]):
+                assessment_mins += dur
+            elif any(word in title_lower for word in ["assignment", "q&a", "practice", "lab", "case study", "development", "project"]):
+                practice_mins += dur
+            elif any(word in title_lower for word in ["review", "recap", "revision", "summary"]):
+                revision_mins += dur
+            else:
+                learning_mins += dur
 
-    learning_hours_completed = round(estimated_learning_minutes / 60, 2)
+    learning_hours = round(learning_mins / 60, 2)
+    assessment_hours = round(assessment_mins / 60, 2)
+    practice_hours = round(practice_mins / 60, 2)
+    revision_hours = round(revision_mins / 60, 2)
+
+    time_spent_response_data = {
+        "learning_hours": learning_hours,
+        "assessment_hours": assessment_hours,
+        "practice_hours": practice_hours,
+        "revision_hours": revision_hours
+    }
+
+    # Continue learning response data
+    # Find first incomplete learning unit in the course
+    first_incomplete_stmt = (
+        select(LearningUnit, CourseDay)
+        .join(CourseDay, CourseDay.id == LearningUnit.day_id)
+        .outerjoin(
+            Progress,
+            (Progress.learning_unit_id == LearningUnit.id)
+            & (Progress.user_id == user_id)
+            & (Progress.is_completed.is_(True))
+        )
+        .where(CourseDay.course_id == active_course.id, Progress.id.is_(None))
+        .order_by(CourseDay.day_number, LearningUnit.display_order)
+        .limit(1)
+    )
+    incomplete_res = await db.execute(first_incomplete_stmt)
+    incomplete_row = incomplete_res.first()
+    if incomplete_row:
+        incomplete_unit, incomplete_day = incomplete_row
+        continue_learning_response_data = {
+            "course_id": active_course.id,
+            "day": incomplete_day.day_number,
+            "module_id": incomplete_unit.id
+        }
+    else:
+        # If all completed, point to the last unit in the course
+        last_unit_stmt = (
+            select(LearningUnit, CourseDay)
+            .join(CourseDay, CourseDay.id == LearningUnit.day_id)
+            .where(CourseDay.course_id == active_course.id)
+            .order_by(CourseDay.day_number.desc(), LearningUnit.display_order.desc())
+            .limit(1)
+        )
+        last_res = await db.execute(last_unit_stmt)
+        last_row = last_res.first()
+        if last_row:
+            last_unit, last_day = last_row
+            continue_learning_response_data = {
+                "course_id": active_course.id,
+                "day": last_day.day_number,
+                "module_id": last_unit.id
+            }
+        else:
+            continue_learning_response_data = {
+                "course_id": active_course.id,
+                "day": 1,
+                "module_id": None
+            }
+
+    # Calculate other enrolled courses
+    enrolled_courses_data = []
+    for enrollment_item, course_item in user_enrollments:
+        cdays = (await db.scalars(
+            select(CourseDay)
+            .where(CourseDay.course_id == course_item.id)
+        )).all()
+        cday_ids = [d.id for d in cdays]
+        
+        ctotal_modules = 0
+        ccompleted_modules = 0
+        ccompleted_days = 0
+        
+        if cday_ids:
+            day_stats_stmt = (
+                select(
+                    LearningUnit.day_id,
+                    func.count(LearningUnit.id),
+                    func.count(Progress.id)
+                )
+                .outerjoin(
+                    Progress,
+                    (Progress.learning_unit_id == LearningUnit.id)
+                    & (Progress.user_id == user_id)
+                    & (Progress.is_completed.is_(True))
+                )
+                .where(LearningUnit.day_id.in_(cday_ids))
+                .group_by(LearningUnit.day_id)
+            )
+            day_stats_res = await db.execute(day_stats_stmt)
+            for d_id, tot, comp in day_stats_res.all():
+                ctotal_modules += tot
+                ccompleted_modules += comp
+                if tot > 0 and comp >= tot:
+                    ccompleted_days += 1
+        
+        c_pct = 0.0
+        if cdays:
+            c_pct = round((ccompleted_days / len(cdays)) * 100, 2)
+        elif ctotal_modules > 0:
+            c_pct = round((ccompleted_modules / ctotal_modules) * 100, 2)
+            
+        c_start_date = enrollment_item.enrolled_at.date()
+        c_end_date = c_start_date + timedelta(days=course_item.duration_days - 1)
+        
+        enrolled_courses_data.append({
+            "course_id": course_item.id,
+            "course_name": course_item.title,
+            "progress": c_pct,
+            "start_date": c_start_date,
+            "end_date": c_end_date,
+            "completion_percentage": c_pct
+        })
+
     return {
         "name": user.name or user.employee_id,
         "employee_id": user.employee_id,
         "email": user.email,
         "courses_enrolled": courses_enrolled,
-        "current_course": {
-            "course_id": course.id,
-            "course_name": course.title,
-            "current_day": current_day,
-            "duration_days": duration_days,
-            "start_date": start_date,
-            "end_date": end_date,
-            "total_modules": total_modules,
-            "completed_modules": completed_modules,
-            "remaining_modules": remaining_modules,
-            "progress_percentage": progress_percentage,
-            "day_progress_percentage": day_progress_percentage,
-            "day_wise_progress": day_wise_progress,
-            "learning_hours_completed": learning_hours_completed,
-            "assessment_time_hours": 10,
-            "assignment_time_hours": 5
-        }
-    }
+        "course": course_response_data,
+        "progress": progress_response_data,
+        "time_spent": time_spent_response_data,
+        "continue_learning": continue_learning_response_data,
+        "enrolled_courses": enrolled_courses_data
+    }

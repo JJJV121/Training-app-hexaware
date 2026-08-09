@@ -13,5 +13,8 @@ from app.models.progress import Progress
 from app.models.lesson_qa import LessonQA
 from app.models.enrollment import Enrollment
 
-from .assignment import Assignment
-from .assignment_submission import AssignmentSubmission
+from app.models.assignment import Assignment
+from app.models.coding_problem import CodingProblem
+from app.models.hidden_test_case import HiddenTestCase
+from app.models.coding_submission import CodingSubmission
+from app.models.assignment_submission import AssignmentSubmission
