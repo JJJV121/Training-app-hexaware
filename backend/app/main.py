@@ -10,6 +10,8 @@ from app.routers.dashboard_router import router as dashboard_router
 from app.routers.profile import router as profile_router
 from app.routers.note import router as note_router
 from app.routers.batch_router import router as batch_router
+from app.routers.admin_course import router as admin_course_router
+from app.routers.admin_course_assignment import router as admin_course_assignment_router
 
 from app.database.session import test_connection
 
@@ -44,6 +46,8 @@ app.include_router(schedule_router)
 app.include_router(dashboard_router)
 app.include_router(note_router)
 app.include_router(batch_router)
+app.include_router(admin_course_router)
+app.include_router(admin_course_assignment_router)
 
 
 @app.get("/")
