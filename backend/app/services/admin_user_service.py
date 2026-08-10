@@ -1,4 +1,4 @@
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -18,7 +18,7 @@ async def get_users_by_role(
 ):
     result = await db.execute(
         select(User)
-        .where(User.role == role.lower())
+        .where(func.lower(User.role) == role.lower())
         .order_by(User.name)
     )
 
@@ -33,7 +33,7 @@ async def get_user_by_id_and_role(
     result = await db.execute(
         select(User).where(
             User.id == user_id,
-            User.role == role.lower(),
+            func.lower(User.role) == role.lower(),
         )
     )
 
@@ -137,7 +137,7 @@ async def search_users(
 ):
     result = await db.execute(
         select(User).where(
-            User.role == role.lower(),
+            func.lower(User.role) == role.lower(),
             or_(
                 User.name.ilike(f"%{keyword}%"),
                 User.email.ilike(f"%{keyword}%"),
@@ -155,7 +155,7 @@ async def filter_users(
     course_id: int | None = None,
     is_active: bool | None = None,
 ):
-    filters = [User.role == role.lower()]
+    filters = [func.lower(User.role) == role.lower()]
 
     if course_id is not None:
         filters.append(User.course_id == course_id)
