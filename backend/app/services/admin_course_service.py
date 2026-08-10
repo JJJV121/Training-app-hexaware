@@ -1,6 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from fastapi import HTTPException
+from app.models.batch_models import Batch
 from app.models.user import User
 from app.models.course import Course
 from app.models.progress import Progress
@@ -88,6 +90,7 @@ async def update_course(
 
 
 # 5. Delete Course
+
 async def delete_course(
     db: AsyncSession,
     course_id: int
@@ -100,6 +103,21 @@ async def delete_course(
 
     if not course:
         raise ValueError("Course not found")
+
+    # Check whether the course is assigned to any batch
+    result = await db.execute(
+        select(Batch.id).where(
+            Batch.course_id == course_id
+        )
+    )
+
+    batch_exists = result.first()
+
+    if batch_exists:
+        raise HTTPException(
+            status_code=409,
+            detail="Course cannot be deleted because it is assigned to one or more batches."
+        )
 
     await db.delete(course)
     await db.commit()

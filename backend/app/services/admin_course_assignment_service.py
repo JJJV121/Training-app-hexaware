@@ -1,9 +1,12 @@
 from sqlalchemy import select, func
 from fastapi import HTTPException
 
-from app.models.batch import Batch
-from app.models.batch_trainee import BatchTrainee
+from app.models.batch_models import (
+    Batch,
+    BatchTrainee,
+)
 from app.models.user import User
+from app.models.course import Course
 
 # 1 Assign Trainer To Course
 
@@ -16,7 +19,7 @@ async def assign_trainer_course(course_id, trainer_id, db):
 
     trainer = await db.get(User, trainer_id)
 
-    if not trainer or trainer.role != "trainer":
+    if not trainer or trainer.role.upper() != "TRAINER":
         raise HTTPException(404, "Trainer not found")
 
     course.trainer_id = trainer_id
@@ -37,7 +40,7 @@ async def assign_trainer_batch(batch_id, trainer_id, db):
 
     trainer = await db.get(User, trainer_id)
 
-    if not trainer or trainer.role != "trainer":
+    if not trainer or trainer.role.upper() != "TRAINER":
         raise HTTPException(404, "Trainer not found")
 
     batch.trainer_id = trainer_id
@@ -58,7 +61,7 @@ async def reassign_trainer(batch_id, trainer_id, db):
 
     trainer = await db.get(User, trainer_id)
 
-    if not trainer or trainer.role != "trainer":
+    if not trainer or trainer.role.upper() != "TRAINER":
         raise HTTPException(404, "Trainer not found")
 
     batch.trainer_id = trainer_id
@@ -73,7 +76,7 @@ async def reassign_trainer(batch_id, trainer_id, db):
 async def get_available_trainers(db):
 
     result = await db.execute(
-        select(User).where(User.role == "trainer")
+        select(User).where(func.upper(User.role) == "TRAINER")
     )
 
     return result.scalars().all()

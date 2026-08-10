@@ -1,5 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database.session import get_db
+
+from app.schemas.admin_course_assignment import (
+    AssignTrainerCourseRequest,
+    AssignTrainerBatchRequest,
+    ReassignTrainerRequest,
+    TrainerResponse,
+    CapacityResponse,
+    BatchResponse,
+    BatchDateUpdate,
+)
+
+from app.services import admin_course_assignment_service as admin_service
+
+
+router = APIRouter(
+    prefix="/admin",
+    tags=["Admin Course Assignment"]
+)
 
 @router.put("/courses/{course_id}/assign-trainer")
 async def assign_trainer_course(
