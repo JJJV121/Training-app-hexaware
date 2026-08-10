@@ -53,7 +53,11 @@ export default function LoginScreen() {
         localStorage.setItem('logged_in_user_id', user.id);
       }
       alert('Login Successful!');
-      navigate('/dashboard');
+      if (user && user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
 
     } catch (err) {
       console.error('Login Submission Error:', err);

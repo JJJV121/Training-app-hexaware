@@ -4,15 +4,19 @@
 .course-main-viewport {
   display: flex;
   flex-direction: column;
+  height: 100%; 
   width: 100%;
   box-sizing: border-box;
   background-color: #f8fafc;
   overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .course-workspace-scroll-area {
   flex-grow: 1;
-  overflow: visible;
+  min-height: 0; 
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 32px 40px;
   display: flex;
   flex-direction: column;
