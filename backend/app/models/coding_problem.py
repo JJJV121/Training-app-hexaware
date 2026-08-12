@@ -1,24 +1,28 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import (
+    Integer,
+    String,
+    Text,
+    DateTime,
+    ForeignKey
+)
+
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column
+)
 
 from app.database.base import Base
 
 
 class CodingProblem(Base):
+
     __tablename__ = "coding_problems"
 
     id: Mapped[int] = mapped_column(
         Integer,
-        primary_key=True,
-        index=True
-    )
-
-    assignment_id: Mapped[int] = mapped_column(
-        ForeignKey("assignments.id"),
-        nullable=False,
-        index=True
+        primary_key=True
     )
 
     title: Mapped[str] = mapped_column(
@@ -31,15 +35,19 @@ class CodingProblem(Base):
         nullable=False
     )
 
-    # Judge0 language ID
-    language_id: Mapped[int] = mapped_column(
-        Integer,
+    difficulty: Mapped[str] = mapped_column(
+        String(20),
         nullable=False
     )
 
-    marks: Mapped[int] = mapped_column(
-        Integer,
-        default=50
+    language: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False
+    )
+
+    starter_code: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
     )
 
     sample_input: Mapped[str | None] = mapped_column(
@@ -52,8 +60,8 @@ class CodingProblem(Base):
         nullable=True
     )
 
-    deadline: Mapped[datetime | None] = mapped_column(
-        DateTime,
+    constraints: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True
     )
 
@@ -61,13 +69,8 @@ class CodingProblem(Base):
         ForeignKey("users.id"),
         nullable=False
     )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow
-    )
-
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
     )

@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
-
+    CODE_RUNNER: str
     MAIL_SERVER: str
     MAIL_PORT: int
     MAIL_USERNAME: str

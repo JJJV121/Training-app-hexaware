@@ -136,13 +136,13 @@ async def calculate_assignment_result(
         )
         .join(
             CodingProblem,
-            CodingSubmission.problem_id == CodingProblem.id
+            CodingSubmission.coding_problem_id == CodingProblem.id
         )
         .where(
             CodingProblem.assignment_id == assignment_id,
             CodingSubmission.user_id == user_id
         )
-        .group_by(CodingSubmission.problem_id)
+        .group_by(CodingSubmission.coding_problem_id)
     ).subquery()
 
     total_score = await db.scalar(
@@ -225,7 +225,7 @@ async def run_submission(
     # --------------------------------------------------
     result = await db.execute(
         select(HiddenTestCase).where(
-            HiddenTestCase.problem_id == problem_id,
+            HiddenTestCase.coding_problem_id == problem_id,
             HiddenTestCase.is_hidden.is_(True)
         )
     )
@@ -238,7 +238,7 @@ async def run_submission(
     # Create submission
     # --------------------------------------------------
     submission = CodingSubmission(
-        problem_id=problem_id,
+        coding_problem_id=problem_id,
         user_id=user_id,
         source_code=source_code,
         language_id=language_id,
