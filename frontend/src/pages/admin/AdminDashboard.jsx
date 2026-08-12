@@ -1,17 +1,58 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '../../components/Icon';
 import mockDataService from '../../services/mockDataService';
+import adminCourseService from '../../services/adminCourseService';
+import adminUserService from '../../services/adminUserService';
+import batchService from '../../services/batchService';
+import trainerMockService from '../../services/trainerMockService';
 
 export default function AdminDashboard() {
   const [toastMsg, setToastMsg] = useState(null);
+  const [dashboardStats, setDashboardStats] = useState([
+    { label: 'Total Students', value: '...', icon: 'users', color: 'blue' },
+    { label: 'Total Trainers', value: '...', icon: 'user', color: 'green' },
+    { label: 'Total Courses', value: '...', icon: 'book-open', color: 'blue' },
+    { label: 'Active Courses', value: '...', icon: 'activity', color: 'green' },
+    { label: 'Total Batches', value: '...', icon: 'layers', color: 'orange' },
+    { label: 'Assignments & Assessments', value: '4', icon: 'file-text', color: 'red' },
+    { label: 'Colleges Onboarded', value: '5', icon: 'check-circle', color: 'green' }
+  ]);
+  const [loading, setLoading] = useState(true);
 
   const triggerToast = (msg) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  // Mock Overview stats dynamically computed from central service
-  const stats = mockDataService.getDashboardOverviewStats();
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const [courses, trainees, batchesData] = await Promise.all([
+          adminCourseService.getCourses(),
+          adminUserService.getTrainees(),
+          batchService.getBatches()
+        ]);
+        const trainers = trainerMockService.getTrainers();
+        const activeCoursesCount = courses.filter(c => c.is_active).length;
+        const batches = batchesData.batches || [];
+        
+        setDashboardStats([
+          { label: 'Total Students', value: trainees.length.toString(), icon: 'users', color: 'blue' },
+          { label: 'Total Trainers', value: trainers.length.toString(), icon: 'user', color: 'green' },
+          { label: 'Total Courses', value: courses.length.toString(), icon: 'book-open', color: 'blue' },
+          { label: 'Active Courses', value: activeCoursesCount.toString(), icon: 'activity', color: 'green' },
+          { label: 'Total Batches', value: batches.length.toString(), icon: 'layers', color: 'orange' },
+          { label: 'Assignments & Assessments', value: '4', icon: 'file-text', color: 'red' },
+          { label: 'Colleges Onboarded', value: '5', icon: 'check-circle', color: 'green' }
+        ]);
+      } catch (err) {
+        console.error('Failed to load dashboard stats:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStats();
+  }, []);
 
   // Quick Action items representing core modules
   const quickActions = [
@@ -29,6 +70,7 @@ export default function AdminDashboard() {
     .slice(0, 3);
 
   const activeBatches = mockDataService.getBatches().slice(0, 3);
+
 
   return (
     <div className="page-view admin-container">
@@ -58,7 +100,7 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="admin-stats-grid-9">
-        {stats.map((stat, i) => (
+        {dashboardStats.map((stat, i) => (
           <div key={i} className="admin-stat-card">
             <div className={`admin-stat-icon-bg ${stat.color}`}>
               <Icon name={stat.icon} style={{ width: '20px', height: '20px' }} />
@@ -70,6 +112,7 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
 
       {/* Core Modules Quick Hub */}
       <div className="admin-card">

@@ -1,32 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '../../components/Icon';
-import mockDataService from '../../services/mockDataService';
+import batchService from '../../services/batchService';
+import adminCourseService from '../../services/adminCourseService';
+import adminUserService from '../../services/adminUserService';
+import trainerMockService from '../../services/trainerMockService';
 
 export default function AdminBatches() {
   const [toastMsg, setToastMsg] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editBatch, setEditBatch] = useState(null);
 
-  // Load state from mockDataService
-  const [batches, setBatches] = useState(() => mockDataService.getBatches());
-  const colleges = mockDataService.getColleges();
-  const allStudents = mockDataService.getStudents();
-  const allTrainers = mockDataService.getTrainers();
-  const allCourses = mockDataService.getCourses();
+  // API State
+  const [batches, setBatches] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [allTrainees, setAllTrainees] = useState([]);
+  const [trainers, setTrainers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // Filters
   const [selectedCollegeFilter, setSelectedCollegeFilter] = useState('All');
+  const colleges = adminUserService.getColleges();
 
   // Form inputs
   const [formCode, setFormCode] = useState('');
-  const [formCollege, setFormCollege] = useState(colleges[0] || 'IIT Madras');
-  const [formCourse, setFormCourse] = useState('Core Java Foundations');
-  const [formTrainer, setFormTrainer] = useState('Dr. Ava Thompson');
-  const [formTrainees, setFormTrainees] = useState([]);
-  const [formStrength, setFormStrength] = useState(25);
-  const [formTiming, setFormTiming] = useState('09:00 AM - 11:00 AM');
-  const [formProgress, setFormProgress] = useState(0);
+  const [formCollege, setFormCollege] = useState('');
+  const [formCourseId, setFormCourseId] = useState('');
+  const [formTrainerId, setFormTrainerId] = useState('');
+  const [formTraineeIds, setFormTraineeIds] = useState([]);
+  const [formStrength, setFormStrength] = useState(30);
+  const [formTiming, setFormTiming] = useState('09:00:00');
+  const [formEndTime, setFormEndTime] = useState('11:00:00');
+  const [startDate, setStartDate] = useState('2026-08-01');
+  const [endDate, setEndDate] = useState('2026-08-30');
   const [formSchedule, setFormSchedule] = useState('Mon, Wed, Fri');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [batchesData, coursesData, traineesData] = await Promise.all([
+        batchService.getBatches(),
+        adminCourseService.getCourses(),
+        adminUserService.getTrainees()
+      ]);
+      
+      const trainersData = trainerMockService.getTrainers();
+      setCourses(coursesData);
+      setAllTrainees(traineesData);
+      setTrainers(trainersData);
+
+      // Enrich batches with college metadata (from mock registry) and trainee IDs
+      const enrichedBatches = (batchesData.batches || []).map(b => {
+        const storedTrainees = JSON.parse(localStorage.getItem(`batch_trainees_${b.id}`) || '[]');
+        return {
+          ...b,
+          college: localStorage.getItem(`batch_college_${b.id}`) || colleges[0],
+          trainees: storedTrainees,
+          strength: b.max_strength, // capacity
+          timing: `${b.start_time || '09:00:00'} - ${b.end_time || '11:00:00'}`
+        };
+      });
+
+      setBatches(enrichedBatches);
+    } catch (err) {
+      console.error('Failed to load batch data:', err);
+      setError('Could not retrieve batches. Please check backend status.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const triggerToast = (msg) => {
     setToastMsg(msg);
@@ -35,97 +83,133 @@ export default function AdminBatches() {
 
   const handleOpenAdd = () => {
     setEditBatch(null);
-    setFormCode(`Batch B${batches.length + 21}`);
+    setFormCode('');
     setFormCollege(colleges[0] || 'IIT Madras');
-    setFormCourse(allCourses[0]?.title || 'Core Java Foundations');
-    setFormTrainer(allTrainers[0]?.name || 'Dr. Ava Thompson');
-    setFormTrainees([allStudents[0]?.name || 'Ethan Carter']);
-    setFormStrength(25);
-    setFormTiming('09:00 AM - 11:00 AM');
-    setFormProgress(0);
+    setFormCourseId(courses[0]?.id || '');
+    setFormTrainerId(trainers[0]?.id || '');
+    setFormTraineeIds([]);
+    setFormStrength(30);
+    setFormTiming('09:00:00');
+    setFormEndTime('11:00:00');
+    setStartDate('2026-08-01');
+    setEndDate('2026-08-30');
     setFormSchedule('Mon, Wed, Fri');
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (batch) => {
     setEditBatch(batch);
-    setFormCode(batch.code);
-    setFormCollege(batch.college || colleges[0]);
-    setFormCourse(batch.course);
-    setFormTrainer(batch.trainer);
-    setFormTrainees(batch.trainees || []);
-    setFormStrength(batch.strength);
-    setFormTiming(batch.timing);
-    setFormProgress(batch.progress);
-    setFormSchedule(batch.schedule);
+    setFormCode(batch.name);
+    setFormCollege(batch.college);
+    setFormCourseId(batch.course_id || '');
+    setFormTrainerId(batch.trainer_id || '');
+    setFormTraineeIds(batch.trainees || []);
+    setFormStrength(batch.max_strength);
+    setFormTiming(batch.start_time || '09:00:00');
+    setFormEndTime(batch.end_time || '11:00:00');
+    setStartDate(batch.start_date || '2026-08-01');
+    setEndDate(batch.end_date || '2026-08-30');
+    setFormSchedule('Mon, Wed, Fri');
     setIsModalOpen(true);
   };
 
-  const toggleTraineeSelection = (studentName) => {
-    if (formTrainees.includes(studentName)) {
-      setFormTrainees(formTrainees.filter(t => t !== studentName));
+  const toggleTraineeSelection = (id) => {
+    if (formTraineeIds.includes(id)) {
+      setFormTraineeIds(formTraineeIds.filter(tid => tid !== id));
     } else {
-      setFormTrainees([...formTrainees, studentName]);
+      setFormTraineeIds([...formTraineeIds, id]);
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Delete this batch? This will affect attendance records and student groups.')) {
-      const updated = batches.filter(b => b.id !== id);
-      setBatches(updated);
-      mockDataService.saveBatches(updated);
-      triggerToast('Batch deleted successfully.');
+      try {
+        await batchService.deleteBatch(id);
+        localStorage.removeItem(`batch_trainees_${id}`);
+        localStorage.removeItem(`batch_college_${id}`);
+        triggerToast('Batch deleted successfully.');
+        loadData();
+      } catch (err) {
+        console.error('Failed to delete batch:', err);
+        alert(err.response?.data?.detail || 'Failed to delete batch.');
+      }
     }
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!formCode || !formTiming || !formCollege) {
+    if (!formCode || !formCourseId || !formCollege) {
       alert('Please fill out all fields.');
       return;
     }
 
-    if (editBatch) {
-      const updated = batches.map(b => {
-        if (b.id === editBatch.id) {
-          return {
-            ...b,
-            code: formCode,
-            college: formCollege,
-            course: formCourse,
-            trainer: formTrainer,
-            trainees: formTrainees,
-            strength: parseInt(formStrength),
-            timing: formTiming,
-            progress: parseInt(formProgress),
-            schedule: formSchedule
-          };
+    setSubmitting(true);
+    const payload = {
+      name: formCode,
+      course_id: Number(formCourseId),
+      trainer_id: formTrainerId ? Number(formTrainerId) : null,
+      start_date: startDate,
+      end_date: endDate,
+      start_time: formTiming,
+      end_time: formEndTime,
+      max_strength: Number(formStrength),
+      status: 'UPCOMING'
+    };
+
+    try {
+      if (editBatch) {
+        await batchService.updateBatch(editBatch.id, payload);
+        
+        // Update batch trainees
+        const prevTrainees = JSON.parse(localStorage.getItem(`batch_trainees_${editBatch.id}`) || '[]');
+        const toAdd = formTraineeIds.filter(id => !prevTrainees.includes(id));
+        const toRemove = prevTrainees.filter(id => !formTraineeIds.includes(id));
+
+        if (toAdd.length > 0) {
+          await batchService.addTraineesToBatch(editBatch.id, toAdd);
         }
-        return b;
-      });
-      setBatches(updated);
-      mockDataService.saveBatches(updated);
-      triggerToast('Batch parameters and trainee formation updated.');
-    } else {
-      const newId = Date.now();
-      const newBatch = {
-        id: newId,
-        code: formCode,
-        college: formCollege,
-        course: formCourse,
-        trainer: formTrainer,
-        trainees: formTrainees,
-        strength: parseInt(formStrength),
-        timing: formTiming,
-        progress: parseInt(formProgress),
-        schedule: formSchedule
-      };
-      const updated = [...batches, newBatch];
-      setBatches(updated);
-      mockDataService.saveBatches(updated);
-      triggerToast('New college batch & trainer-trainee group established.');
+        for (const tid of toRemove) {
+          await batchService.removeTraineeFromBatch(editBatch.id, tid);
+        }
+
+        localStorage.setItem(`batch_trainees_${editBatch.id}`, JSON.stringify(formTraineeIds));
+        localStorage.setItem(`batch_college_${editBatch.id}`, formCollege);
+        triggerToast('Batch updated successfully.');
+      } else {
+        const response = await batchService.createBatch(payload);
+        const newBatch = response.batch;
+        
+        if (formTraineeIds.length > 0) {
+          await batchService.addTraineesToBatch(newBatch.id, formTraineeIds);
+        }
+
+        localStorage.setItem(`batch_trainees_${newBatch.id}`, JSON.stringify(formTraineeIds));
+        localStorage.setItem(`batch_college_${newBatch.id}`, formCollege);
+        triggerToast('Batch created successfully.');
+      }
+      setIsModalOpen(false);
+      loadData();
+    } catch (err) {
+      console.error('Failed to save batch:', err);
+      alert(err.response?.data?.detail || 'Failed to save batch structure.');
+    } finally {
+      setSubmitting(false);
     }
-    setIsModalOpen(false);
+  };
+
+  const getCourseTitle = (courseId) => {
+    const c = courses.find(course => course.id === courseId);
+    return c ? c.title : 'Unassigned';
+  };
+
+  const getTrainerName = (trainerId) => {
+    const t = trainers.find(tr => tr.id === trainerId);
+    return t ? t.name : 'Unassigned';
+  };
+
+  const getTraineeName = (traineeId) => {
+    const s = allTrainees.find(student => student.id === traineeId);
+    return s ? s.name : 'Unknown';
   };
 
   const filteredBatches = batches.filter(b => {
@@ -157,6 +241,13 @@ export default function AdminBatches() {
         </div>
       </div>
 
+      {/* Error display */}
+      {error && (
+        <div className="admin-card" style={{ padding: '20px', borderColor: 'var(--accent-red)', backgroundColor: '#fff5f5', color: '#c53030' }}>
+          <p>{error}</p>
+        </div>
+      )}
+
       {/* Filter Bar */}
       <div className="admin-card" style={{ padding: '16px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
@@ -181,77 +272,75 @@ export default function AdminBatches() {
         </div>
       </div>
 
-      {/* Grid of Batch Cards */}
-      <div className="admin-stats-grid-9" style={{ marginTop: '0', gridTemplateColumns: 'repeat( auto-fit, minmax(320px, 1fr) )' }}>
-        {filteredBatches.map(b => (
-          <div key={b.id} className="admin-card" style={{ gap: '14px' }}>
-            <div className="admin-card-header">
-              <div>
-                <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--primary-blue)', fontFamily: 'var(--font-family-header)' }}>
-                  {b.code}
-                </span>
-                <span className="admin-badge blue" style={{ fontSize: '10px', marginLeft: '8px' }}>
-                  🏛️ {b.college || 'Unassigned College'}
-                </span>
-              </div>
-              <span className="admin-badge green" style={{ fontSize: '10px' }}>
-                {b.strength} Capacity
-              </span>
-            </div>
+      {/* Loading state */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '64px', color: 'var(--text-medium)' }}>
+          <div className="loading-spinner" style={{ border: '3px solid #f3f3f3', borderTop: '3px solid var(--primary-blue)', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', margin: '0 auto 16px auto' }}></div>
+          <span>Loading batches catalog from Neon database...</span>
+        </div>
+      ) : (
+        /* Grid of Batch Cards */
+        <div className="admin-stats-grid-9" style={{ marginTop: '0', gridTemplateColumns: 'repeat( auto-fit, minmax(320px, 1fr) )' }}>
+          {filteredBatches.length > 0 ? (
+            filteredBatches.map(b => (
+              <div key={b.id} className="admin-card" style={{ gap: '14px' }}>
+                <div className="admin-card-header">
+                  <div>
+                    <span style={{ fontSize: '15px', fontWeight: 800, color: 'var(--primary-blue)', fontFamily: 'var(--font-family-header)' }}>
+                      {b.name}
+                    </span>
+                    <span className="admin-badge blue" style={{ fontSize: '10px', marginLeft: '8px' }}>
+                      🏛️ {b.college || 'Hexaware College'}
+                    </span>
+                  </div>
+                  <span className="admin-badge green" style={{ fontSize: '10px' }}>
+                    {b.max_strength} Capacity
+                  </span>
+                </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-dark)' }}>Course: {b.course}</span>
-              <span style={{ fontSize: '12px', color: 'var(--text-medium)', fontWeight: 600 }}>👨‍🏫 Lead Trainer: <strong>{b.trainer}</strong></span>
-            </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-dark)' }}>Course: {getCourseTitle(b.course_id)}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-medium)', fontWeight: 600 }}>👨‍🏫 Lead Trainer: <strong>{getTrainerName(b.trainer_id)}</strong></span>
+                </div>
 
-            {/* Assigned Trainees */}
-            <div style={{ backgroundColor: 'var(--bg-card-subtle)', padding: '10px', borderRadius: '6px', fontSize: '11px' }}>
-              <div style={{ fontWeight: 700, color: 'var(--text-dark)', marginBottom: '4px' }}>
-                👨‍🎓 Trainee Batch Allocation ({b.trainees?.length || 0}):
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {b.trainees && b.trainees.length > 0 ? (
-                  b.trainees.map((t, idx) => (
-                    <span key={idx} className="admin-badge blue" style={{ fontSize: '10px' }}>{t}</span>
-                  ))
-                ) : (
-                  <span style={{ color: 'var(--text-light)', italic: 'true' }}>No trainees assigned yet</span>
-                )}
-              </div>
-            </div>
+                {/* Assigned Trainees */}
+                <div style={{ backgroundColor: 'var(--bg-card-subtle)', padding: '10px', borderRadius: '6px', fontSize: '11px' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-dark)', marginBottom: '4px' }}>
+                    👨‍🎓 Trainee Batch Allocation ({b.trainees?.length || 0}):
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {b.trainees && b.trainees.length > 0 ? (
+                      b.trainees.map((tid) => (
+                        <span key={tid} className="admin-badge blue" style={{ fontSize: '10px' }}>{getTraineeName(tid)}</span>
+                      ))
+                    ) : (
+                      <span style={{ color: 'var(--text-light)', fontStyle: 'italic' }}>No trainees assigned yet</span>
+                    )}
+                  </div>
+                </div>
 
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', color: 'var(--text-medium)' }}>
-              <span>📅 Timetable: <strong>{b.schedule}</strong></span>
-              <span>⏰ Timings: <strong>{b.timing}</strong></span>
-            </div>
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px', color: 'var(--text-medium)' }}>
+                  <span>📅 Timetable: <strong>{b.start_date} to {b.end_date}</strong></span>
+                  <span>⏰ Timings: <strong>{b.timing}</strong></span>
+                </div>
 
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '11px' }}>
-                <span style={{ color: 'var(--text-medium)' }}>Batch Progress</span>
-                <span style={{ fontWeight: 700, color: 'var(--text-dark)' }}>{b.progress}%</span>
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button className="row-action-btn" title="Modify Batch & Formation" onClick={() => handleOpenEdit(b)}>
+                    <Icon name="edit-3" style={{ width: '14px', height: '14px' }} />
+                  </button>
+                  <button className="row-action-btn delete" title="Delete Batch" onClick={() => handleDelete(b.id)}>
+                    <Icon name="trash-2" style={{ width: '14px', height: '14px' }} />
+                  </button>
+                </div>
               </div>
-              <div className="admin-hbar-track" style={{ height: '6px' }}>
-                <div 
-                  className="admin-hbar-fill" 
-                  style={{ 
-                    width: `${b.progress}%`, 
-                    backgroundColor: b.progress === 100 ? 'var(--accent-green)' : 'var(--primary-blue)' 
-                  }}
-                ></div>
-              </div>
+            ))
+          ) : (
+            <div style={{ gridColumn: 'span 3', textAlign: 'center', padding: '48px', color: 'var(--text-light)' }}>
+              No batches found. Establish a new college batch.
             </div>
-
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button className="row-action-btn" title="Modify Batch & Formation" onClick={() => handleOpenEdit(b)}>
-                <Icon name="edit-3" style={{ width: '14px', height: '14px' }} />
-              </button>
-              <button className="row-action-btn delete" title="Delete Batch" onClick={() => handleDelete(b.id)}>
-                <Icon name="trash-2" style={{ width: '14px', height: '14px' }} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
@@ -289,32 +378,32 @@ export default function AdminBatches() {
 
               <div className="form-group">
                 <label className="form-label">Select Course</label>
-                <select className="form-input" value={formCourse} onChange={(e) => setFormCourse(e.target.value)}>
-                  {allCourses.map(c => (
-                    <option key={c.id} value={c.title}>{c.title}</option>
+                <select className="form-input" value={formCourseId} onChange={(e) => setFormCourseId(e.target.value)}>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
                   ))}
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Assign Lead Trainer</label>
-                <select className="form-input" value={formTrainer} onChange={(e) => setFormTrainer(e.target.value)}>
-                  {allTrainers.map(t => (
-                    <option key={t.id} value={t.name}>{t.name} ({t.expertise})</option>
+                <label className="form-label">Assign Lead Trainer (Mock)</label>
+                <select className="form-input" value={formTrainerId} onChange={(e) => setFormTrainerId(e.target.value)}>
+                  {trainers.map(t => (
+                    <option key={t.id} value={t.id}>{t.name} ({t.expertise})</option>
                   ))}
                 </select>
               </div>
 
               {/* Trainee Batch Formation Selection */}
               <div className="form-group">
-                <label className="form-label">Trainer-Trainee Batch Formation (Select Trainees):</label>
+                <label className="form-label">Trainee Batch Formation (Select Trainees):</label>
                 <div style={{ border: '1px solid var(--border-color)', borderRadius: '6px', padding: '10px', maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {allStudents.map(s => (
+                  {allTrainees.map(s => (
                     <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
                       <input 
                         type="checkbox" 
-                        checked={formTrainees.includes(s.name)} 
-                        onChange={() => toggleTraineeSelection(s.name)}
+                        checked={formTraineeIds.includes(s.id)} 
+                        onChange={() => toggleTraineeSelection(s.id)}
                       />
                       <span>{s.name} ({s.college || 'General'})</span>
                     </label>
@@ -328,15 +417,26 @@ export default function AdminBatches() {
                   <input type="number" className="form-input" value={formStrength} onChange={(e) => setFormStrength(e.target.value)} required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Completion Progress ({formProgress}%)</label>
-                  <input type="number" min="0" max="100" className="form-input" value={formProgress} onChange={(e) => setFormProgress(e.target.value)} required />
+                  <label className="form-label">Start Date</label>
+                  <input type="date" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
-                  <label className="form-label">Timings</label>
-                  <input type="text" className="form-input" placeholder="e.g. 09:00 AM - 11:00 AM" value={formTiming} onChange={(e) => setFormTiming(e.target.value)} required />
+                  <label className="form-label">End Date</label>
+                  <input type="date" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Timings Start</label>
+                  <input type="text" className="form-input" placeholder="e.g. 09:00:00" value={formTiming} onChange={(e) => setFormTiming(e.target.value)} required />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label">Timings End</label>
+                  <input type="text" className="form-input" placeholder="e.g. 11:00:00" value={formEndTime} onChange={(e) => setFormEndTime(e.target.value)} required />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Schedule Days</label>
@@ -346,13 +446,21 @@ export default function AdminBatches() {
 
               <div className="modal-footer">
                 <button type="button" className="action-btn-secondary" style={{ padding: '8px 16px' }} onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="action-btn-primary" style={{ padding: '8px 16px' }}>Save Batch & Formation</button>
+                <button type="submit" className="action-btn-primary" style={{ padding: '8px 16px' }} disabled={submitting}>
+                  {submitting ? 'Saving...' : 'Save Batch & Formation'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

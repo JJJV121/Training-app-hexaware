@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Icon from '../../components/Icon';
-import mockDataService from '../../services/mockDataService';
+import adminUserService from '../../services/adminUserService';
+import adminCourseService from '../../services/adminCourseService';
 
 export default function AdminStudents() {
   const [toastMsg, setToastMsg] = useState(null);
@@ -10,18 +11,74 @@ export default function AdminStudents() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
 
-  // Load state from mockDataService
-  const [students, setStudents] = useState(() => mockDataService.getStudents());
+  // API State management
+  const [students, setStudents] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   // Form Fields
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
-  const [formCollege, setFormCollege] = useState('IIT Madras');
-  const [formCourse, setFormCourse] = useState('Core Java Foundations');
+  const [formCollege, setFormCollege] = useState('');
+  const [formCourseId, setFormCourseId] = useState('');
   const [formProgress, setFormProgress] = useState(0);
   const [formAttendance, setFormAttendance] = useState('95%');
 
-  const collegesList = mockDataService.getColleges();
+  const collegesList = adminUserService.getColleges();
+
+  // Search Debouncing ref
+  const searchTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    loadCoursesAndTrainees();
+  }, []);
+
+  const loadCoursesAndTrainees = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [coursesData, traineesData] = await Promise.all([
+        adminCourseService.getCourses(),
+        adminUserService.getTrainees()
+      ]);
+      setCourses(coursesData);
+      setStudents(traineesData);
+    } catch (err) {
+      console.error('Failed to load trainee data:', err);
+      setError('Could not retrieve students registry. Please check server connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Debounced search logic
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        if (value.trim() === '') {
+          const traineesData = await adminUserService.getTrainees();
+          setStudents(traineesData);
+        } else {
+          const searchResults = await adminUserService.searchTrainees(value);
+          setStudents(searchResults);
+        }
+      } catch (err) {
+        console.error('Failed to search trainees:', err);
+      } finally {
+        setLoading(false);
+      }
+    }, 400); // 400ms debounce delay
+  };
 
   const triggerToast = (msg) => {
     setToastMsg(msg);
@@ -33,7 +90,7 @@ export default function AdminStudents() {
     setFormName('');
     setFormEmail('');
     setFormCollege(collegesList[0] || 'IIT Madras');
-    setFormCourse('Core Java Foundations');
+    setFormCourseId(courses[0]?.id || '');
     setFormProgress(0);
     setFormAttendance('95%');
     setIsModalOpen(true);
@@ -45,22 +102,26 @@ export default function AdminStudents() {
     setFormName(student.name);
     setFormEmail(student.email);
     setFormCollege(student.college || collegesList[0]);
-    setFormCourse(student.course);
-    setFormProgress(student.progress);
-    setFormAttendance(student.attendance);
+    setFormCourseId(student.course_id || '');
+    setFormProgress(student.progress || 0);
+    setFormAttendance(student.attendance || '95%');
     setIsModalOpen(true);
   };
 
-  const handleDeleteStudent = (id, e) => {
+  const handleDeleteStudent = async (id, e) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to delete this student record?')) {
-      const updated = students.filter(s => s.id !== id);
-      setStudents(updated);
-      mockDataService.saveStudents(updated);
-      if (selectedStudent && selectedStudent.id === id) {
-        setSelectedStudent(null);
+      try {
+        await adminUserService.deleteTrainee(id);
+        if (selectedStudent && selectedStudent.id === id) {
+          setSelectedStudent(null);
+        }
+        triggerToast('Student profile deleted.');
+        loadCoursesAndTrainees();
+      } catch (err) {
+        console.error('Failed to delete student:', err);
+        alert(err.response?.data?.detail || 'Failed to delete student.');
       }
-      triggerToast('Student profile deleted.');
     }
   };
 
@@ -71,91 +132,66 @@ export default function AdminStudents() {
     }
   };
 
-  const toggleStudentStatus = (id, e) => {
+  const toggleStudentStatus = async (id, currentActiveState, name, e) => {
     e.stopPropagation();
-    const updated = students.map(s => {
-      if (s.id === id) {
-        const nextState = !s.active;
-        triggerToast(`Account for ${s.name} ${nextState ? 'activated' : 'deactivated'}.`);
-        
-        // Update sidebar state if selected
-        if (selectedStudent && selectedStudent.id === id) {
-          setSelectedStudent({ ...selectedStudent, active: nextState });
-        }
-        return { ...s, active: nextState };
+    const nextState = !currentActiveState;
+    try {
+      await adminUserService.updateTraineeStatus(id, nextState);
+      triggerToast(`Account for ${name} ${nextState ? 'activated' : 'deactivated'}.`);
+      loadCoursesAndTrainees();
+      if (selectedStudent && selectedStudent.id === id) {
+        setSelectedStudent({ ...selectedStudent, is_active: nextState });
       }
-      return s;
-    });
-    setStudents(updated);
-    mockDataService.saveStudents(updated);
+    } catch (err) {
+      console.error('Failed to update student status:', err);
+      alert(err.response?.data?.detail || 'Failed to update student status.');
+    }
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!formName || !formEmail) {
       alert('Please fill out all fields.');
       return;
     }
 
-    if (editStudent) {
-      const updated = students.map(s => {
-        if (s.id === editStudent.id) {
-          return {
-            ...s,
-            name: formName,
-            email: formEmail,
-            college: formCollege,
-            course: formCourse,
-            progress: parseInt(formProgress),
-            attendance: formAttendance
-          };
-        }
-        return s;
-      });
-      setStudents(updated);
-      mockDataService.saveStudents(updated);
-      if (selectedStudent && selectedStudent.id === editStudent.id) {
-        setSelectedStudent({
-          ...selectedStudent,
-          name: formName,
-          email: formEmail,
-          college: formCollege,
-          course: formCourse,
-          progress: parseInt(formProgress),
-          attendance: formAttendance
-        });
+    setSubmitting(true);
+    const payload = {
+      name: formName,
+      email: formEmail,
+      course_id: formCourseId ? Number(formCourseId) : null,
+      college: formCollege,
+      progress: parseInt(formProgress),
+      attendance: formAttendance
+    };
+
+    try {
+      if (editStudent) {
+        await adminUserService.updateTrainee(editStudent.id, payload);
+        triggerToast('Student details updated.');
+      } else {
+        await adminUserService.createTrainee(payload);
+        triggerToast('New student added successfully.');
       }
-      triggerToast('Student details saved.');
-    } else {
-      const newId = students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1;
-      const newStudent = {
-        id: newId,
-        name: formName,
-        email: formEmail,
-        college: formCollege,
-        course: formCourse,
-        progress: parseInt(formProgress),
-        attendance: formAttendance,
-        active: true,
-        joinDate: 'Today',
-        certUnlocked: false,
-        grade: 'N/A'
-      };
-      const updated = [...students, newStudent];
-      setStudents(updated);
-      mockDataService.saveStudents(updated);
-      triggerToast('New student added successfully.');
+      setIsModalOpen(false);
+      loadCoursesAndTrainees();
+    } catch (err) {
+      console.error('Failed to save student:', err);
+      alert(err.response?.data?.detail || 'Failed to save student.');
+    } finally {
+      setSubmitting(false);
     }
-    setIsModalOpen(false);
+  };
+
+  const getCourseTitle = (courseId) => {
+    if (!courseId) return 'Unassigned';
+    const c = courses.find(course => course.id === courseId);
+    return c ? c.title : 'Unassigned';
   };
 
   const filteredStudents = students.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          s.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (s.college && s.college.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                          s.course.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCourse = courseFilter === 'All' || s.course === courseFilter;
-    return matchesSearch && matchesCourse;
+    if (courseFilter === 'All') return true;
+    return s.course_id === Number(courseFilter);
   });
 
   return (
@@ -182,6 +218,13 @@ export default function AdminStudents() {
         </div>
       </div>
 
+      {/* Error state */}
+      {error && (
+        <div className="admin-card" style={{ padding: '20px', borderColor: 'var(--accent-red)', backgroundColor: '#fff5f5', color: '#c53030' }}>
+          <p>{error}</p>
+        </div>
+      )}
+
       {/* Filter and search */}
       <div className="admin-card" style={{ padding: '20px' }}>
         <div className="table-actions-bar">
@@ -189,10 +232,10 @@ export default function AdminStudents() {
             <Icon name="search" className="search-input-icon" />
             <input 
               type="text" 
-              placeholder="Search students by name, college, email, or course..." 
+              placeholder="Search students by name, email, or employee ID..." 
               className="search-input"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
 
@@ -205,176 +248,159 @@ export default function AdminStudents() {
               onChange={(e) => setCourseFilter(e.target.value)}
             >
               <option value="All">All Courses</option>
-              {mockDataService.getCourses().map(c => (
-                <option key={c.id} value={c.title}>{c.title}</option>
+              {courses.map(c => (
+                <option key={c.id} value={c.id}>{c.title}</option>
               ))}
             </select>
           </div>
         </div>
       </div>
 
-      {/* Split view */}
-      <div className="split-view-container">
-        
-        {/* Student Table */}
-        <div className="admin-table-container">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Student & College</th>
-                <th>Enrolled Course</th>
-                <th>Attendance</th>
-                <th>Account Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStudents.length > 0 ? (
-                filteredStudents.map((s) => (
-                  <tr 
-                    key={s.id}
-                    style={{ cursor: 'pointer', backgroundColor: selectedStudent?.id === s.id ? '#f8fafc' : '' }}
-                    onClick={() => setSelectedStudent(s)}
-                  >
-                    <td>
-                      <div className="user-cell">
-                        <div className="user-avatar-circle" style={{ backgroundColor: 'var(--primary-blue-light)' }}>
-                          {s.name.split(' ').map(n => n[0]).join('')}
+      {/* Loading State */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '64px', color: 'var(--text-medium)' }}>
+          <div className="loading-spinner" style={{ border: '3px solid #f3f3f3', borderTop: '3px solid var(--primary-blue)', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', margin: '0 auto 16px auto' }}></div>
+          <span>Loading students list from database...</span>
+        </div>
+      ) : (
+        /* Split view */
+        <div className="split-view-container">
+          
+          {/* Student Table */}
+          <div className="admin-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Student & College</th>
+                  <th>Enrolled Course</th>
+                  <th>Attendance</th>
+                  <th>Account Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredStudents.length > 0 ? (
+                  filteredStudents.map((s) => (
+                    <tr 
+                      key={s.id}
+                      style={{ cursor: 'pointer', backgroundColor: selectedStudent?.id === s.id ? '#f8fafc' : '' }}
+                      onClick={() => setSelectedStudent(s)}
+                    >
+                      <td>
+                        <div className="user-cell">
+                          <div className="user-avatar-circle" style={{ backgroundColor: 'var(--primary-blue-light)' }}>
+                            {s.name ? s.name.split(' ').map(n => n[0]).join('') : 'U'}
+                          </div>
+                          <div className="user-details">
+                            <span className="user-cell-name">{s.name || 'Unnamed Student'}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--primary-blue)', fontWeight: 600 }}>🏛️ {s.college || 'Hexaware Academy'}</span>
+                          </div>
                         </div>
-                        <div className="user-details">
-                          <span className="user-cell-name">{s.name}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--primary-blue)', fontWeight: 600 }}>🏛️ {s.college || 'Unassigned'}</span>
+                      </td>
+                      <td>
+                        <span className="admin-badge blue">{getCourseTitle(s.course_id)}</span>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 700 }}>{s.attendance || '95%'}</span>
+                      </td>
+                      <td>
+                        <div className="toggle-switch-wrapper" onClick={(e) => toggleStudentStatus(s.id, s.is_active, s.name, e)}>
+                          <div className={`toggle-switch-track ${s.is_active ? 'active' : ''}`}>
+                            <div className="toggle-switch-thumb"></div>
+                          </div>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: s.is_active ? 'var(--accent-green)' : 'var(--text-light)' }}>
+                            {s.is_active ? 'Active' : 'Inactive'}
+                          </span>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="admin-badge blue">{s.course}</span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700 }}>{s.attendance}</span>
-                    </td>
-                    <td>
-                      <div className="toggle-switch-wrapper" onClick={(e) => toggleStudentStatus(s.id, e)}>
-                        <div className={`toggle-switch-track ${s.active ? 'active' : ''}`}>
-                          <div className="toggle-switch-thumb"></div>
+                      </td>
+                      <td>
+                        <div className="table-row-actions">
+                          <button className="row-action-btn" title="Edit Student" onClick={(e) => handleOpenEditModal(s, e)}>
+                            <Icon name="edit-3" style={{ width: '14px', height: '14px' }} />
+                          </button>
+                          <button className="row-action-btn" title="Reset Password" onClick={(e) => handleResetPassword(s, e)}>
+                            <Icon name="key" style={{ width: '14px', height: '14px' }} />
+                          </button>
+                          <button className="row-action-btn delete" title="Delete Profile" onClick={(e) => handleDeleteStudent(s.id, e)}>
+                            <Icon name="trash-2" style={{ width: '14px', height: '14px' }} />
+                          </button>
                         </div>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: s.active ? 'var(--accent-green)' : 'var(--text-light)' }}>
-                          {s.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="table-row-actions">
-                        <button className="row-action-btn" title="Edit Student" onClick={(e) => handleOpenEditModal(s, e)}>
-                          <Icon name="edit-3" style={{ width: '14px', height: '14px' }} />
-                        </button>
-                        <button className="row-action-btn" title="Reset Password" onClick={(e) => handleResetPassword(s, e)}>
-                          <Icon name="key" style={{ width: '14px', height: '14px' }} />
-                        </button>
-                        <button className="row-action-btn delete" title="Delete Profile" onClick={(e) => handleDeleteStudent(s.id, e)}>
-                          <Icon name="trash-2" style={{ width: '14px', height: '14px' }} />
-                        </button>
-                      </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-light)' }}>
+                      No student records matching query.
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-light)' }}>
-                    No student records matching query.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          <div className="pagination-container">
-            <span>Showing {filteredStudents.length} of {students.length} Students</span>
-            <div className="pagination-btns">
-              <button className="pagination-btn" disabled>Prev</button>
-              <button className="pagination-btn" disabled>Next</button>
+                )}
+              </tbody>
+            </table>
+            <div className="pagination-container">
+              <span>Showing {filteredStudents.length} of {students.length} Students</span>
+              <div className="pagination-btns">
+                <button className="pagination-btn" disabled>Prev</button>
+                <button className="pagination-btn" disabled>Next</button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Profile Side panel */}
-        <div className="details-side-panel">
-          {selectedStudent ? (
-            <div className="admin-card">
-              <div className="details-card-header">
-                <div className="details-avatar-large">
-                  {selectedStudent.name.split(' ').map(n => n[0]).join('')}
-                </div>
-                <h3 className="details-name">{selectedStudent.name}</h3>
-                <span className="details-email">{selectedStudent.email}</span>
-                <span className={`admin-badge ${selectedStudent.active ? 'green' : 'red'}`}>
-                  {selectedStudent.active ? 'Account Active' : 'Account Suspended'}
-                </span>
-              </div>
-
-              <div className="details-body-list">
-                <div className="details-body-item">
-                  <span className="details-item-label">Enrolled Course</span>
-                  <span className="details-item-value">{selectedStudent.course}</span>
-                </div>
-                <div className="details-body-item">
-                  <span className="details-item-label">Attendance Rate</span>
-                  <span className="details-item-value">{selectedStudent.attendance}</span>
-                </div>
-                <div className="details-body-item">
-                  <span className="details-item-label">Current Grade</span>
-                  <span className="details-item-value" style={{ color: 'var(--primary-blue)' }}>{selectedStudent.grade}</span>
-                </div>
-                <div className="details-body-item">
-                  <span className="details-item-label">Registration Date</span>
-                  <span className="details-item-value">{selectedStudent.joinDate}</span>
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span className="details-item-label" style={{ fontWeight: 700 }}>Learning Progress</span>
-                    <span className="details-item-value">{selectedStudent.progress}%</span>
+          {/* Profile Side panel */}
+          <div className="details-side-panel">
+            {selectedStudent ? (
+              <div className="admin-card">
+                <div className="details-card-header">
+                  <div className="details-avatar-large">
+                    {selectedStudent.name ? selectedStudent.name.split(' ').map(n => n[0]).join('') : 'U'}
                   </div>
-                  <div className="admin-hbar-track" style={{ height: '8px' }}>
-                    <div className="admin-hbar-fill" style={{ width: `${selectedStudent.progress}%`, backgroundColor: 'var(--primary-blue)' }}></div>
-                  </div>
+                  <h3 className="details-name">{selectedStudent.name || 'Unnamed Student'}</h3>
+                  <span className="details-email">{selectedStudent.email}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-medium)', marginBottom: '8px' }}>Emp ID: {selectedStudent.employee_id}</span>
+                  <span className={`admin-badge ${selectedStudent.is_active ? 'green' : 'red'}`}>
+                    {selectedStudent.is_active ? 'Account Active' : 'Account Suspended'}
+                  </span>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-dark)' }}>Course Certificate</h4>
-                    <span style={{ fontSize: '11px', color: 'var(--text-medium)' }}>
-                      {selectedStudent.progress === 100 ? 'Eligible for unlock' : 'Locked (course incomplete)'}
-                    </span>
+                <div className="details-body-list">
+                  <div className="details-body-item">
+                    <span className="details-item-label">Enrolled Course</span>
+                    <span className="details-item-value">{getCourseTitle(selectedStudent.course_id)}</span>
                   </div>
-                  <button 
-                    className="row-action-btn"
-                    title={selectedStudent.certUnlocked ? 'Lock Certificate' : 'Unlock Certificate'}
-                    onClick={() => {
-                      const nextState = !selectedStudent.certUnlocked;
-                      setStudents(students.map(s => s.id === selectedStudent.id ? { ...s, certUnlocked: nextState } : s));
-                      setSelectedStudent({ ...selectedStudent, certUnlocked: nextState });
-                      triggerToast(`Certificate for ${selectedStudent.name} ${nextState ? 'Unlocked' : 'Locked'}`);
-                    }}
-                    style={{
-                      backgroundColor: selectedStudent.certUnlocked ? 'var(--accent-green-light)' : '#f1f5f9',
-                      color: selectedStudent.certUnlocked ? 'var(--accent-green)' : 'var(--text-medium)',
-                      borderColor: selectedStudent.certUnlocked ? 'var(--accent-green)' : 'var(--border-color)'
-                    }}
-                  >
-                    <Icon name={selectedStudent.certUnlocked ? 'award' : 'lock'} style={{ width: '16px', height: '16px' }} />
-                  </button>
+                  <div className="details-body-item">
+                    <span className="details-item-label">Attendance Rate</span>
+                    <span className="details-item-value">{selectedStudent.attendance || '95%'}</span>
+                  </div>
+                  <div className="details-body-item">
+                    <span className="details-item-label">Current Grade</span>
+                    <span className="details-item-value" style={{ color: 'var(--primary-blue)' }}>{selectedStudent.grade || 'N/A'}</span>
+                  </div>
+                  <div className="details-body-item">
+                    <span className="details-item-label">Registration Date</span>
+                    <span className="details-item-value">{selectedStudent.created_at ? new Date(selectedStudent.created_at).toLocaleDateString() : 'Today'}</span>
+                  </div>
+
+                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span className="details-item-label" style={{ fontWeight: 700 }}>Learning Progress</span>
+                      <span className="details-item-value">{selectedStudent.progress || 0}%</span>
+                    </div>
+                    <div className="admin-hbar-track" style={{ height: '8px' }}>
+                      <div className="admin-hbar-fill" style={{ width: `${selectedStudent.progress || 0}%`, backgroundColor: 'var(--primary-blue)' }}></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="admin-card" style={{ justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '300px', color: 'var(--text-light)', textAlign: 'center', border: '1px dashed #cbd5e1', background: 'none' }}>
-              <Icon name="users" style={{ width: '48px', height: '48px', marginBottom: '12px', opacity: 0.5 }} />
-              <p style={{ fontSize: '13px', fontWeight: 600 }}>Select a student from the list to view attendance, enrolled course metrics, certificate audits, and learning statistics.</p>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="admin-card" style={{ justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '300px', color: 'var(--text-light)', textAlign: 'center', border: '1px dashed #cbd5e1', background: 'none' }}>
+                <Icon name="users" style={{ width: '48px', height: '48px', marginBottom: '12px', opacity: 0.5 }} />
+                <p style={{ fontSize: '13px', fontWeight: 600 }}>Select a student from the list to view attendance, enrolled course metrics, certificate audits, and learning statistics.</p>
+              </div>
+            )}
+          </div>
 
-      </div>
+        </div>
+      )}
 
       {/* Add / Edit Modal */}
       {isModalOpen && (
@@ -406,7 +432,7 @@ export default function AdminStudents() {
                   <input 
                     type="email" 
                     className="form-input" 
-                    placeholder="e.g. g.mohan@hexaware.com"
+                    placeholder="e.g. e.carter@hexaware.com"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
                     required
@@ -431,13 +457,13 @@ export default function AdminStudents() {
                 <label className="form-label">Enrolled Course</label>
                 <select 
                   className="form-input"
-                  value={formCourse}
-                  onChange={(e) => setFormCourse(e.target.value)}
+                  value={formCourseId}
+                  onChange={(e) => setFormCourseId(e.target.value)}
                 >
-                  <option value="Core Java Foundations">Core Java Foundations</option>
-                  <option value="Python for Data Analysis">Python for Data Analysis</option>
-                  <option value="SQL & DBMS Essentials">SQL & DBMS Essentials</option>
-                  <option value="React Frontend Advanced">React Frontend Advanced</option>
+                  <option value="">Unassigned</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
                 </select>
               </div>
 
@@ -468,13 +494,21 @@ export default function AdminStudents() {
 
               <div className="modal-footer">
                 <button type="button" className="action-btn-secondary" style={{ padding: '8px 16px' }} onClick={() => setIsModalOpen(false)}>Cancel</button>
-                <button type="submit" className="action-btn-primary" style={{ padding: '8px 16px' }}>Save Student</button>
+                <button type="submit" className="action-btn-primary" style={{ padding: '8px 16px' }} disabled={submitting}>
+                  {submitting ? 'Saving...' : 'Save Student'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

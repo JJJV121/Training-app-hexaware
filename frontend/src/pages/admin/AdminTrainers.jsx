@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Icon from '../../components/Icon';
-import mockDataService from '../../services/mockDataService';
+import trainerMockService from '../../services/trainerMockService';
 
 export default function AdminTrainers() {
   const [toastMsg, setToastMsg] = useState(null);
@@ -10,8 +10,8 @@ export default function AdminTrainers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editTrainer, setEditTrainer] = useState(null); // null means adding a new trainer
 
-  // Load state from mockDataService
-  const [trainers, setTrainers] = useState(() => mockDataService.getTrainers());
+  // Load state from trainerMockService
+  const [trainers, setTrainers] = useState(() => trainerMockService.getTrainers());
 
   // Form Fields
   const [formName, setFormName] = useState('');
@@ -51,7 +51,7 @@ export default function AdminTrainers() {
     if (confirm('Are you sure you want to delete this trainer?')) {
       const updated = trainers.filter(t => t.id !== id);
       setTrainers(updated);
-      mockDataService.saveTrainers(updated);
+      trainerMockService.saveTrainers(updated);
       if (selectedTrainer && selectedTrainer.id === id) {
         setSelectedTrainer(null);
       }
@@ -82,7 +82,7 @@ export default function AdminTrainers() {
         return t;
       });
       setTrainers(updated);
-      mockDataService.saveTrainers(updated);
+      trainerMockService.saveTrainers(updated);
       // Update sidebar details if selected
       if (selectedTrainer && selectedTrainer.id === editTrainer.id) {
         setSelectedTrainer({
@@ -113,11 +113,12 @@ export default function AdminTrainers() {
       };
       const updated = [...trainers, newTrainer];
       setTrainers(updated);
-      mockDataService.saveTrainers(updated);
+      trainerMockService.saveTrainers(updated);
       triggerToast('New trainer added successfully.');
     }
     setIsModalOpen(false);
   };
+
 
   // Filter and Search logic
   const filteredTrainers = trainers.filter(t => {
