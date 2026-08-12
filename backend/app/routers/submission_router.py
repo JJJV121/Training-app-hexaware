@@ -1,3 +1,6 @@
+from app.core.dependencies import get_current_user,require_trainee
+from app.models.user import User
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,15 +33,15 @@ router = APIRouter(
 )
 async def create_submission(
     payload: SubmissionCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee)
 ):
     try:
-        # Mock trainee until authentication is merged
-        trainee_id = 3
+        
         submission = await run_submission(
             db=db,
             problem_id=payload.problem_id,
-            user_id=trainee_id,
+            user_id=current_user.id,
             source_code=payload.source_code,
             language_id=payload.language_id
         )
@@ -60,12 +63,13 @@ async def create_submission(
     response_model=list[SubmissionResponse]
 )
 async def get_my_submissions(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee)
 ):
-    trainee_id = 3
+    
     result = await db.execute(
         select(CodingSubmission).where(
-            CodingSubmission.user_id == trainee_id
+            CodingSubmission.user_id == current_user.id
         )
     )
 
@@ -81,7 +85,8 @@ async def get_my_submissions(
 )
 async def get_submission(
     submission_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     submission = await db.scalar(
         select(CodingSubmission).where(
@@ -93,6 +98,21 @@ async def get_submission(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Submission not found"
+        )
+
+    # Trainee can only view their own submission
+    if current_user.role == "trainee":
+        if submission.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only view your own submission"
+            )
+
+    # Trainer/Admin can view submissions
+    elif current_user.role not in ["trainer", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to view this submission"
         )
 
     return submission

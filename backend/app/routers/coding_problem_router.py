@@ -1,3 +1,9 @@
+from app.core.dependencies import (
+    get_current_user,
+    require_admin,
+)
+from app.models.user import User
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +43,8 @@ router = APIRouter(
 )
 async def create_problem(
     payload: CodingProblemCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     assignment = await db.scalar(
         select(Assignment).where(
@@ -78,10 +85,11 @@ async def create_problem(
     if data["deadline"] is not None:
         data["deadline"] = data["deadline"].replace(tzinfo=None)
 
-    problem = CodingProblem(**data)
+    problem = CodingProblem(
+        **data,
+        created_by=current_user.id
+    )
     
-    
-    # problem = CodingProblem( **payload.model_dump() TODO: replace with current_user.id after auth integration "created_by=current_user.id")
 
     db.add(problem)
     await db.commit()
@@ -96,7 +104,8 @@ async def create_problem(
     response_model=list[CodingProblemResponse]
 )
 async def get_all_problems(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
         select(CodingProblem)
@@ -114,7 +123,8 @@ async def get_all_problems(
 )
 async def get_problem(
     problem_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(
@@ -141,7 +151,8 @@ async def get_problem(
 async def update_problem(
     problem_id: int,
     payload: CodingProblemUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(
@@ -200,7 +211,8 @@ async def update_problem(
 )
 async def delete_problem(
     problem_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(
@@ -229,7 +241,8 @@ async def delete_problem(
 async def add_testcase(
     problem_id: int,
     payload: TestCaseCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(
@@ -264,7 +277,8 @@ async def add_testcase(
 )
 async def get_testcases(
     problem_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(

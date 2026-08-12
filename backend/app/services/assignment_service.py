@@ -82,8 +82,9 @@ async def update_assignment(
 
     for key, value in update_data.items():
         setattr(assignment, key, value)
-
-    assignment.attachment_path = attachment_path
+        
+    if attachment_path is not None:
+        assignment.attachment_path = attachment_path
 
     await db.commit()
     await db.refresh(assignment)

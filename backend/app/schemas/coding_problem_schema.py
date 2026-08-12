@@ -13,7 +13,6 @@ class CodingProblemCreate(BaseModel):
     sample_input: Optional[str] = None
     sample_output: Optional[str] = None
     deadline: datetime | None = None
-    created_by: int
 
 class CodingProblemUpdate(BaseModel):
     assignment_id: Optional[int] = None

@@ -1,3 +1,6 @@
+from app.core.dependencies import require_trainee, require_trainer
+from app.models.user import User
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -18,7 +21,6 @@ from app.services.assignment_submission_service import (
     evaluate_submission,
     get_submission_by_id,
     get_user_submissions,
-    get_assignment_submissions,
 )
 from app.utils.file_upload import save_uploaded_file
 
@@ -35,9 +37,9 @@ async def submit_assignment_api(
     github_url: str | None = Form(None),
     file: UploadFile = File(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee),
 ):
-    # Mock trainee until authentication is merged
-    trainee_id = 3
+    
 
     submission_path = None
 
@@ -50,7 +52,7 @@ async def submit_assignment_api(
     return await submit_assignment(
         db=db,
         assignment_id=assignment_id,
-        user_id=trainee_id,
+        user_id=current_user.id,
         submission_text=submission_text,
         github_url=github_url,
         submission_path=submission_path,
@@ -63,8 +65,8 @@ async def evaluate_submission_api(
     submission_id: int,
     data: AssignmentEvaluation,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainer),
 ):
-    trainer_id = 1
 
     submission = await get_submission_by_id(
         db,
@@ -80,7 +82,7 @@ async def evaluate_submission_api(
     return await evaluate_submission(
         db,
         submission,
-        trainer_id,
+        current_user.id,
         data,
     )
 
@@ -89,10 +91,10 @@ async def evaluate_submission_api(
             response_model=list[AssignmentSubmissionResponse])
 async def my_submissions(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee),
 ):
-    trainee_id = 3
 
     return await get_user_submissions(
         db,
-        trainee_id,
+        current_user.id,
     )

@@ -10,8 +10,6 @@ from app.models.assignment_submission import (
 from app.models.assignment import Assignment, AssignmentType
 from app.schemas.assignment_submission import AssignmentEvaluation
 from app.services.assignment_unlock_service import is_assignment_unlocked
-from app.models.assignment_submission import AssignmentSubmission
-
 
 async def submit_assignment(
     db: AsyncSession,
@@ -36,16 +34,18 @@ async def submit_assignment(
         )
     current_time = datetime.now(timezone.utc)
 
-    assignment_due = assignment.due_date
+    if assignment.due_date:
+        assignment_due = assignment.due_date
 
-    if assignment_due.tzinfo is None:
-           assignment_due = assignment_due.replace(tzinfo=timezone.utc)
+        if assignment_due.tzinfo is None:
+            assignment_due = assignment_due.replace(tzinfo=timezone.utc)
 
-    if current_time > assignment_due:
-          raise HTTPException(
-        status_code=400,
-        detail="Assignment submission deadline has passed."
-    )
+        if current_time > assignment_due:
+            raise HTTPException(
+                status_code=400,
+                detail="Assignment submission deadline has passed."
+            )
+        
     # Prevent duplicate submission
     result = await db.execute(
         select(AssignmentSubmission).where(

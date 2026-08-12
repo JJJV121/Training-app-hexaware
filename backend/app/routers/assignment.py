@@ -1,5 +1,6 @@
 from datetime import datetime
-from fastapi import status
+from app.core.dependencies import get_current_user,require_admin, require_trainer
+from app.models.user import User
 
 from fastapi import (
     APIRouter,
@@ -50,9 +51,9 @@ async def create_assignment_api(
     due_date: datetime = Form(...),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
-    # Mock trainer until authentication is merged
-    trainer_id = 1
+    
 
     attachment_path = None
 
@@ -76,7 +77,7 @@ async def create_assignment_api(
     return await create_assignment(
         db=db,
         data=assignment_data,
-        created_by=trainer_id,
+        created_by=current_user.id,
         attachment_path=attachment_path,
     )
 
@@ -86,6 +87,7 @@ async def create_assignment_api(
 @router.get("/", response_model=list[AssignmentResponse])
 async def get_assignments_api(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return await get_all_assignments(db)
 
@@ -104,6 +106,7 @@ async def update_assignment_api(
     passing_marks: int | None = Form(None),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     assignment = await get_assignment_by_id(
         db,
@@ -163,6 +166,7 @@ async def update_assignment_api(
 async def delete_assignment_api(
     assignment_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     assignment = await get_assignment_by_id(
         db,
@@ -192,6 +196,7 @@ async def delete_assignment_api(
 async def get_assignment_api(
     assignment_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     assignment = await get_assignment_by_id(
         db,
@@ -213,6 +218,7 @@ async def get_assignment_api(
 async def get_assignment_submissions_api(
     assignment_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainer),
 ):
     assignment = await get_assignment_by_id(
         db,
