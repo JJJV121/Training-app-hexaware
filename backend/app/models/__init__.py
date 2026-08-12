@@ -18,3 +18,5 @@ from app.models.coding_problem import CodingProblem
 from app.models.hidden_test_case import HiddenTestCase
 from app.models.coding_submission import CodingSubmission
 from app.models.assignment_submission import AssignmentSubmission
+from app.models.batch_models import Batch, BatchTrainee
+
