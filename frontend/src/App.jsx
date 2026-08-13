@@ -162,6 +162,14 @@ function AdminApp() {
   );
 }
 
+function ProtectedRoute({ children }) {
+  const hasAuthToken = Boolean(
+    localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
+  );
+
+  return hasAuthToken ? children : <Navigate to="/login" replace />;
+}
+
 function AppRoutes() {
   const { isDarkMode } = useTheme();
   const location = useLocation();
@@ -181,10 +189,10 @@ function AppRoutes() {
         <Route path="/register-course" element={<RegisterCourse />} />
         <Route path="/forgot-password" element={<ForgotPassword/>}/>
         <Route path="/reset-password" element={<ResetPassword/>}/>
-        <Route path="/dashboard" element={<DashBoard/>}/>
+        <Route path="/dashboard" element={<ProtectedRoute><DashBoard /></ProtectedRoute>}/>
         
         {/* Admin route */}
-        <Route path="/admin/*" element={<AdminApp />}/>
+        <Route path="/admin/*" element={<ProtectedRoute><AdminApp /></ProtectedRoute>}/>
         
         {/* Catch-all route to redirect unknown URLs back to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
