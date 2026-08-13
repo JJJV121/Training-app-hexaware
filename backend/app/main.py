@@ -28,6 +28,7 @@ from app.routers.case_study_router import router as case_study_router
 from app.routers.generator_router import router as generator_router
 
 from app.database.session import test_connection
+from app.utils.index_setup import setup_indexes
 
 
 app = FastAPI()
@@ -42,6 +43,7 @@ app.mount(
 @app.on_event("startup")
 async def startup():
     await test_connection()
+    await setup_indexes()
 
 
 app.add_middleware(

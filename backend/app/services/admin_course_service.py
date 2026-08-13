@@ -12,6 +12,7 @@ from app.models.learning_unit import LearningUnit
 
 from app.schemas.course import CourseCreate
 from app.schemas.admin_course import CourseUpdate
+from app.utils.cache_utils import cache_get, cache_set, clear_course_cache
 
 
 # 1. Create Course
@@ -37,13 +38,22 @@ async def create_course(
 
 # 2. Get All Courses
 async def get_all_courses(
-    db: AsyncSession
+    db: AsyncSession,
+    page: int = 1,
+    size: int = 20,
 ):
-    result = await db.scalars(
-        select(Course)
-    )
+    cache_key = f"admin_courses:page={page}:size={size}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
 
-    return result.all()
+    offset = (page - 1) * size
+    result = await db.scalars(
+        select(Course).offset(offset).limit(size)
+    )
+    courses = result.all()
+    await cache_set(cache_key, courses)
+    return courses
 
 
 # 3. Get Course By ID
@@ -85,6 +95,7 @@ async def update_course(
 
     await db.commit()
     await db.refresh(course)
+    await clear_course_cache(course_id)
 
     return course
 
@@ -121,6 +132,7 @@ async def delete_course(
 
     await db.delete(course)
     await db.commit()
+    await clear_course_cache(course_id)
 
     return {
         "message": "Course deleted successfully"
@@ -146,6 +158,7 @@ async def update_course_status(
 
     await db.commit()
     await db.refresh(course)
+    await clear_course_cache(course_id)
 
     return course
 

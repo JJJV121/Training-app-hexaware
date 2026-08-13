@@ -24,6 +24,12 @@ const sleep = (ms = 600) => new Promise(resolve => setTimeout(resolve, ms));
 const courseService = {
   // 1. Fetch full course relational structure (Course -> Days -> Units)
   async getCourseContent(courseId) {
+    if (!this._cache) this._cache = {};
+    if (this._cache[courseId]) {
+      console.log('Returning cached course content for', courseId);
+      return this._cache[courseId];
+    }
+
     if (USE_MOCK_DATA) {
       await sleep();
       return {
@@ -54,6 +60,7 @@ const courseService = {
       };
     }
     const response = await apiClient.get(`/courses/${courseId}/content`);
+    this._cache[courseId] = response.data;
     return response.data;
   },
 

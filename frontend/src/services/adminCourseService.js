@@ -1,8 +1,10 @@
 import apiClient from './apiClient';
 
 const adminCourseService = {
-  async getCourses() {
-    const response = await apiClient.get('/admin/courses/');
+  async getCourses(page = 1, size = 20) {
+    const response = await apiClient.get('/admin/courses/', {
+        params: { page, size }
+    });
     return response.data;
   },
 

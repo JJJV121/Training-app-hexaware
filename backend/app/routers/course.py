@@ -12,7 +12,9 @@ from app.services.course_service import (
     get_videos_by_learning_unit,
     get_course_content,
     enroll_user_in_course,
-    get_user_courses
+    get_course_summaries as get_course_summaries_helper,
+
+
 )
 
 from app.services.lesson_service import (
@@ -29,9 +31,11 @@ router = APIRouter(
 
 @router.get("/")
 async def get_courses(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    page: int = 1,
+    size: int = 20,
 ):
-    return await get_all_courses(db)
+    return await get_all_courses(db, page=page, size=size)
 
 
 @router.get("/{course_id}")
@@ -75,23 +79,19 @@ async def get_course_full_content(
     course_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-
     try:
-        # Auto-process all days of the course to generate required plan content first
-        from sqlalchemy import select
-        from app.models.course_day import CourseDay
-        from app.services.day_processor_service import process_course_day
+        from app.utils.cache_utils import cache_get, cache_set
+        
+        # Try returning cached course content directly
+        cache_key = f"course_content:{course_id}"
+        cached_content = await cache_get(cache_key)
+        if cached_content is not None:
+            return cached_content
 
-        stmt = select(CourseDay.id).where(CourseDay.course_id == course_id)
-        days_res = await db.execute(stmt)
-        day_ids = days_res.scalars().all()
-        for day_id in day_ids:
-            await process_course_day(db, course_id, day_id)
-
-        return await get_course_content(
-            db,
-            course_id
-        )
+        # Retrieve and cache course content
+        content = await get_course_content(db, course_id)
+        await cache_set(cache_key, content, expire=3600)
+        return content
 
     except ValueError as e:
 
@@ -187,3 +187,9 @@ async def enroll_course(
             status_code=400,
             detail=str(e)
         )   
+
+# New endpoint for paginated course summaries
+@router.get("/summaries")
+async def get_course_summaries(page: int = 1, size: int = 20, db: AsyncSession = Depends(get_db)):
+    return await get_course_summaries(db, page, size)
+

@@ -9,16 +9,27 @@ from app.models.video import Video
 from app.models.content import Content
 from app.models.enrollment import Enrollment
 from sqlalchemy import func
+from app.utils.cache_utils import cache_get, cache_set
 
 
 async def get_all_courses(
-    db: AsyncSession
+    db: AsyncSession,
+    page: int = 1,
+    size: int = 20
 ):
-    result = await db.scalars(
-        select(Course)
-    )
+    cache_key = f"courses:page={page}:size={size}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached
 
-    return result.all()
+    offset = (page - 1) * size
+    result = await db.scalars(
+        select(Course).offset(offset).limit(size)
+    )
+    courses = result.all()
+    await cache_set(cache_key, courses)
+    return courses
+
 
 
 async def get_course_by_id(
@@ -130,10 +141,34 @@ async def get_course_content(
         if r_unit is not None:
             days_dict[r_day.id]["units"].append(r_unit)
 
-    result = [days_dict[day_id] for day_id in day_order]
+    course_data = {
+        "id": course.id,
+        "title": course.title,
+        "description": course.description,
+        "duration_days": course.duration_days,
+        "thumbnail_url": course.thumbnail_url
+    }
+
+    result = []
+    for day_id in day_order:
+        day_dict = days_dict[day_id]
+        units_list = []
+        for unit in day_dict["units"]:
+            units_list.append({
+                "id": unit.id,
+                "title": unit.title,
+                "duration_mins": unit.duration_minutes,
+                "display_order": unit.display_order
+            })
+        result.append({
+            "day_id": day_dict["day_id"],
+            "day_number": day_dict["day_number"],
+            "title": day_dict["title"],
+            "learning_units": units_list
+        })
 
     return {
-        "course": course,
+        "course": course_data,
         "days": result
     }
 
@@ -185,3 +220,20 @@ async def get_user_courses(
     )
 
     return result.all()
+
+from sqlalchemy import select
+
+async def get_course_summaries(db: AsyncSession, page: int = 1, size: int = 20):
+    offset = (page - 1) * size
+    stmt = select(Course.id, Course.title, Course.description, Course.thumbnail_url).offset(offset).limit(size)
+    result = await db.execute(stmt)
+    rows = result.all()
+    return [
+        {
+            "id": row.id,
+            "title": row.title,
+            "description": row.description,
+            "thumbnail_url": getattr(row, "thumbnail_url", None)
+        }
+        for row in rows
+    ]

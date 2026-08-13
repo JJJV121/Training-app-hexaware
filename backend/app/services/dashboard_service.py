@@ -95,20 +95,27 @@ async def get_dashboard(
     # Primary active course is the first one (most recently enrolled)
     active_enrollment, active_course = user_enrollments[0]
 
-    # Calculate active course days
-    course_days = (
-        await db.scalars(
-            select(CourseDay)
-            .where(CourseDay.course_id == active_course.id)
-            .order_by(CourseDay.day_number)
-        )
-    ).all()
-    
+    course_ids = [c.id for _, c in user_enrollments]
+    all_cdays_res = await db.scalars(
+        select(CourseDay)
+        .where(CourseDay.course_id.in_(course_ids))
+        .order_by(CourseDay.day_number)
+    )
+    all_cdays = all_cdays_res.all()
+
+    # Map course_id -> list of CourseDay
+    course_days_map = {}
+    for day in all_cdays:
+        course_days_map.setdefault(day.course_id, []).append(day)
+
+    # Get active course days
+    course_days = course_days_map.get(active_course.id, [])
     day_ids = [day.id for day in course_days]
 
-    total_map = {}
-    completed_map = {}
-    if day_ids:
+    all_day_ids = [day.id for day in all_cdays]
+    day_stats_map = {} # day_id -> (total_units, completed_units, completed_at_max)
+
+    if all_day_ids:
         day_progress_stmt = (
             select(
                 LearningUnit.day_id,
@@ -122,21 +129,24 @@ async def get_dashboard(
                 & (Progress.user_id == user_id)
                 & (Progress.is_completed.is_(True))
             )
-            .where(LearningUnit.day_id.in_(day_ids))
+            .where(LearningUnit.day_id.in_(all_day_ids))
             .group_by(LearningUnit.day_id)
         )
         day_progress_res = await db.execute(day_progress_stmt)
 
         for row_dp in day_progress_res.all():
             d_id, tot, comp, comp_at = row_dp
-            total_map[d_id] = tot
-            completed_map[d_id] = (comp, comp_at)
+            day_stats_map[d_id] = (tot, comp, comp_at)
 
     day_progress_map = {}
     completed_days = 0
+    total_modules = 0
+    completed_modules = 0
+
     for day in course_days:
-        day_total_modules = total_map.get(day.id, 0)
-        day_completed_modules, completed_at_max_raw = completed_map.get(day.id, (0, None))
+        day_total_modules, day_completed_modules, completed_at_max_raw = day_stats_map.get(day.id, (0, 0, None))
+        total_modules += day_total_modules
+        completed_modules += day_completed_modules
 
         completed_at_max = None
         if day_completed_modules >= day_total_modules and day_total_modules > 0:
@@ -150,8 +160,6 @@ async def get_dashboard(
         }
 
     current_day = calculate_unlocked_day(course_days, day_progress_map)
-    total_modules = sum(total_map.values())
-    completed_modules = sum(val[0] for val in completed_map.values())
     remaining_modules = max(0, total_modules - completed_modules)
 
     # Calculate completed percentage based on completed_days vs total_days
@@ -291,38 +299,18 @@ async def get_dashboard(
     # Calculate other enrolled courses
     enrolled_courses_data = []
     for enrollment_item, course_item in user_enrollments:
-        cdays = (await db.scalars(
-            select(CourseDay)
-            .where(CourseDay.course_id == course_item.id)
-        )).all()
-        cday_ids = [d.id for d in cdays]
+        cdays = course_days_map.get(course_item.id, [])
         
         ctotal_modules = 0
         ccompleted_modules = 0
         ccompleted_days = 0
         
-        if cday_ids:
-            day_stats_stmt = (
-                select(
-                    LearningUnit.day_id,
-                    func.count(LearningUnit.id),
-                    func.count(Progress.id)
-                )
-                .outerjoin(
-                    Progress,
-                    (Progress.learning_unit_id == LearningUnit.id)
-                    & (Progress.user_id == user_id)
-                    & (Progress.is_completed.is_(True))
-                )
-                .where(LearningUnit.day_id.in_(cday_ids))
-                .group_by(LearningUnit.day_id)
-            )
-            day_stats_res = await db.execute(day_stats_stmt)
-            for d_id, tot, comp in day_stats_res.all():
-                ctotal_modules += tot
-                ccompleted_modules += comp
-                if tot > 0 and comp >= tot:
-                    ccompleted_days += 1
+        for d in cdays:
+            tot, comp, _ = day_stats_map.get(d.id, (0, 0, None))
+            ctotal_modules += tot
+            ccompleted_modules += comp
+            if tot > 0 and comp >= tot:
+                ccompleted_days += 1
         
         c_pct = 0.0
         if cdays:

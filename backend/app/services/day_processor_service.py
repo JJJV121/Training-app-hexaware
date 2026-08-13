@@ -13,14 +13,25 @@ from app.models.assignment import Assignment, AssignmentType
 from app.models.case_study import CaseStudy
 from app.routers.generator_router import get_templated_suggestions
 
-async def process_course_day(db: AsyncSession, course_id: int, day_id: int):
-    # 1. Fetch Course and Day
-    course = await db.get(Course, course_id)
-    if not course:
+async def process_course_day(db: AsyncSession, course_id: int, day_id: int, commit: bool = True):
+    from app.utils.cache_utils import cache_get, cache_set
+    
+    # Check cache first
+    cache_key = f"day_processed:{day_id}"
+    if await cache_get(cache_key):
         return
-    day = await db.get(CourseDay, day_id)
-    if not day or day.course_id != course_id:
+
+    # 1. Fetch Course and Day in a single joined query
+    stmt_day = (
+        select(CourseDay, Course)
+        .join(Course, Course.id == CourseDay.course_id)
+        .where(CourseDay.id == day_id)
+    )
+    res_day = await db.execute(stmt_day)
+    row = res_day.first()
+    if not row:
         return
+    day, course = row
 
     # Fetch all learning units for this day
     stmt_units = select(LearningUnit).where(LearningUnit.day_id == day_id)
@@ -29,18 +40,19 @@ async def process_course_day(db: AsyncSession, course_id: int, day_id: int):
     unit_ids = [u.id for u in units]
     unit_titles = [u.title for u in units]
 
-    # 2. Check existing Videos & Video Q&As
+    # 2. Check existing Videos & Video Q&As in bulk
     if unit_ids:
         stmt_videos = select(Video).where(Video.learning_unit_id.in_(unit_ids))
         videos_res = await db.execute(stmt_videos)
         videos = videos_res.scalars().all()
 
-        for video in videos:
-            stmt_qa = select(LessonQA).where(LessonQA.learning_unit_id == video.learning_unit_id)
-            qa_res = await db.execute(stmt_qa)
-            existing_qa = qa_res.scalars().first()
+        # Bulk fetch existing Q&As for these learning units
+        stmt_qa = select(LessonQA).where(LessonQA.learning_unit_id.in_(unit_ids))
+        qa_res = await db.execute(stmt_qa)
+        existing_qas = {qa.learning_unit_id: qa for qa in qa_res.scalars().all()}
 
-            if not existing_qa:
+        for video in videos:
+            if video.learning_unit_id not in existing_qas:
                 # Generate video-specific Q&A based on its title
                 suggestions = get_templated_suggestions(course.title, video.title, "")
                 new_qa = LessonQA(
@@ -62,14 +74,22 @@ async def process_course_day(db: AsyncSession, course_id: int, day_id: int):
     # Load templates/suggestions for the day
     suggestions = get_templated_suggestions(course.title, day.title, day.description)
 
-    # 4. Check existing Assignment (Standard Assignment: type CODING or NON_CODING, title not starting with "Assessment:")
-    stmt_asg = select(Assignment).where(
-        Assignment.course_day_id == day_id,
-        Assignment.assignment_type.in_([AssignmentType.CODING, AssignmentType.NON_CODING]),
-        ~Assignment.title.like("Assessment:%")
-    )
+    # Bulk fetch all assignments for this day
+    stmt_asg = select(Assignment).where(Assignment.course_day_id == day_id)
     asg_res = await db.execute(stmt_asg)
-    existing_asg = asg_res.scalars().first()
+    all_assignments = asg_res.scalars().all()
+
+    existing_asg = None
+    existing_assess = None
+    existing_proj = None
+
+    for asg in all_assignments:
+        if asg.assignment_type in [AssignmentType.CODING, AssignmentType.NON_CODING] and not asg.title.startswith("Assessment:"):
+            existing_asg = asg
+        elif asg.title.startswith("Assessment:"):
+            existing_assess = asg
+        elif asg.assignment_type == AssignmentType.PROJECT:
+            existing_proj = asg
 
     if not existing_asg and req_assignment:
         asg_type = AssignmentType.CODING if any(w in plan_text for w in ["coding", "sql", "queries", "java", "oop", "arrays", "collections", "program"]) else AssignmentType.NON_CODING
@@ -95,14 +115,6 @@ async def process_course_day(db: AsyncSession, course_id: int, day_id: int):
             created_by=1
         )
         db.add(new_asg)
-
-    # 5. Check existing Assessment (stored in assignments table with title starting with "Assessment:")
-    stmt_assess = select(Assignment).where(
-        Assignment.course_day_id == day_id,
-        Assignment.title.like("Assessment:%")
-    )
-    assess_res = await db.execute(stmt_assess)
-    existing_assess = assess_res.scalars().first()
 
     if not existing_assess and req_assessment:
         assess_type = AssignmentType.CODING if any(w in plan_text for w in ["coding", "sql", "java", "oop", "program"]) else AssignmentType.NON_CODING
@@ -136,14 +148,6 @@ async def process_course_day(db: AsyncSession, course_id: int, day_id: int):
         )
         db.add(new_cs)
 
-    # 7. Check existing Project Build (stored in assignments table with type PROJECT)
-    stmt_proj = select(Assignment).where(
-        Assignment.course_day_id == day_id,
-        Assignment.assignment_type == AssignmentType.PROJECT
-    )
-    proj_res = await db.execute(stmt_proj)
-    existing_proj = proj_res.scalars().first()
-
     if not existing_proj and req_project:
         new_proj = Assignment(
             course_day_id=day_id,
@@ -158,4 +162,7 @@ async def process_course_day(db: AsyncSession, course_id: int, day_id: int):
         )
         db.add(new_proj)
 
-    await db.commit()
+    if commit:
+        await db.commit()
+        await cache_set(cache_key, True, expire=86400)
+
