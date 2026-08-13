@@ -3,6 +3,8 @@ from fastapi import (
     Depends,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from app.models.user import User
 
 from app.database.session import get_db
 
@@ -21,9 +23,17 @@ from app.services.trainer_service import (
 )
 
 router = APIRouter(
-    prefix="/trainer",
+    prefix="/api/trainer",
     tags=["Trainer"],
 )
+
+
+async def get_trainer_id(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(User.id).where(func.lower(User.role) == "trainer").order_by(User.id)
+    )
+    trainer_id = result.scalar()
+    return trainer_id or 1
 
 
 # --------------------------------------------------
@@ -37,8 +47,7 @@ router = APIRouter(
 async def get_dashboard_api(
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await get_dashboard_overview(
         db=db,
@@ -57,7 +66,7 @@ async def get_dashboard_api(
 async def get_batches_api(
     db: AsyncSession = Depends(get_db),
 ):
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await get_batches(
         db=db,
@@ -77,7 +86,7 @@ async def get_batch_api(
     batch_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await get_batch_by_id(
         db=db,
@@ -98,7 +107,7 @@ async def get_batch_trainees_api(
     batch_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await get_batch_trainees(
         db=db,

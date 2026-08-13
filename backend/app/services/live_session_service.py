@@ -48,13 +48,6 @@ async def create_live_session(
 
     return session
 
-    db.add(session)
-
-    await db.commit()
-    await db.refresh(session)
-
-    return session
-
 
 # --------------------------------------------------
 # Get Trainer Live Sessions
@@ -148,9 +141,39 @@ async def delete_live_session(
         session_id=session_id,
     )
 
+    # Delete associated attendance records first
+    from sqlalchemy import delete
+    from app.models.attendance_record import AttendanceRecord
+    await db.execute(
+        delete(AttendanceRecord).where(AttendanceRecord.session_id == session_id)
+    )
+
     await db.delete(session)
     await db.commit()
 
     return {
         "message": "Live session deleted successfully."
     }
+
+
+# --------------------------------------------------
+# Get Upcoming Sessions
+# --------------------------------------------------
+
+async def get_upcoming_sessions(
+    db: AsyncSession,
+    trainer_id: int,
+):
+    from datetime import datetime
+    result = await db.execute(
+        select(LiveSession)
+        .where(
+            LiveSession.trainer_id == trainer_id,
+            LiveSession.start_time >= datetime.utcnow(),
+        )
+        .order_by(
+            LiveSession.start_time.asc()
+        )
+    )
+
+    return result.scalars().all()

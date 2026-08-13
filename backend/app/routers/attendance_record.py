@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from app.models.user import User
 
 from app.database.session import get_db
 
@@ -18,9 +20,17 @@ from app.services.attendance_record_service import (
 
 
 router = APIRouter(
-    prefix="/trainer",
+    prefix="/api/trainer/attendance",
     tags=["Trainer Attendance"],
 )
+
+
+async def get_trainer_id(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(User.id).where(func.lower(User.role) == "trainer").order_by(User.id)
+    )
+    trainer_id = result.scalar()
+    return trainer_id or 1
 
 
 # --------------------------------------------------
@@ -28,21 +38,18 @@ router = APIRouter(
 # --------------------------------------------------
 
 @router.post(
-    "/live-sessions/{session_id}/attendance",
+    "",
     response_model=AttendanceRecordResponse,
 )
 async def create_attendance_api(
-    session_id: int,
     data: AttendanceRecordCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await create_attendance(
         db=db,
         trainer_id=trainer_id,
-        session_id=session_id,
         data=data,
     )
 
@@ -51,8 +58,8 @@ async def create_attendance_api(
 # Update Attendance
 # --------------------------------------------------
 
-@router.patch(
-    "/attendance/{attendance_id}",
+@router.put(
+    "/{attendance_id}",
     response_model=AttendanceRecordResponse,
 )
 async def update_attendance_api(
@@ -60,8 +67,7 @@ async def update_attendance_api(
     data: AttendanceRecordUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await update_attendance(
         db=db,
@@ -76,15 +82,14 @@ async def update_attendance_api(
 # --------------------------------------------------
 
 @router.get(
-    "/live-sessions/{session_id}/attendance",
+    "/session/{session_id}",
     response_model=list[AttendanceRecordResponse],
 )
 async def get_session_attendance_api(
     session_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await get_session_attendance(
         db=db,
@@ -98,15 +103,14 @@ async def get_session_attendance_api(
 # --------------------------------------------------
 
 @router.get(
-    "/trainees/{trainee_id}/attendance",
+    "/trainee/{trainee_id}",
     response_model=list[AttendanceRecordResponse],
 )
 async def get_trainee_attendance_api(
     trainee_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await get_trainee_attendance(
         db=db,

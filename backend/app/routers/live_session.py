@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
+from app.models.user import User
 
 from app.database.session import get_db
 
@@ -15,13 +17,22 @@ from app.services.live_session_service import (
     get_live_session_by_id,
     update_live_session,
     delete_live_session,
+    get_upcoming_sessions,
 )
 
 
 router = APIRouter(
-    prefix="/trainer/live-sessions",
+    prefix="/api/trainer/sessions",
     tags=["Trainer Live Sessions"],
 )
+
+
+async def get_trainer_id(db: AsyncSession) -> int:
+    result = await db.execute(
+        select(User.id).where(func.lower(User.role) == "trainer").order_by(User.id)
+    )
+    trainer_id = result.scalar()
+    return trainer_id or 1
 
 
 # --------------------------------------------------
@@ -37,8 +48,7 @@ async def create_live_session_api(
     data: LiveSessionCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await create_live_session(
         db=db,
@@ -58,10 +68,28 @@ async def create_live_session_api(
 async def get_live_sessions_api(
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await get_live_sessions(
+        db=db,
+        trainer_id=trainer_id,
+    )
+
+
+# --------------------------------------------------
+# Get Upcoming Live Sessions
+# --------------------------------------------------
+
+@router.get(
+    "/upcoming",
+    response_model=list[LiveSessionResponse],
+)
+async def get_upcoming_sessions_api(
+    db: AsyncSession = Depends(get_db),
+):
+    trainer_id = await get_trainer_id(db)
+
+    return await get_upcoming_sessions(
         db=db,
         trainer_id=trainer_id,
     )
@@ -79,8 +107,7 @@ async def get_live_session_api(
     session_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await get_live_session_by_id(
         db=db,
@@ -93,7 +120,7 @@ async def get_live_session_api(
 # Update Live Session
 # --------------------------------------------------
 
-@router.patch(
+@router.put(
     "/{session_id}",
     response_model=LiveSessionResponse,
 )
@@ -102,8 +129,7 @@ async def update_live_session_api(
     data: LiveSessionUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await update_live_session(
         db=db,
@@ -124,8 +150,7 @@ async def delete_live_session_api(
     session_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    # TODO: Replace with authenticated trainer after auth integration
-    trainer_id = 1
+    trainer_id = await get_trainer_id(db)
 
     return await delete_live_session(
         db=db,

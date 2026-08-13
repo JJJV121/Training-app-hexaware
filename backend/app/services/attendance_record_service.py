@@ -17,9 +17,9 @@ from app.schemas.attendance_record import (
 async def create_attendance(
     db: AsyncSession,
     trainer_id: int,
-    session_id: int,
     data: AttendanceRecordCreate,
 ):
+    session_id = data.session_id
     # Check that the session belongs to this trainer
     result = await db.execute(
         select(LiveSession).where(

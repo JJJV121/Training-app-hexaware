@@ -43,7 +43,7 @@ class BatchDetailResponse(BatchResponse):
 class BatchTraineeResponse(BaseModel):
     trainee_id: int
     employee_id: str
-    name: str
+    name: str | None = None
     email: str
     joined_at: datetime
 
