@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import './App.css';
 import CreatePasswordScreen from './pages/CreatePassword';
 import LoginScreen from './pages/LoginScreen';
@@ -10,7 +10,6 @@ import DashBoard from './pages/DashBoard';
 import { useTheme } from './context/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import Icon from './components/Icon';
-import Placeholder from './pages/Placeholder';
 
 // Import Core Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -26,6 +25,7 @@ import AdminCalendar from './pages/admin/AdminCalendar';
 import './styles/admin.css';
 
 function AdminApp() {
+  const navigate = useNavigate();
   // Hash routing state for admin views
   const [currentRoute, setCurrentRoute] = useState(() => {
     const hash = window.location.hash.substring(1);
@@ -68,8 +68,6 @@ function AdminApp() {
         return <AdminAssignments />;
       case 'admin-calendar':
         return <AdminCalendar />;
-      case 'logout':
-        return <Placeholder title="Logged Out" description="You have been successfully logged out." />;
       default:
         return <AdminDashboard />;
     }
@@ -88,7 +86,7 @@ function AdminApp() {
   ];
 
   return (
-    <div className="app-container">
+    <div className="app-container admin-app-container">
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div className="sidebar-header" style={{ marginBottom: '24px' }}>
@@ -139,14 +137,20 @@ function AdminApp() {
         
         {/* Logout at bottom */}
         <div className="sidebar-footer" style={{ paddingTop: '16px' }}>
-          <a 
-            href="#logout" 
-            className={`nav-item logout-btn ${currentRoute === 'logout' ? 'active' : ''}`}
-            data-page="logout"
+          <button
+            type="button"
+            className="nav-item logout-btn"
+            onClick={() => {
+              localStorage.removeItem('authToken');
+              sessionStorage.removeItem('authToken');
+              localStorage.removeItem('user');
+              localStorage.removeItem('logged_in_user_id');
+              navigate('/login', { replace: true });
+            }}
           >
             <Icon name="log-out" className="nav-icon" />
             <span>Logout</span>
-          </a>
+          </button>
         </div>
       </aside>
 
