@@ -18,7 +18,16 @@ from app.models.coding_problem import CodingProblem
 from app.models.hidden_test_case import HiddenTestCase
 from app.models.coding_submission import CodingSubmission
 from app.models.assignment_submission import AssignmentSubmission
+<<<<<<< HEAD
 from app.models.batch_models import Batch, BatchTrainee
 from app.models.course_day_qa import CourseDayQA
 from app.models.case_study import CaseStudy
+=======
+
+# Trainer Module V2 models
+from app.models.batch import Batch
+from app.models.batch_trainee import BatchTrainee
+from app.models.live_session import LiveSession
+from app.models.attendance_record import AttendanceRecord, AttendanceStatus
+>>>>>>> feature/backend-trainer-module
 

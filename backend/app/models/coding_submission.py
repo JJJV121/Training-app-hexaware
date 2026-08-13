@@ -1,78 +1,63 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Boolean
+from sqlalchemy import (
+    Integer,
+    String,
+    Text,
+    Float,
+    DateTime,
+    ForeignKey
+)
+
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column
+)
 
 from app.database.base import Base
 
 
 class CodingSubmission(Base):
+
     __tablename__ = "coding_submissions"
 
     id: Mapped[int] = mapped_column(
         Integer,
-        primary_key=True,
-        index=True
+        primary_key=True
     )
 
-    problem_id: Mapped[int] = mapped_column(
+    """attempt_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "assessment_attempts.id",
+            ondelete="CASCADE"
+        )
+    )"""
+    attempt_id: Mapped[int] = mapped_column(Integer)
+
+    coding_problem_id: Mapped[int] = mapped_column(
         ForeignKey(
             "coding_problems.id",
             ondelete="CASCADE"
-        ),
-        nullable=False,
-        index=True
-    )
-
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"),
-        nullable=False,
-        index=True
+        )
     )
 
     source_code: Mapped[str] = mapped_column(
-        Text,
-        nullable=False
+        Text
     )
 
-    # Judge0 language ID
-    language_id: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False
+    language: Mapped[str] = mapped_column(
+        String(20)
     )
 
-    judge0_token: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True
+    stdout: Mapped[str | None] = mapped_column(
+        Text
     )
 
-    # PENDING / ACCEPTED / WRONG_ANSWER /
-    # RUNTIME_ERROR / COMPILATION_ERROR
-    status: Mapped[str] = mapped_column(
-        String(50),
-        default="PENDING",
-        nullable=False
+    stderr: Mapped[str | None] = mapped_column(
+        Text
     )
 
-    score: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False
-    )
 
-    is_passed: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False
-    )
-
-    error_message: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True
-    )
-    
-    # Optional but useful for results
     passed_testcases: Mapped[int] = mapped_column(
         Integer,
         default=0
@@ -81,6 +66,17 @@ class CodingSubmission(Base):
     total_testcases: Mapped[int] = mapped_column(
         Integer,
         default=0
+    )
+
+    score: Mapped[int] = mapped_column(
+        Integer,
+        default=0
+    )
+
+
+
+    ai_feedback: Mapped[str | None] = mapped_column(
+        Text
     )
 
     submitted_at: Mapped[datetime] = mapped_column(
