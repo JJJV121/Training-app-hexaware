@@ -136,9 +136,33 @@ export default function Profile() {
       </section>
 
       <section className="profile-stats" aria-label="Profile summary">
-        <div className="profile-stat-card"><span className="profile-stat-icon blue"><Icon name="book-open" /></span><div><strong>01</strong><span>Active course</span></div></div>
-        <div className="profile-stat-card"><span className="profile-stat-icon green"><Icon name="check-circle" /></span><div><strong>Ready</strong><span>Account status</span></div></div>
-        <div className="profile-stat-card"><span className="profile-stat-icon orange"><Icon name="zap" /></span><div><strong>Keep going</strong><span>Next milestone</span></div></div>
+        <div className="profile-stat-card">
+          <span 
+            className="profile-stat-icon blue" 
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', minWidth: '38px', borderRadius: '11px', padding: 0, margin: 0 }}
+          >
+            <Icon name="book-open" size={18} style={{ display: 'block', margin: 0 }} />
+          </span>
+          <div><strong>01</strong><span>Active course</span></div>
+        </div>
+        <div className="profile-stat-card">
+          <span 
+            className="profile-stat-icon green" 
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', minWidth: '38px', borderRadius: '11px', padding: 0, margin: 0 }}
+          >
+            <Icon name="check-circle" size={18} style={{ display: 'block', margin: 0 }} />
+          </span>
+          <div><strong>Ready</strong><span>Account status</span></div>
+        </div>
+        <div className="profile-stat-card">
+          <span 
+            className="profile-stat-icon orange" 
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', minWidth: '38px', borderRadius: '11px', padding: 0, margin: 0 }}
+          >
+            <Icon name="zap" size={18} style={{ display: 'block', margin: 0 }} />
+          </span>
+          <div><strong>Keep going</strong><span>Next milestone</span></div>
+        </div>
       </section>
 
       <section className="profile-settings-section">
@@ -147,9 +171,14 @@ export default function Profile() {
           {settings.map((setting) => (
             <div className={`profile-setting ${expandedSection === setting.id ? 'is-expanded' : ''}`} key={setting.id}>
               <button className="profile-setting-trigger" onClick={() => toggleSection(setting.id)} aria-expanded={expandedSection === setting.id}>
-                <span className={`profile-setting-icon ${setting.tone}`}><Icon name={setting.icon} /></span>
+                <span 
+                  className={`profile-setting-icon ${setting.tone}`}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', minWidth: '38px', borderRadius: '11px', padding: 0, margin: 0 }}
+                >
+                  <Icon name={setting.icon} size={18} style={{ display: 'block', margin: 0 }} />
+                </span>
                 <span className="profile-setting-copy"><strong>{setting.title}</strong><small>{setting.description}</small></span>
-                <Icon name="chevron-right" className="profile-chevron" />
+                <Icon name="chevron-right" size={16} className="profile-chevron" />
               </button>
 
               {expandedSection === 'personal' && setting.id === 'personal' && (

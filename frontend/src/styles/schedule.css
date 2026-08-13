@@ -400,6 +400,11 @@
 
 .weekly-view-heading {
   margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .weekly-view-heading h3 {
@@ -413,6 +418,52 @@
   color: var(--text-medium);
   font-size: 13px;
 }
+
+/* Schedule Legend */
+.schedule-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-medium);
+  white-space: nowrap;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-completed {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+}
+
+.legend-ongoing {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+}
+
+.legend-upcoming {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
 
 .weekly-grid {
   display: grid;

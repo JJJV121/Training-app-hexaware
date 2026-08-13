@@ -5,9 +5,10 @@
   --profile-muted: #74819a;
   --profile-border: #e7ecf5;
   --profile-shadow: 0 12px 30px rgba(31, 49, 89, 0.06);
-  max-width: 1080px;
+  width: 100%;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 8px 0 48px;
+  padding: 0 0 48px;
   color: var(--profile-text);
 }
 
@@ -61,8 +62,8 @@
 
 .profile-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 34px; }
 .profile-stat-card { display: flex; gap: 12px; align-items: center; padding: 16px; border: 1px solid var(--profile-border); border-radius: 14px; background: var(--profile-surface); box-shadow: 0 5px 16px rgba(31,49,89,.03); }
-.profile-stat-icon, .profile-setting-icon { display: grid; place-items: center; flex: 0 0 38px; width: 38px; height: 38px; border-radius: 11px; }
-.profile-stat-icon svg { width: 18px; }
+.profile-stat-icon, .profile-setting-icon { display: flex; align-items: center; justify-content: center; flex: 0 0 38px; width: 38px; height: 38px; border-radius: 11px; padding: 0; margin: 0; }
+.profile-stat-icon svg, .profile-setting-icon svg { width: 18px; height: 18px; display: block; stroke-width: 2; margin: 0; padding: 0; }
 .profile-stat-icon.blue, .profile-setting-icon.blue { color: #3563e9; background: #edf2ff; }
 .profile-stat-icon.green, .profile-setting-icon.green { color: #0d9f70; background: #e8fbf3; }
 .profile-stat-icon.orange, .profile-setting-icon.orange { color: #d78308; background: #fff4df; }
@@ -78,7 +79,6 @@
 .profile-setting.is-expanded { border-color: rgba(53,99,233,.45); box-shadow: 0 8px 24px rgba(53,99,233,.08); }
 .profile-setting-trigger { width: 100%; min-height: 72px; padding: 15px 20px; border: 0; display: flex; align-items: center; gap: 13px; color: var(--profile-text); background: transparent; text-align: left; cursor: pointer; }
 .profile-setting-trigger:hover { background: var(--profile-surface-soft); }
-.profile-setting-icon svg { width: 18px; }
 .profile-setting-icon.purple { color: #8b5cf6; background: #f1ebff; }
 .profile-setting-icon.red { color: #e14d5a; background: #fff0f1; }
 .profile-setting-copy { display: flex; flex: 1; flex-direction: column; gap: 4px; }

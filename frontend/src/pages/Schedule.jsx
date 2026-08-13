@@ -143,6 +143,20 @@ export default function Schedule() {
             <h3>Weekly course plan</h3>
             <p>Each day shows the assigned modules with a color that reflects its current state.</p>
           </div>
+          <div className="schedule-legend">
+            <span className="legend-item">
+              <span className="legend-dot legend-completed"></span>
+              Completed
+            </span>
+            <span className="legend-item">
+              <span className="legend-dot legend-ongoing"></span>
+              Ongoing
+            </span>
+            <span className="legend-item">
+              <span className="legend-dot legend-upcoming"></span>
+              Upcoming
+            </span>
+          </div>
         </div>
 
         <div className="week-navigation bottom-navigation">
