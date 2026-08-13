@@ -9,7 +9,6 @@ import RegisterCourse from './pages/RegisterCourse';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import DashBoard from './pages/DashBoard';
-import TrainerDashboard from './pages/TrainerDashboard';
 import { useTheme } from './context/ThemeContext';
 
 // Auth pages that should never receive the dark-theme class
@@ -36,7 +35,6 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword/>}/>
         <Route path="/reset-password" element={<ResetPassword/>}/>
         <Route path="/dashboard" element={<DashBoard/>}/>
-        <Route path="/trainer-dashboard" element={<TrainerDashboard/>}/>
         
         {/* Catch-all route to redirect unknown URLs back to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
