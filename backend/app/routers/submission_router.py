@@ -96,3 +96,22 @@ async def get_submission(
         )
 
     return submission
+
+
+# --------------------------------------------------
+# Get Submissions By Problem ID
+# --------------------------------------------------
+@router.get(
+    "/problem/{problem_id}",
+    response_model=list[SubmissionResponse]
+)
+async def get_submissions_by_problem(
+    problem_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(CodingSubmission).where(
+            CodingSubmission.problem_id == problem_id
+        )
+    )
+    return result.scalars().all()

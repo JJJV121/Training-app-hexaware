@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import courseService from '../services/courseService';
 import dashboardService from '../services/dashboardService';
 import Icon from '../components/Icon';
 import '../styles/Course.css';
 import Assignment from '../components/Assignment.jsx'
-import { useRef } from "react";
+import { qaService } from '../services/qaService';
+import { caseStudyService } from '../services/caseStudyService';
 
 // 🌟 Prop Injection: Accept courseId dynamically from DashBoard parent component shell
 export default function Course({ courseId }) {
@@ -59,6 +60,17 @@ const isDayFullyCompleted = (dayId) => {
   return module.lessons.every(lesson => completedLessons.has(String(lesson.id)));
 };
 
+const getActiveDayDbId = () => {
+  if (!course || !course.modules) return null;
+  if (selectedLesson && selectedLesson.dayId) {
+    return selectedLesson.dayId;
+  }
+  const mod = course.modules.find(m => m.dayNumber === expandedDay) || course.modules.find(m => m.id === expandedDay);
+  return mod ? mod.id : null;
+};
+
+const activeDayDbId = getActiveDayDbId();
+
 useEffect(() => {
   if (typeof window === 'undefined') return;
 
@@ -111,15 +123,16 @@ const normalizeVideoUrl = (url) => {
         title: contentData?.course?.title || contentData?.course_name || "Unknown Course",
         totalDays: contentData?.course?.duration_days || contentData?.duration_days || 0,
         modules: (contentData?.days || []).map(day => ({
-          id: day.day_number || day.day_id,
-          title: day.title || `Day ${day.day_number || day.day_id}`,
-          dayLabel: `DAY ${day.day_number || day.day_id}`,
+          id: day.day_id || day.day_number,
+          dayNumber: day.day_number,
+          title: day.title || `Day ${day.day_number}`,
+          dayLabel: `DAY ${day.day_number}`,
           lessons: (day.learning_units || day.units || []).map(unit => ({
             id: unit.unit_id || unit.id,
             title: unit.title || "Untitled Unit",
             duration: unit.duration_mins ? `${unit.duration_mins}m` : "Estimated: 45m",
             type: unit.type || "theory",
-            dayId: day.day_number || day.day_id
+            dayId: day.day_id || day.day_number
           }))
         }))
       };
@@ -586,7 +599,7 @@ const handleSeeking = (e) => {
         </div>
 
         <div className="video-content-horizontal-nav-row">
-          {['Videos', 'Notes', 'Assignment', 'Q&A'].map((tabName) => (
+          {['Videos', 'Notes', 'Assignment', 'Q&A', 'Case Studies'].map((tabName) => (
             <button key={tabName} onClick={() => setActiveHorizontalTab(tabName)} className={`video-horizontal-nav-item ${activeHorizontalTab === tabName ? 'active-nav-pill' : ''}`}>{tabName}</button>
           ))}
         </div>
@@ -603,12 +616,23 @@ const handleSeeking = (e) => {
           {activeHorizontalTab === 'Notes' && <NotesSection learningUnitId={selectedLesson?.id} />}
           {activeHorizontalTab === 'Assignment' && (
             <Assignment
-              courseDayId={activeAssignmentDayId}
+              courseDayId={activeDayDbId}
               userId={userId}
-              isUnlocked={isDayFullyCompleted(activeAssignmentDayId)}
+              isUnlocked={expandedDay <= currentUnlockedDay}
             />
           )}
-          {activeHorizontalTab === 'Q&A' && <QnASection learningUnitId={selectedLesson?.id} />}
+          {activeHorizontalTab === 'Q&A' && (
+            <QnASection 
+              courseId={activeCourseId} 
+              dayId={activeDayDbId} 
+            />
+          )}
+          {activeHorizontalTab === 'Case Studies' && (
+            <CaseStudiesSection 
+              courseId={activeCourseId} 
+              dayId={activeDayDbId} 
+            />
+          )}
         </div>
       </div>
     </div>
@@ -720,20 +744,20 @@ function NotesSection({ learningUnitId }) {
   );
 }
 
-function QnASection({ learningUnitId }) {
+function QnASection({ courseId, dayId }) {
   const [qaList, setQaList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!learningUnitId) return;
+    if (!courseId || !dayId) return;
 
     let isMounted = true;
     const fetchQA = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await courseService.getUnitQA(learningUnitId);
+        const data = await qaService.getDayQAs(courseId, dayId);
         if (isMounted) {
           setQaList(Array.isArray(data) ? data : []);
         }
@@ -747,7 +771,7 @@ function QnASection({ learningUnitId }) {
 
     fetchQA();
     return () => { isMounted = false; };
-  }, [learningUnitId]);
+  }, [courseId, dayId]);
 
   if (loading) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-medium)' }}><p>Loading discussions...</p></div>;
   if (error) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--accent-red)' }}><p>{error}</p></div>;
@@ -761,17 +785,91 @@ function QnASection({ learningUnitId }) {
 
       {qaList.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: '16px' }}>
-          <p>No questions have been submitted for this module unit yet. Be the first to start the thread!</p>
+          <p>No questions have been submitted for this course day yet.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {qaList.map((item, idx) => (
-            <div key={item.id || item.qa_id || idx} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+            <div key={item.id || idx} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
               <h4 style={{ margin: '0 0 4px 0', color: 'var(--text-dark)', fontSize: '15px' }}>Q: {item.question}</h4>
               <p style={{ margin: 0, color: 'var(--text-medium)', fontSize: '14px', paddingLeft: '20px' }}>
                 <span style={{ fontWeight: '600', color: 'var(--primary-blue)' }}>A: </span>
                 {item.answer || <span style={{ color: 'var(--text-light)', fontStyle: 'italic' }}>Pending answer from instructors...</span>}
               </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CaseStudiesSection({ courseId, dayId }) {
+  const [casesList, setCasesList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!courseId || !dayId) return;
+
+    let isMounted = true;
+    const fetchCaseStudies = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await caseStudyService.getDayCaseStudies(courseId, dayId);
+        if (isMounted) {
+          setCasesList(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error("Failed to load Case Studies:", err);
+        if (isMounted) setError("Could not retrieve case study scenarios.");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchCaseStudies();
+    return () => { isMounted = false; };
+  }, [courseId, dayId]);
+
+  if (loading) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-medium)' }}><p>Loading case studies...</p></div>;
+  if (error) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--accent-red)' }}><p>{error}</p></div>;
+
+  return (
+    <div style={{ padding: '24px', backgroundColor: 'var(--bg-sidebar)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', color: 'var(--text-dark)' }}>
+        <Icon name="book-open" style={{ width: '20px', height: '20px' }} />
+        <h3 style={{ margin: 0, fontSize: '18px' }}>Case Studies</h3>
+      </div>
+
+      {casesList.length === 0 ? (
+        <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: '16px' }}>
+          <p>No case studies assigned for this day yet.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {casesList.map((item, idx) => (
+            <div key={item.id || idx} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '20px' }}>
+              <h4 style={{ margin: '0 0 8px 0', color: 'var(--text-dark)', fontSize: '16px', fontWeight: '700' }}>
+                📂 {item.title}
+              </h4>
+              
+              <div style={{ marginBottom: '12px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-medium)', display: 'block', marginBottom: '4px' }}>BUSINESS SCENARIO:</span>
+                <p style={{ margin: 0, color: 'var(--text-medium)', fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre-line' }}>{item.scenario}</p>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-medium)', display: 'block', marginBottom: '4px' }}>TASK REQUIREMENTS:</span>
+                <p style={{ margin: 0, color: 'var(--text-medium)', fontSize: '14px', lineHeight: '1.5', whiteSpace: 'pre-line' }}>{item.requirements}</p>
+              </div>
+
+              {item.total_marks && (
+                <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary-blue)' }}>
+                  Grade Weight: {item.total_marks} Points
+                </div>
+              )}
             </div>
           ))}
         </div>

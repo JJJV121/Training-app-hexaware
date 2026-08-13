@@ -41,6 +41,11 @@ const adminCourseService = {
   async getCourseCompletion(courseId) {
     const response = await apiClient.get(`/admin/courses/${courseId}/completion`);
     return response.data;
+  },
+
+  async getCourseDays(courseId) {
+    const response = await apiClient.get(`/courses/${courseId}/days`);
+    return response.data;
   }
 };
 

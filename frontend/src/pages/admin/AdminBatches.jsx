@@ -55,17 +55,24 @@ export default function AdminBatches() {
       setAllTrainees(traineesData);
       setTrainers(trainersData);
 
-      // Enrich batches with college metadata (from mock registry) and trainee IDs
-      const enrichedBatches = (batchesData.batches || []).map(b => {
-        const storedTrainees = JSON.parse(localStorage.getItem(`batch_trainees_${b.id}`) || '[]');
-        return {
-          ...b,
-          college: localStorage.getItem(`batch_college_${b.id}`) || colleges[0],
-          trainees: storedTrainees,
-          strength: b.max_strength, // capacity
-          timing: `${b.start_time || '09:00:00'} - ${b.end_time || '11:00:00'}`
-        };
-      });
+      // Enrich batches with college metadata and actual database trainee IDs
+      const enrichedBatches = await Promise.all(
+        (batchesData.batches || []).map(async (b) => {
+          let dbTraineeIds = [];
+          try {
+            dbTraineeIds = await batchService.getBatchTrainees(b.id);
+          } catch (e) {
+            console.error(`Failed to load trainees for batch ${b.id}:`, e);
+          }
+          return {
+            ...b,
+            college: localStorage.getItem(`batch_college_${b.id}`) || colleges[0],
+            trainees: dbTraineeIds,
+            strength: b.max_strength, // capacity
+            timing: `${b.start_time || '09:00:00'} - ${b.end_time || '11:00:00'}`
+          };
+        })
+      );
 
       setBatches(enrichedBatches);
     } catch (err) {
@@ -160,8 +167,8 @@ export default function AdminBatches() {
       if (editBatch) {
         await batchService.updateBatch(editBatch.id, payload);
         
-        // Update batch trainees
-        const prevTrainees = JSON.parse(localStorage.getItem(`batch_trainees_${editBatch.id}`) || '[]');
+        // Update batch trainees comparing form input against real database state
+        const prevTrainees = editBatch.trainees || [];
         const toAdd = formTraineeIds.filter(id => !prevTrainees.includes(id));
         const toRemove = prevTrainees.filter(id => !formTraineeIds.includes(id));
 
@@ -172,7 +179,6 @@ export default function AdminBatches() {
           await batchService.removeTraineeFromBatch(editBatch.id, tid);
         }
 
-        localStorage.setItem(`batch_trainees_${editBatch.id}`, JSON.stringify(formTraineeIds));
         localStorage.setItem(`batch_college_${editBatch.id}`, formCollege);
         triggerToast('Batch updated successfully.');
       } else {
@@ -183,7 +189,6 @@ export default function AdminBatches() {
           await batchService.addTraineesToBatch(newBatch.id, formTraineeIds);
         }
 
-        localStorage.setItem(`batch_trainees_${newBatch.id}`, JSON.stringify(formTraineeIds));
         localStorage.setItem(`batch_college_${newBatch.id}`, formCollege);
         triggerToast('Batch created successfully.');
       }

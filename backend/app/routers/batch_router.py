@@ -19,6 +19,7 @@ from app.services.batch_service import (
     assign_trainer,
     add_trainees,
     remove_trainee,
+    get_batch_trainees,
 )
 
 
@@ -206,6 +207,26 @@ async def remove_trainee_route(
             trainee_id=trainee_id,
         )
 
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+# ============================================================
+# GET BATCH TRAINEES
+# ============================================================
+
+@router.get("/{batch_id}/trainees")
+async def get_batch_trainees_route(
+    batch_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await get_batch_trainees(
+            db=db,
+            batch_id=batch_id,
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=404,

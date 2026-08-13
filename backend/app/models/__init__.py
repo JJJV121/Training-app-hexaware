@@ -19,4 +19,6 @@ from app.models.hidden_test_case import HiddenTestCase
 from app.models.coding_submission import CodingSubmission
 from app.models.assignment_submission import AssignmentSubmission
 from app.models.batch_models import Batch, BatchTrainee
+from app.models.course_day_qa import CourseDayQA
+from app.models.case_study import CaseStudy
 

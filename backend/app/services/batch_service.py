@@ -667,3 +667,14 @@ async def remove_trainee(
     return {
         "message": "Trainee removed successfully"
     }
+
+async def get_batch_trainees(
+    db: AsyncSession,
+    batch_id: int,
+):
+    result = await db.scalars(
+        select(BatchTrainee.trainee_id).where(
+            BatchTrainee.batch_id == batch_id
+        )
+    )
+    return result.all()

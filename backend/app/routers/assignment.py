@@ -229,3 +229,121 @@ async def get_assignment_submissions_api(
         db,
         assignment_id,
     )
+
+# -------------------- Get Assignments by Course and Day --------------------
+from sqlalchemy import select
+from app.models.assignment import Assignment
+from app.models.course_day import CourseDay
+from app.models.assignment_submission import AssignmentSubmission
+from fastapi.responses import FileResponse
+import os
+
+@router.get("/course/{course_id}/day/{day_id}", response_model=list[AssignmentResponse])
+async def get_course_day_assignments(
+    course_id: int,
+    day_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    # Validate Course Day belongs to Course
+    day = await db.scalar(
+        select(CourseDay).where(
+            CourseDay.id == day_id,
+            CourseDay.course_id == course_id
+        )
+    )
+    if not day:
+        raise HTTPException(
+            status_code=404,
+            detail="Course day not found under this course."
+        )
+
+    # Auto-process day content checking first
+    from app.services.day_processor_service import process_course_day
+    await process_course_day(db, course_id, day_id)
+
+    result = await db.execute(
+        select(Assignment).where(
+            Assignment.course_day_id == day_id
+        )
+    )
+    return result.scalars().all()
+
+# -------------------- Trainee Endpoints --------------------
+
+@router.get("/trainee/assignments", response_model=list[AssignmentResponse])
+async def get_trainee_assignments(
+    course_day_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.models.course_day import CourseDay
+    day = await db.get(CourseDay, course_day_id)
+    if day:
+        from app.services.day_processor_service import process_course_day
+        await process_course_day(db, day.course_id, course_day_id)
+
+    result = await db.execute(
+        select(Assignment).where(Assignment.course_day_id == course_day_id)
+    )
+    return result.scalars().all()
+
+@router.get("/trainee/my-submissions", response_model=list[AssignmentSubmissionResponse])
+async def get_trainee_my_submissions(
+    db: AsyncSession = Depends(get_db)
+):
+    trainee_id = 3  # Match hardcoded trainee session from assignment_submission.py
+    result = await db.execute(
+        select(AssignmentSubmission).where(AssignmentSubmission.user_id == trainee_id)
+    )
+    return result.scalars().all()
+
+@router.get("/trainee/assignments/{assignment_id}/download")
+async def download_assignment_file(
+    assignment_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    assignment = await db.get(Assignment, assignment_id)
+    if not assignment or not assignment.attachment_path:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    
+    file_path = assignment.attachment_path
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Physical file not found")
+        
+    return FileResponse(file_path, filename=os.path.basename(file_path))
+
+@router.post("/trainee/assignments/{assignment_id}/submit", response_model=AssignmentSubmissionResponse)
+async def submit_trainee_assignment(
+    assignment_id: int,
+    user_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    submission_path = await save_uploaded_file(
+        file=file,
+        folder="submissions"
+    )
+    
+    stmt = select(AssignmentSubmission).where(
+        AssignmentSubmission.assignment_id == assignment_id,
+        AssignmentSubmission.user_id == user_id
+    )
+    existing = await db.scalar(stmt)
+    if existing:
+        existing.submission_path = submission_path
+        existing.status = "SUBMITTED"
+        existing.submitted_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(existing)
+        return existing
+    
+    submission = AssignmentSubmission(
+        assignment_id=assignment_id,
+        user_id=user_id,
+        submission_path=submission_path,
+        status="SUBMITTED",
+        submitted_at=datetime.utcnow()
+    )
+    db.add(submission)
+    await db.commit()
+    await db.refresh(submission)
+    return submission

@@ -77,6 +77,16 @@ async def get_course_full_content(
 ):
 
     try:
+        # Auto-process all days of the course to generate required plan content first
+        from sqlalchemy import select
+        from app.models.course_day import CourseDay
+        from app.services.day_processor_service import process_course_day
+
+        stmt = select(CourseDay.id).where(CourseDay.course_id == course_id)
+        days_res = await db.execute(stmt)
+        day_ids = days_res.scalars().all()
+        for day_id in day_ids:
+            await process_course_day(db, course_id, day_id)
 
         return await get_course_content(
             db,

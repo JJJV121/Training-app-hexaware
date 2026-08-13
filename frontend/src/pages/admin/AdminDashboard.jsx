@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import Icon from '../../components/Icon';
-import mockDataService from '../../services/mockDataService';
 import adminCourseService from '../../services/adminCourseService';
 import adminUserService from '../../services/adminUserService';
 import batchService from '../../services/batchService';
 import trainerMockService from '../../services/trainerMockService';
+import { assignmentService } from '../../services/assignmentService';
 
 export default function AdminDashboard() {
   const [toastMsg, setToastMsg] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [batches, setBatches] = useState([]);
   const [dashboardStats, setDashboardStats] = useState([
     { label: 'Total Students', value: '...', icon: 'users', color: 'blue' },
     { label: 'Total Trainers', value: '...', icon: 'user', color: 'green' },
     { label: 'Total Courses', value: '...', icon: 'book-open', color: 'blue' },
     { label: 'Active Courses', value: '...', icon: 'activity', color: 'green' },
     { label: 'Total Batches', value: '...', icon: 'layers', color: 'orange' },
-    { label: 'Assignments & Assessments', value: '4', icon: 'file-text', color: 'red' },
+    { label: 'Assignments & Assessments', value: '...', icon: 'file-text', color: 'red' },
     { label: 'Colleges Onboarded', value: '5', icon: 'check-circle', color: 'green' }
   ]);
   const [loading, setLoading] = useState(true);
@@ -27,22 +29,26 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function loadStats() {
       try {
-        const [courses, trainees, batchesData] = await Promise.all([
+        const [coursesData, trainees, batchesData, assignments] = await Promise.all([
           adminCourseService.getCourses(),
           adminUserService.getTrainees(),
-          batchService.getBatches()
+          batchService.getBatches(),
+          assignmentService.getAssignments()
         ]);
         const trainers = trainerMockService.getTrainers();
-        const activeCoursesCount = courses.filter(c => c.is_active).length;
-        const batches = batchesData.batches || [];
+        const activeCoursesCount = coursesData.filter(c => c.is_active).length;
+        const batchesList = batchesData.batches || [];
         
+        setCourses(coursesData);
+        setBatches(batchesList);
+
         setDashboardStats([
           { label: 'Total Students', value: trainees.length.toString(), icon: 'users', color: 'blue' },
           { label: 'Total Trainers', value: trainers.length.toString(), icon: 'user', color: 'green' },
-          { label: 'Total Courses', value: courses.length.toString(), icon: 'book-open', color: 'blue' },
+          { label: 'Total Courses', value: coursesData.length.toString(), icon: 'book-open', color: 'blue' },
           { label: 'Active Courses', value: activeCoursesCount.toString(), icon: 'activity', color: 'green' },
-          { label: 'Total Batches', value: batches.length.toString(), icon: 'layers', color: 'orange' },
-          { label: 'Assignments & Assessments', value: '4', icon: 'file-text', color: 'red' },
+          { label: 'Total Batches', value: batchesList.length.toString(), icon: 'layers', color: 'orange' },
+          { label: 'Assignments & Assessments', value: assignments.length.toString(), icon: 'file-text', color: 'red' },
           { label: 'Colleges Onboarded', value: '5', icon: 'check-circle', color: 'green' }
         ]);
       } catch (err) {
@@ -65,12 +71,8 @@ export default function AdminDashboard() {
     { label: 'Calendar & Schedule', icon: 'calendar', page: 'admin-calendar', desc: 'Schedule classes & timetable' }
   ];
 
-  const upcomingSessions = mockDataService.getCalendarEvents()
-    .filter(e => e.type === 'Session' || e.type === 'Exam')
-    .slice(0, 3);
-
-  const activeBatches = mockDataService.getBatches().slice(0, 3);
-
+  const activeBatches = batches.slice(0, 3);
+  const trainersList = trainerMockService.getTrainers();
 
   return (
     <div className="page-view admin-container">
@@ -142,65 +144,46 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Row: Active College Batches & Upcoming Timetable */}
-      <div className="admin-dashboard-row-equal">
-        
-        {/* Active Batches by College */}
-        <div className="admin-card">
-          <div className="admin-card-header">
-            <h3 className="admin-card-title">
-              <Icon name="layers" className="admin-card-title-icon" />
-              <span>College Batch Formation Summary</span>
-            </h3>
-            <a href="#admin-batches" className="action-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px' }}>Manage Batches</a>
-          </div>
-
-          <div className="widget-list">
-            {activeBatches.map((b, idx) => (
-              <div key={idx} className="widget-item-row">
-                <div className="widget-item-left">
-                  <div className="widget-item-icon-circle" style={{ backgroundColor: 'var(--primary-blue-light)', color: 'var(--primary-blue)' }}>
-                    <Icon name="layers" style={{ width: '16px', height: '16px' }} />
-                  </div>
-                  <div className="widget-item-info">
-                    <span className="widget-item-title">{b.code} ({b.college})</span>
-                    <span className="widget-item-desc">{b.course} • Trainer: {b.trainer}</span>
-                  </div>
-                </div>
-                <span className="admin-badge green" style={{ fontSize: '10px' }}>{b.trainees ? b.trainees.length : 0} Trainees</span>
-              </div>
-            ))}
-          </div>
+      {/* Active College Batches */}
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <h3 className="admin-card-title">
+            <Icon name="layers" className="admin-card-title-icon" />
+            <span>College Batch Formation Summary</span>
+          </h3>
+          <a href="#admin-batches" className="action-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px' }}>Manage Batches</a>
         </div>
 
-        {/* Upcoming Sessions widget */}
-        <div className="admin-card">
-          <div className="admin-card-header">
-            <h3 className="admin-card-title">
-              <Icon name="calendar" className="admin-card-title-icon" />
-              <span>Upcoming Scheduled Sessions</span>
-            </h3>
-            <a href="#admin-calendar" className="action-btn-secondary" style={{ padding: '6px 12px', fontSize: '11px' }}>View Calendar</a>
-          </div>
-
-          <div className="widget-list">
-            {upcomingSessions.map((sess, idx) => (
-              <div key={idx} className="widget-item-row">
-                <div className="widget-item-left">
-                  <div className="widget-item-icon-circle" style={{ backgroundColor: 'var(--accent-orange-light)', color: 'var(--accent-orange)' }}>
-                    <Icon name="clock" style={{ width: '16px', height: '16px' }} />
+        <div className="widget-list">
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-medium)' }}>
+              Loading batches...
+            </div>
+          ) : activeBatches.length > 0 ? (
+            activeBatches.map((b, idx) => {
+              const courseTitle = courses.find(c => c.id === b.course_id)?.title || 'Unassigned Course';
+              const trainerName = trainersList.find(t => t.id === b.trainer_id)?.name || 'Unassigned Trainer';
+              return (
+                <div key={idx} className="widget-item-row">
+                  <div className="widget-item-left">
+                    <div className="widget-item-icon-circle" style={{ backgroundColor: 'var(--primary-blue-light)', color: 'var(--primary-blue)' }}>
+                      <Icon name="layers" style={{ width: '16px', height: '16px' }} />
+                    </div>
+                    <div className="widget-item-info">
+                      <span className="widget-item-title">{b.name}</span>
+                      <span className="widget-item-desc">{courseTitle} • Trainer: {trainerName}</span>
+                    </div>
                   </div>
-                  <div className="widget-item-info">
-                    <span className="widget-item-title">{sess.title}</span>
-                    <span className="widget-item-desc">{sess.batch} • {sess.trainer}</span>
-                  </div>
+                  <span className="admin-badge green" style={{ fontSize: '10px' }}>{b.max_strength} Capacity</span>
                 </div>
-                <span className="widget-time" style={{ color: 'var(--accent-orange)' }}>{sess.time}</span>
-              </div>
-            ))}
-          </div>
+              );
+            })
+          ) : (
+            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-medium)', fontSize: '13px' }}>
+              No active batches registered.
+            </div>
+          )}
         </div>
-
       </div>
 
     </div>

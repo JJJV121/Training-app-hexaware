@@ -23,6 +23,9 @@ from app.routers.assignment import router as assignment_router
 from app.routers.assignment_submission import (
     router as assignment_submission_router
 )
+from app.routers.course_day_qa_router import router as course_day_qa_router
+from app.routers.case_study_router import router as case_study_router
+from app.routers.generator_router import router as generator_router
 
 from app.database.session import test_connection
 
@@ -74,6 +77,9 @@ app.include_router(coding_problem_router)
 app.include_router(submission_router)
 app.include_router(assignment_router)
 app.include_router(assignment_submission_router)
+app.include_router(course_day_qa_router)
+app.include_router(case_study_router)
+app.include_router(generator_router)
 
 
 @app.get("/")

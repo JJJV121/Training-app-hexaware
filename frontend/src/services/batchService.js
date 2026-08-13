@@ -46,6 +46,11 @@ const batchService = {
       trainer_id: Number(trainerId)
     });
     return response.data;
+  },
+
+  async getBatchTrainees(batchId) {
+    const response = await apiClient.get(`/admin/batches/${batchId}/trainees`);
+    return response.data;
   }
 };
 

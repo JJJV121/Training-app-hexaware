@@ -43,8 +43,32 @@ export default function AdminStudents() {
         adminCourseService.getCourses(),
         adminUserService.getTrainees()
       ]);
+
+      // Fetch completions for courses to get progress percentage
+      const distinctCourseIds = [...new Set(traineesData.map(t => t.course_id).filter(Boolean))];
+      const completionsMap = {};
+      await Promise.all(
+        distinctCourseIds.map(async (courseId) => {
+          try {
+            const completions = await adminCourseService.getCourseCompletion(courseId);
+            completions.forEach(c => {
+              completionsMap[c.user_id] = c.completion_percentage;
+            });
+          } catch (e) {
+            console.error(`Failed to load completions for course ${courseId}:`, e);
+          }
+        })
+      );
+
+      const enrichedStudents = traineesData.map(t => ({
+        ...t,
+        progress: completionsMap[t.id] !== undefined ? Math.round(completionsMap[t.id]) : 0,
+        college: localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
+        attendance: localStorage.getItem(`student_attendance_${t.id}`) || '95%'
+      }));
+
       setCourses(coursesData);
-      setStudents(traineesData);
+      setStudents(enrichedStudents);
     } catch (err) {
       console.error('Failed to load trainee data:', err);
       setError('Could not retrieve students registry. Please check server connection.');
@@ -168,9 +192,15 @@ export default function AdminStudents() {
     try {
       if (editStudent) {
         await adminUserService.updateTrainee(editStudent.id, payload);
+        localStorage.setItem(`student_college_${editStudent.id}`, formCollege);
+        localStorage.setItem(`student_attendance_${editStudent.id}`, formAttendance);
         triggerToast('Student details updated.');
       } else {
-        await adminUserService.createTrainee(payload);
+        const newStudent = await adminUserService.createTrainee(payload);
+        if (newStudent && newStudent.id) {
+          localStorage.setItem(`student_college_${newStudent.id}`, formCollege);
+          localStorage.setItem(`student_attendance_${newStudent.id}`, formAttendance);
+        }
         triggerToast('New student added successfully.');
       }
       setIsModalOpen(false);
