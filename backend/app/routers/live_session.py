@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 
 from app.database.session import get_db
-from app.core.dependencies import get_current_trainer
+from app.core.dependencies import get_current_user, get_current_trainer, get_current_trainer_or_admin
 
 from app.schemas.live_session import (
     LiveSessionCreate,
@@ -14,6 +14,7 @@ from app.schemas.live_session import (
 from app.services.live_session_service import (
     create_live_session,
     get_live_sessions,
+    get_all_live_sessions,
     get_live_session_by_id,
     update_live_session,
     delete_live_session,
@@ -39,11 +40,12 @@ router = APIRouter(
 async def create_live_session_api(
     data: LiveSessionCreate,
     db: AsyncSession = Depends(get_db),
-    current_trainer: User = Depends(get_current_trainer),
+    current_user: User = Depends(get_current_trainer_or_admin),
 ):
+    trainer_id = data.trainer_id if current_user.role.upper() == "ADMIN" else current_user.id
     return await create_live_session(
         db=db,
-        trainer_id=current_trainer.id,
+        trainer_id=trainer_id,
         data=data,
     )
 
@@ -58,12 +60,27 @@ async def create_live_session_api(
 )
 async def get_live_sessions_api(
     db: AsyncSession = Depends(get_db),
-    current_trainer: User = Depends(get_current_trainer),
+    current_user: User = Depends(get_current_trainer_or_admin),
 ):
-    return await get_live_sessions(
-        db=db,
-        trainer_id=current_trainer.id,
-    )
+    if current_user.role.upper() == "ADMIN":
+        return await get_all_live_sessions(db)
+    else:
+        return await get_live_sessions(db, current_user.id)
+
+
+# --------------------------------------------------
+# Get All Live Sessions (Explicit All route)
+# --------------------------------------------------
+
+@router.get(
+    "/all",
+    response_model=list[LiveSessionResponse],
+)
+async def get_all_live_sessions_route(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_trainer_or_admin),
+):
+    return await get_all_live_sessions(db)
 
 
 # --------------------------------------------------
@@ -95,12 +112,13 @@ async def get_upcoming_sessions_api(
 async def get_live_session_api(
     session_id: int,
     db: AsyncSession = Depends(get_db),
-    current_trainer: User = Depends(get_current_trainer),
+    current_user: User = Depends(get_current_trainer_or_admin),
 ):
+    trainer_id = None if current_user.role.upper() == "ADMIN" else current_user.id
     return await get_live_session_by_id(
         db=db,
-        trainer_id=current_trainer.id,
         session_id=session_id,
+        trainer_id=trainer_id,
     )
 
 
@@ -116,13 +134,14 @@ async def update_live_session_api(
     session_id: int,
     data: LiveSessionUpdate,
     db: AsyncSession = Depends(get_db),
-    current_trainer: User = Depends(get_current_trainer),
+    current_user: User = Depends(get_current_trainer_or_admin),
 ):
+    trainer_id = None if current_user.role.upper() == "ADMIN" else current_user.id
     return await update_live_session(
         db=db,
-        trainer_id=current_trainer.id,
         session_id=session_id,
         data=data,
+        trainer_id=trainer_id,
     )
 
 
@@ -136,10 +155,11 @@ async def update_live_session_api(
 async def delete_live_session_api(
     session_id: int,
     db: AsyncSession = Depends(get_db),
-    current_trainer: User = Depends(get_current_trainer),
+    current_user: User = Depends(get_current_trainer_or_admin),
 ):
+    trainer_id = None if current_user.role.upper() == "ADMIN" else current_user.id
     return await delete_live_session(
         db=db,
-        trainer_id=current_trainer.id,
         session_id=session_id,
+        trainer_id=trainer_id,
     )

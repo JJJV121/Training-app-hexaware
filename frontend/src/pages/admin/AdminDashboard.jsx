@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   const [toastMsg, setToastMsg] = useState(null);
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [trainersList, setTrainersList] = useState([]);
   const [dashboardStats, setDashboardStats] = useState([
     { label: 'Total Students', value: '...', icon: 'users', color: 'blue' },
     { label: 'Total Trainers', value: '...', icon: 'user', color: 'green' },
@@ -29,22 +30,23 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function loadStats() {
       try {
-        const [coursesData, trainees, batchesData, assignments] = await Promise.all([
+        const [coursesData, trainees, batchesData, assignments, trainersData] = await Promise.all([
           adminCourseService.getCourses(),
           adminUserService.getTrainees(),
           batchService.getBatches(),
-          assignmentService.getAssignments()
+          assignmentService.getAssignments(),
+          adminUserService.getTrainers()
         ]);
-        const trainers = trainerMockService.getTrainers();
         const activeCoursesCount = coursesData.filter(c => c.is_active).length;
         const batchesList = batchesData.batches || [];
         
         setCourses(coursesData);
         setBatches(batchesList);
+        setTrainersList(trainersData);
 
         setDashboardStats([
           { label: 'Total Students', value: trainees.length.toString(), icon: 'users', color: 'blue' },
-          { label: 'Total Trainers', value: trainers.length.toString(), icon: 'user', color: 'green' },
+          { label: 'Total Trainers', value: trainersData.length.toString(), icon: 'user', color: 'green' },
           { label: 'Total Courses', value: coursesData.length.toString(), icon: 'book-open', color: 'blue' },
           { label: 'Active Courses', value: activeCoursesCount.toString(), icon: 'activity', color: 'green' },
           { label: 'Total Batches', value: batchesList.length.toString(), icon: 'layers', color: 'orange' },
@@ -72,7 +74,6 @@ export default function AdminDashboard() {
   ];
 
   const activeBatches = batches.slice(0, 3);
-  const trainersList = trainerMockService.getTrainers();
 
   return (
     <div className="page-view admin-container">

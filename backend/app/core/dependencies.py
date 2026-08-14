@@ -49,3 +49,14 @@ async def get_current_trainer(
             detail="Access denied. Trainer role required."
         )
     return current_user
+
+
+async def get_current_trainer_or_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    if not current_user.role or current_user.role.upper() not in ["TRAINER", "ADMIN"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Trainer or Admin role required."
+        )
+    return current_user

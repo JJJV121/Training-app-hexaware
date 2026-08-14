@@ -57,6 +57,45 @@ const adminUserService = {
     return response.data;
   },
 
+  async getTrainers() {
+    const response = await apiClient.get('/admin/trainers');
+    return response.data;
+  },
+
+  async getTrainerById(id) {
+    const response = await apiClient.get(`/admin/trainers/${id}`);
+    return response.data;
+  },
+
+  async createTrainer(trainerData) {
+    const payload = {
+      employee_id: trainerData.employee_id || `EMP_TR_${Date.now()}`,
+      name: trainerData.name,
+      email: trainerData.email,
+      course_id: Number(trainerData.course_id),
+      role: 'trainer',
+      password: trainerData.password || 'Trainer@123'
+    };
+    const response = await apiClient.post('/admin/trainers', payload);
+    return response.data;
+  },
+
+  async updateTrainer(id, trainerData) {
+    const payload = {
+      name: trainerData.name,
+      email: trainerData.email,
+      course_id: Number(trainerData.course_id),
+      employee_id: trainerData.employee_id
+    };
+    const response = await apiClient.put(`/admin/trainers/${id}`, payload);
+    return response.data;
+  },
+
+  async deleteTrainer(id) {
+    const response = await apiClient.delete(`/admin/trainers/${id}`);
+    return response.data;
+  },
+
   getColleges() {
     return [...COLLEGES_LIST];
   }

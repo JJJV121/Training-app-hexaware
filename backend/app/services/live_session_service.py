@@ -36,7 +36,7 @@ async def create_live_session(
         description=data.description,
         session_type=data.session_type,
         batch_id=data.batch_id,
-        trainer_id=trainer_id,
+        trainer_id=data.trainer_id or trainer_id,
         start_time=data.start_time,
         end_time=data.end_time,
         meeting_link=data.meeting_link,
@@ -71,21 +71,36 @@ async def get_live_sessions(
 
 
 # --------------------------------------------------
+# Get All Live Sessions
+# --------------------------------------------------
+
+async def get_all_live_sessions(
+    db: AsyncSession,
+):
+    result = await db.execute(
+        select(LiveSession)
+        .order_by(
+            LiveSession.start_time.desc()
+        )
+    )
+
+    return result.scalars().all()
+
+
+# --------------------------------------------------
 # Get Live Session By ID
 # --------------------------------------------------
 
 async def get_live_session_by_id(
     db: AsyncSession,
-    trainer_id: int,
     session_id: int,
+    trainer_id: int | None = None,
 ):
-    result = await db.execute(
-        select(LiveSession).where(
-            LiveSession.id == session_id,
-            LiveSession.trainer_id == trainer_id,
-        )
-    )
+    stmt = select(LiveSession).where(LiveSession.id == session_id)
+    if trainer_id is not None:
+        stmt = stmt.where(LiveSession.trainer_id == trainer_id)
 
+    result = await db.execute(stmt)
     session = result.scalar_one_or_none()
 
     if session is None:
@@ -103,14 +118,14 @@ async def get_live_session_by_id(
 
 async def update_live_session(
     db: AsyncSession,
-    trainer_id: int,
     session_id: int,
     data: LiveSessionUpdate,
+    trainer_id: int | None = None,
 ):
     session = await get_live_session_by_id(
         db=db,
-        trainer_id=trainer_id,
         session_id=session_id,
+        trainer_id=trainer_id,
     )
 
     update_data = data.model_dump(
@@ -132,13 +147,13 @@ async def update_live_session(
 
 async def delete_live_session(
     db: AsyncSession,
-    trainer_id: int,
     session_id: int,
+    trainer_id: int | None = None,
 ):
     session = await get_live_session_by_id(
         db=db,
-        trainer_id=trainer_id,
         session_id=session_id,
+        trainer_id=trainer_id,
     )
 
     # Delete associated attendance records first

@@ -36,12 +36,12 @@ export default function AdminCourseAssignment() {
     setLoading(true);
     setError('');
     try {
-      const [batchesData, traineesData, coursesData] = await Promise.all([
+      const [batchesData, traineesData, coursesData, trainersData] = await Promise.all([
         batchService.getBatches(),
         adminUserService.getTrainees(),
-        adminCourseService.getCourses()
+        adminCourseService.getCourses(),
+        adminUserService.getTrainers()
       ]);
-      const trainersData = trainerMockService.getTrainers();
 
       setCourses(coursesData);
       setBatches(batchesData.batches || []);

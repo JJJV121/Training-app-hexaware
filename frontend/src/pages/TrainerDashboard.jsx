@@ -5,6 +5,7 @@ import TrainerOverview from '../components/trainer/TrainerOverview';
 import BatchManagement from '../components/trainer/BatchManagement';
 import GradingQueue from '../components/trainer/GradingQueue';
 import PerformanceReports from '../components/trainer/PerformanceReports';
+import SessionScheduler from '../components/trainer/SessionScheduler';
 import Placeholder from './Placeholder';
 import '../styles/trainer/trainer-dashboard.css';
 
@@ -82,12 +83,7 @@ export default function TrainerDashboard() {
       case 'grading':
         return <GradingQueue />;
       case 'scheduler':
-        return (
-          <Placeholder 
-            title="Session Scheduler" 
-            description="Manage and schedule live lectures, virtual labs, and interactive webinars." 
-          />
-        );
+        return <SessionScheduler />;
       case 'reports':
         return <PerformanceReports />;
       default:
