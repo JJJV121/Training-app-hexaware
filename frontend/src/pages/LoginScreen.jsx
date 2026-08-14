@@ -16,11 +16,24 @@ export default function LoginScreen() {
 
   // OPTIONAL AUTO-LOGIN: Checks if a persistent token exists when page mounts
   useEffect(() => {
-    const existingToken = localStorage.getItem('authToken');
-    if (existingToken) {
-      // If a token is found in localStorage from a previous "Remember Me" session, 
-      // you can route them straight into the app or run a token validation check.
-      // navigate('/dashboard'); 
+    const existingToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const userStr = localStorage.getItem('user');
+    if (existingToken && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user && user.role) {
+          const role = user.role.toLowerCase();
+          if (role === 'admin') {
+            navigate('/admin');
+          } else if (role === 'trainer') {
+            navigate('/trainer-dashboard');
+          } else {
+            navigate('/dashboard');
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
     }
   }, [navigate]);
 
@@ -53,8 +66,15 @@ export default function LoginScreen() {
         localStorage.setItem('logged_in_user_id', user.id);
       }
       alert('Login Successful!');
-      if (user && user.role === 'admin') {
-        navigate('/admin');
+      if (user && user.role) {
+        const role = user.role.toLowerCase();
+        if (role === 'admin') {
+          navigate('/admin');
+        } else if (role === 'trainer') {
+          navigate('/trainer-dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         navigate('/dashboard');
       }

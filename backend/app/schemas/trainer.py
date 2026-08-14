@@ -12,6 +12,8 @@ class DashboardOverviewResponse(BaseModel):
     active_batches: int
     inactive_batches: int
     total_trainees: int
+    pending_grades: int
+    next_session_iso: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -28,6 +30,8 @@ class BatchResponse(BaseModel):
     start_date: date
     end_date: date
     is_active: bool
+    trainee_count: int
+    course_name: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -46,5 +50,9 @@ class BatchTraineeResponse(BaseModel):
     name: str | None = None
     email: str
     joined_at: datetime
+    progress_pct: float
+    attendance_pct: float
+    status: str
+    progress_label: str
 
     model_config = ConfigDict(from_attributes=True)

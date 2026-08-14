@@ -1,13 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../Icon';
-import { INITIAL_GRADING_QUEUE } from '../../data/trainerMockData';
+import trainerService from '../../services/trainerService';
 import '../../styles/trainer/grading-queue.css';
 
 export default function GradingQueue() {
-  const [queue, setQueue] = useState(INITIAL_GRADING_QUEUE);
+  const [queue, setQueue] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [score, setScore] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch pending submissions on mount
+  const fetchQueue = async () => {
+    try {
+      setIsLoading(true);
+      const result = await trainerService.getGradingQueue();
+      setQueue(result);
+    } catch (err) {
+      console.error('Error fetching grading queue:', err);
+      setError('Error loading assessment submissions');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchQueue();
+  }, []);
 
   const selectedItem = queue.find((item) => item.id === selectedId);
 
@@ -17,24 +38,53 @@ export default function GradingQueue() {
     setFeedback('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedItem) return;
 
-    if (!score || isNaN(score) || Number(score) < 0 || Number(score) > 100) {
+    const parsedScore = Number(score);
+    if (isNaN(parsedScore) || parsedScore < 0 || parsedScore > 100) {
       alert('Please enter a valid numeric score between 0 and 100.');
       return;
     }
 
-    alert(`Grade registered successfully!\nScore: ${score}/100\nFeedback: "${feedback}"`);
+    try {
+      setIsSubmitting(true);
+      await trainerService.evaluateSubmission(selectedId, {
+        marks: parsedScore,
+        feedback: feedback
+      });
 
-    // Remove the item from the local state list to simulate real deletion
-    const updatedQueue = queue.filter((item) => item.id !== selectedId);
-    setQueue(updatedQueue);
-    setSelectedId(null);
-    setScore('');
-    setFeedback('');
+      alert(`Grade registered successfully!\nScore: ${parsedScore}/100\nFeedback: "${feedback}"`);
+
+      // Refresh list
+      setSelectedId(null);
+      setScore('');
+      setFeedback('');
+      await fetchQueue();
+    } catch (err) {
+      console.error('Failed to log grade:', err);
+      alert('Failed to submit evaluation. Please check server connection.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading && queue.length === 0) {
+    return (
+      <div className="grading-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <div style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Loading Grading Queue...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="grading-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <div style={{ color: '#dc2626', fontWeight: 600 }}>{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="grading-container">
@@ -61,7 +111,7 @@ export default function GradingQueue() {
           </div>
           <div className="queue-list">
             {queue.length === 0 ? (
-              <div style={{ padding: '40px', textAlignment: 'center', color: 'var(--text-light)', fontSize: '14px' }}>
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-light)', fontSize: '14px' }}>
                 All clear! No pending assessments in the queue.
               </div>
             ) : (
@@ -141,6 +191,7 @@ export default function GradingQueue() {
                       value={score}
                       onChange={(e) => setScore(e.target.value)}
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div className="form-group">
@@ -152,13 +203,14 @@ export default function GradingQueue() {
                       value={feedback}
                       onChange={(e) => setFeedback(e.target.value)}
                       required
+                      disabled={isSubmitting}
                     ></textarea>
                   </div>
                 </div>
 
-                <button type="submit" className="grade-submit-btn">
+                <button type="submit" className="grade-submit-btn" disabled={isSubmitting}>
                   <Icon name="send" style={{ width: '16px', height: '16px' }} />
-                  Submit Assessment & Log Grade
+                  {isSubmitting ? 'Saving Assessment...' : 'Submit Assessment & Log Grade'}
                 </button>
               </form>
             </>

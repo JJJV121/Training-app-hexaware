@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from app.models.user import User
 
 from app.database.session import get_db
+from app.core.dependencies import get_current_trainer
 
 from app.schemas.attendance_record import (
     AttendanceRecordCreate,
@@ -25,14 +25,6 @@ router = APIRouter(
 )
 
 
-async def get_trainer_id(db: AsyncSession) -> int:
-    result = await db.execute(
-        select(User.id).where(func.lower(User.role) == "trainer").order_by(User.id)
-    )
-    trainer_id = result.scalar()
-    return trainer_id or 1
-
-
 # --------------------------------------------------
 # Mark Attendance
 # --------------------------------------------------
@@ -44,12 +36,11 @@ async def get_trainer_id(db: AsyncSession) -> int:
 async def create_attendance_api(
     data: AttendanceRecordCreate,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await create_attendance(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         data=data,
     )
 
@@ -66,12 +57,11 @@ async def update_attendance_api(
     attendance_id: int,
     data: AttendanceRecordUpdate,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await update_attendance(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         attendance_id=attendance_id,
         data=data,
     )
@@ -88,12 +78,11 @@ async def update_attendance_api(
 async def get_session_attendance_api(
     session_id: int,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_session_attendance(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         session_id=session_id,
     )
 
@@ -109,11 +98,10 @@ async def get_session_attendance_api(
 async def get_trainee_attendance_api(
     trainee_id: int,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_trainee_attendance(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         trainee_id=trainee_id,
     )

@@ -9,6 +9,8 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.core.dependencies import get_current_user, get_current_trainer
+from app.models.user import User
 from app.schemas.assignment_submission import (
     AssignmentSubmissionResponse,
     AssignmentEvaluation,
@@ -35,10 +37,8 @@ async def submit_assignment_api(
     github_url: str | None = Form(None),
     file: UploadFile = File(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    # Mock trainee until authentication is merged
-    trainee_id = 3
-
     submission_path = None
 
     if file:
@@ -50,7 +50,7 @@ async def submit_assignment_api(
     return await submit_assignment(
         db=db,
         assignment_id=assignment_id,
-        user_id=trainee_id,
+        user_id=current_user.id,
         submission_text=submission_text,
         github_url=github_url,
         submission_path=submission_path,
@@ -63,9 +63,8 @@ async def evaluate_submission_api(
     submission_id: int,
     data: AssignmentEvaluation,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = 1
-
     submission = await get_submission_by_id(
         db,
         submission_id,
@@ -80,7 +79,7 @@ async def evaluate_submission_api(
     return await evaluate_submission(
         db,
         submission,
-        trainer_id,
+        current_trainer.id,
         data,
     )
 
@@ -89,10 +88,9 @@ async def evaluate_submission_api(
             response_model=list[AssignmentSubmissionResponse])
 async def my_submissions(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    trainee_id = 3
-
     return await get_user_submissions(
         db,
-        trainee_id,
+        current_user.id,
     )

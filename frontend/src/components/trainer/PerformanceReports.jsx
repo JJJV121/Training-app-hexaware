@@ -1,22 +1,108 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Icon from '../Icon';
-import { PERFORMANCE_DATA } from '../../data/trainerMockData';
+import trainerService from '../../services/trainerService';
 import '../../styles/trainer/performance-reports.css';
 
 export default function PerformanceReports() {
-  const [selectedBatch, setSelectedBatch] = useState('java');
+  const [batches, setBatches] = useState([]);
+  const [selectedBatch, setSelectedBatch] = useState('');
+  const [modules, setModules] = useState([]);
+  const [strugglingModules, setStrugglingModules] = useState([]);
+  const [isBatchesLoading, setIsBatchesLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const modules = selectedBatch === 'java' ? PERFORMANCE_DATA.modules : PERFORMANCE_DATA.cloudModules;
-  const batchLabel = selectedBatch === 'java' ? PERFORMANCE_DATA.batchLabel : 'Batch 2026 — Cloud Architecture';
+  // Fetch batches on mount
+  useEffect(() => {
+    const fetchBatches = async () => {
+      try {
+        setIsBatchesLoading(true);
+        const result = await trainerService.getBatches();
+        setBatches(result);
+        if (result.length > 0) {
+          setSelectedBatch(result[0].id);
+        }
+      } catch (err) {
+        console.error('Error fetching batches:', err);
+        setError('Error loading batches');
+      } finally {
+        setIsBatchesLoading(false);
+      }
+    };
+    fetchBatches();
+  }, []);
 
-  // Struggling concepts are those with average score below 65%
-  const strugglingModules = modules.filter((m) => m.avgScore < 65);
+  // Fetch modules and alerts when selectedBatch changes
+  useEffect(() => {
+    if (!selectedBatch) return;
+
+    const fetchAnalytics = async () => {
+      try {
+        setIsDataLoading(true);
+        const [modData, alertData] = await Promise.all([
+          trainerService.getModuleAnalytics(selectedBatch),
+          trainerService.getAnalyticsAlerts(selectedBatch)
+        ]);
+        // Map backend response fields (e.g. name or module_name, average_score) to average score keys
+        const mappedModules = (modData || []).map(m => ({
+          id: m.id || m.module_id,
+          name: m.name || m.module_name || 'Module',
+          avgScore: m.avgScore !== undefined ? m.avgScore : (m.average_score !== undefined ? m.average_score : 0)
+        }));
+
+        const mappedAlerts = (alertData || []).map(m => ({
+          id: m.id || m.module_id,
+          name: m.name || m.module_name || 'Module',
+          avgScore: m.avgScore !== undefined ? m.avgScore : (m.average_score !== undefined ? m.average_score : 0)
+        }));
+
+        setModules(mappedModules);
+        setStrugglingModules(mappedAlerts);
+      } catch (err) {
+        console.error('Error loading module analytics:', err);
+      } finally {
+        setIsDataLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [selectedBatch]);
+
+  // Compute average score of modules
+  const totalAvg = modules.length > 0 
+    ? Math.round(modules.reduce((sum, m) => sum + m.avgScore, 0) / modules.length)
+    : 0;
 
   const getBarColorClass = (score) => {
     if (score >= 70) return 'bar-high';
     if (score >= 50) return 'bar-mid';
     return 'bar-low';
   };
+
+  if (isBatchesLoading) {
+    return (
+      <div className="perf-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <div style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>Loading batches...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="perf-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+        <div style={{ color: '#dc2626', fontWeight: 600 }}>{error}</div>
+      </div>
+    );
+  }
+
+  if (batches.length === 0) {
+    return (
+      <div className="perf-container" style={{ padding: '40px', textAlign: 'center' }}>
+        <h2>No Batches Available</h2>
+        <p style={{ color: 'var(--text-light)', marginTop: '8px' }}>Performance analytics will become active once batches are assigned.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="perf-container">
@@ -29,7 +115,7 @@ export default function PerformanceReports() {
         <div className="perf-banner-right">
           <div className="perf-summary-pill">
             <Icon name="bar-chart-2" style={{ width: '15px', height: '15px' }} />
-            <span>Avg Batch Score: 68%</span>
+            <span>Avg Batch Score: {totalAvg}%</span>
           </div>
         </div>
       </div>
@@ -45,30 +131,41 @@ export default function PerformanceReports() {
               value={selectedBatch}
               onChange={(e) => setSelectedBatch(e.target.value)}
             >
-              <option value="java">Batch 2026 — Java Full-Stack</option>
-              <option value="cloud">Batch 2026 — Cloud Architecture</option>
+              {batches.map(b => (
+                <option key={b.id} value={b.id}>{b.name} ({b.course_name})</option>
+              ))}
             </select>
           </div>
 
           <div className="perf-chart-list">
-            {modules.map((module) => (
-              <div key={module.id} className="perf-module-item">
-                <div className="perf-module-info">
-                  <span className="perf-module-name">{module.name}</span>
-                  <span className="perf-module-avg" style={{
-                    color: module.avgScore >= 70 ? '#059669' : module.avgScore >= 50 ? '#d97706' : '#dc2626'
-                  }}>
-                    {module.avgScore}% Batch Avg
-                  </span>
-                </div>
-                <div className="perf-bar-track">
-                  <div
-                    className={`perf-bar-fill ${getBarColorClass(module.avgScore)}`}
-                    style={{ width: `${module.avgScore}%` }}
-                  ></div>
-                </div>
+            {isDataLoading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-medium)' }}>
+                Loading analytics data...
               </div>
-            ))}
+            ) : modules.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-light)', fontSize: '14px' }}>
+                No module evaluation logs found for this batch.
+              </div>
+            ) : (
+              modules.map((module) => (
+                <div key={module.id} className="perf-module-item">
+                  <div className="perf-module-info">
+                    <span className="perf-module-name">{module.name}</span>
+                    <span className="perf-module-avg" style={{
+                      color: module.avgScore >= 70 ? '#059669' : module.avgScore >= 50 ? '#d97706' : '#dc2626'
+                    }}>
+                      {module.avgScore}% Batch Avg
+                    </span>
+                  </div>
+                  <div className="perf-bar-track">
+                    <div
+                      className={`perf-bar-fill ${getBarColorClass(module.avgScore)}`}
+                      style={{ width: `${module.avgScore}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -80,7 +177,11 @@ export default function PerformanceReports() {
           </div>
 
           <div className="perf-alerts-list">
-            {strugglingModules.length === 0 ? (
+            {isDataLoading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-medium)' }}>
+                Checking for alerts...
+              </div>
+            ) : strugglingModules.length === 0 ? (
               <div className="perf-alerts-empty">
                 <Icon name="check-circle" className="perf-alerts-empty-icon" />
                 <span className="perf-alerts-empty-title">All Modules On Track</span>

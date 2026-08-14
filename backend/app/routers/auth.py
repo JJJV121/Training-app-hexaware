@@ -64,19 +64,23 @@ async def activate_user(
 
 
 @router.post("/login", response_model=LoginResponse)
-
 async def login(
     request: Request,
     data: LoginRequest,  
     db: AsyncSession = Depends(get_db)
 ):
-
-    return await login_user(
-        db,
-        data.email,
-        data.password,
-        request
-    )
+    try:
+        return await login_user(
+            db,
+            data.email,
+            data.password,
+            request
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=401,
+            detail=str(e)
+        )
     
 
 

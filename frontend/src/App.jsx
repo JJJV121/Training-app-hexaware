@@ -163,19 +163,43 @@ function AdminApp() {
   );
 }
 
-function ProtectedRoute({ children }) {
-  const hasAuthToken = Boolean(
-    localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
-  );
+function ProtectedRoute({ children, allowedRoles }) {
+  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  const userStr = localStorage.getItem('user');
 
-  return hasAuthToken ? children : <Navigate to="/login" replace />;
+  if (!token || !userStr) {
+    return <Navigate to="/login" replace />;
+  }
+
+  try {
+    const user = JSON.parse(userStr);
+    const userRole = user.role ? user.role.toLowerCase() : '';
+    
+    if (allowedRoles && !allowedRoles.includes(userRole)) {
+      if (userRole === 'admin') {
+        return <Navigate to="/admin" replace />;
+      } else if (userRole === 'trainer') {
+        return <Navigate to="/trainer-dashboard" replace />;
+      } else {
+        return <Navigate to="/dashboard" replace />;
+      }
+    }
+  } catch (e) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
 }
 
 function AppRoutes() {
   const { isDarkMode } = useTheme();
   const location = useLocation();
   const themeClass = isDarkMode ? 'dark-theme' : '';
-  const isDashboardPage = location.pathname === '/dashboard' || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin');
+  const isDashboardPage =
+    location.pathname === '/dashboard' ||
+    location.pathname.startsWith('/course/') ||
+    location.pathname.startsWith('/admin') ||
+    location.pathname === '/trainer-dashboard';
 
   return (
     <div className={`app-container ${themeClass}`}>
@@ -190,15 +214,30 @@ function AppRoutes() {
         <Route path="/register-course" element={<RegisterCourse />} />
         <Route path="/forgot-password" element={<ForgotPassword/>}/>
         <Route path="/reset-password" element={<ResetPassword/>}/>
-<<<<<<< HEAD
-        <Route path="/dashboard" element={<ProtectedRoute><DashBoard /></ProtectedRoute>}/>
-        
-        {/* Admin route */}
-        <Route path="/admin/*" element={<ProtectedRoute><AdminApp /></ProtectedRoute>}/>
-=======
-        <Route path="/dashboard" element={<DashBoard/>}/>
-        <Route path="/trainer-dashboard" element={<TrainerDashboard/>}/>
->>>>>>> feature/frontend/trainer-dashboard
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['trainee']}>
+              <DashBoard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trainer-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['trainer']}>
+              <TrainerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminApp />
+            </ProtectedRoute>
+          }
+        />
         
         {/* Catch-all route to redirect unknown URLs back to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />

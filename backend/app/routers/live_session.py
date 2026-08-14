@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from app.models.user import User
 
 from app.database.session import get_db
+from app.core.dependencies import get_current_trainer
 
 from app.schemas.live_session import (
     LiveSessionCreate,
@@ -27,14 +27,6 @@ router = APIRouter(
 )
 
 
-async def get_trainer_id(db: AsyncSession) -> int:
-    result = await db.execute(
-        select(User.id).where(func.lower(User.role) == "trainer").order_by(User.id)
-    )
-    trainer_id = result.scalar()
-    return trainer_id or 1
-
-
 # --------------------------------------------------
 # Create Live Session
 # --------------------------------------------------
@@ -47,12 +39,11 @@ async def get_trainer_id(db: AsyncSession) -> int:
 async def create_live_session_api(
     data: LiveSessionCreate,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await create_live_session(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         data=data,
     )
 
@@ -67,12 +58,11 @@ async def create_live_session_api(
 )
 async def get_live_sessions_api(
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_live_sessions(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
     )
 
 
@@ -86,12 +76,11 @@ async def get_live_sessions_api(
 )
 async def get_upcoming_sessions_api(
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_upcoming_sessions(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
     )
 
 
@@ -106,12 +95,11 @@ async def get_upcoming_sessions_api(
 async def get_live_session_api(
     session_id: int,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_live_session_by_id(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         session_id=session_id,
     )
 
@@ -128,12 +116,11 @@ async def update_live_session_api(
     session_id: int,
     data: LiveSessionUpdate,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await update_live_session(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         session_id=session_id,
         data=data,
     )
@@ -149,11 +136,10 @@ async def update_live_session_api(
 async def delete_live_session_api(
     session_id: int,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await delete_live_session(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         session_id=session_id,
     )

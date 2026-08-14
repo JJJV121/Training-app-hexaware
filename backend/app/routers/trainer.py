@@ -3,10 +3,10 @@ from fastapi import (
     Depends,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 from app.models.user import User
 
 from app.database.session import get_db
+from app.core.dependencies import get_current_trainer
 
 from app.schemas.trainer import (
     DashboardOverviewResponse,
@@ -20,20 +20,13 @@ from app.services.trainer_service import (
     get_batches,
     get_batch_by_id,
     get_batch_trainees,
+    get_trainer_grading_queue,
 )
 
 router = APIRouter(
     prefix="/api/trainer",
     tags=["Trainer"],
 )
-
-
-async def get_trainer_id(db: AsyncSession) -> int:
-    result = await db.execute(
-        select(User.id).where(func.lower(User.role) == "trainer").order_by(User.id)
-    )
-    trainer_id = result.scalar()
-    return trainer_id or 1
 
 
 # --------------------------------------------------
@@ -46,12 +39,11 @@ async def get_trainer_id(db: AsyncSession) -> int:
 )
 async def get_dashboard_api(
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_dashboard_overview(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
     )
 
 
@@ -65,12 +57,11 @@ async def get_dashboard_api(
 )
 async def get_batches_api(
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_batches(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
     )
 
 
@@ -85,12 +76,11 @@ async def get_batches_api(
 async def get_batch_api(
     batch_id: int,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_batch_by_id(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         batch_id=batch_id,
     )
 
@@ -106,11 +96,27 @@ async def get_batch_api(
 async def get_batch_trainees_api(
     batch_id: int,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    trainer_id = await get_trainer_id(db)
-
     return await get_batch_trainees(
         db=db,
-        trainer_id=trainer_id,
+        trainer_id=current_trainer.id,
         batch_id=batch_id,
+    )
+
+
+# --------------------------------------------------
+# Get Grading Queue
+# --------------------------------------------------
+
+@router.get(
+    "/grading-queue",
+)
+async def get_grading_queue_api(
+    db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
+):
+    return await get_trainer_grading_queue(
+        db=db,
+        trainer_id=current_trainer.id,
     )

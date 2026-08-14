@@ -12,6 +12,8 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.core.dependencies import get_current_user, get_current_trainer
+from app.models.user import User
 from app.schemas.assignment import (
     AssignmentCreate,
     AssignmentResponse,
@@ -50,10 +52,8 @@ async def create_assignment_api(
     due_date: datetime = Form(...),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(get_current_trainer),
 ):
-    # Mock trainer until authentication is merged
-    trainer_id = 1
-
     attachment_path = None
 
     if file:
@@ -76,7 +76,7 @@ async def create_assignment_api(
     return await create_assignment(
         db=db,
         data=assignment_data,
-        created_by=trainer_id,
+        created_by=current_trainer.id,
         attachment_path=attachment_path,
     )
 
@@ -288,11 +288,11 @@ async def get_trainee_assignments(
 
 @router.get("/trainee/my-submissions", response_model=list[AssignmentSubmissionResponse])
 async def get_trainee_my_submissions(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    trainee_id = 3  # Match hardcoded trainee session from assignment_submission.py
     result = await db.execute(
-        select(AssignmentSubmission).where(AssignmentSubmission.user_id == trainee_id)
+        select(AssignmentSubmission).where(AssignmentSubmission.user_id == current_user.id)
     )
     return result.scalars().all()
 

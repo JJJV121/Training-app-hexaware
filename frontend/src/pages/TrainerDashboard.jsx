@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Icon from '../components/Icon';
-import { TRAINER_PROFILE } from '../data/trainerMockData';
+import apiClient from '../services/apiClient';
 import TrainerOverview from '../components/trainer/TrainerOverview';
 import BatchManagement from '../components/trainer/BatchManagement';
 import GradingQueue from '../components/trainer/GradingQueue';
@@ -9,7 +9,25 @@ import Placeholder from './Placeholder';
 import '../styles/trainer/trainer-dashboard.css';
 
 export default function TrainerDashboard() {
-  const [trainerProfile] = useState(TRAINER_PROFILE);
+  const [trainerProfile, setTrainerProfile] = useState(() => {
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : { name: 'Trainer', email: 'trainer@hexaware.com' };
+  });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await apiClient.get('/profile');
+        setTrainerProfile(response.data);
+        const stored = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({ ...stored, ...response.data }));
+      } catch (err) {
+        console.error('Failed to fetch profile:', err);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
 

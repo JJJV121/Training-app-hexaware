@@ -9,6 +9,7 @@ import Placeholder from '../pages/Placeholder';
 import ProgressView from './ProgressView.jsx';
 import StudyNotes from './StudyNotes.jsx';
 import Profile from '../pages/Profile';
+import Assessment from './Assessment.jsx';
 
 import ThemeToggle from '../components/ThemeToggle';
 
