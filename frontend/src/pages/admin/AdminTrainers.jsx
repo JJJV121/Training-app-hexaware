@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Icon from '../../components/Icon';
 import adminUserService from '../../services/adminUserService';
 import adminCourseService from '../../services/adminCourseService';
@@ -26,6 +26,8 @@ export default function AdminTrainers() {
   const [formWorkload, setFormWorkload] = useState(50);
   const [formRating, setFormRating] = useState(4.5);
 
+  const searchTimeoutRef = useRef(null);
+
   const triggerToast = (msg) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
@@ -34,6 +36,52 @@ export default function AdminTrainers() {
   useEffect(() => {
     loadTrainersAndCourses();
   }, []);
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        if (value.trim() === '') {
+          const trainersData = await adminUserService.getTrainers();
+          setTrainers(trainersData);
+          return;
+        }
+
+        const results = await adminUserService.searchTrainers(value);
+        setTrainers(results);
+      } catch (err) {
+        console.error('Failed to search trainers:', err);
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+  };
+
+  const handleExpertFilterChange = async (courseId) => {
+    setExpertFilter(courseId);
+    setLoading(true);
+    try {
+      if (courseId === 'All') {
+        const trainersData = await adminUserService.getTrainers();
+        setTrainers(trainersData);
+        return;
+      }
+
+      const filtered = await adminUserService.filterTrainers({ course_id: courseId });
+      setTrainers(filtered);
+    } catch (err) {
+      console.error('Failed to filter trainers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadTrainersAndCourses = async () => {
     setLoading(true);
@@ -237,7 +285,7 @@ export default function AdminTrainers() {
               placeholder="Search trainers by name, email, or domain..." 
               className="search-input"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
 
@@ -247,7 +295,7 @@ export default function AdminTrainers() {
             <select 
               className="filter-select"
               value={expertFilter}
-              onChange={(e) => setExpertFilter(e.target.value)}
+              onChange={(e) => handleExpertFilterChange(e.target.value)}
             >
               <option value="All">All Domains</option>
               {courses.map(c => (

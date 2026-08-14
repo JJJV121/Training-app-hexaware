@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import Icon from '../components/Icon';
 import apiClient from '../services/apiClient';
-import TrainerOverview from '../components/trainer/TrainerOverview';
-import BatchManagement from '../components/trainer/BatchManagement';
-import GradingQueue from '../components/trainer/GradingQueue';
-import PerformanceReports from '../components/trainer/PerformanceReports';
-import SessionScheduler from '../components/trainer/SessionScheduler';
+import TrainerOverview from './trainer/TrainerOverview';
+import BatchManagement from './trainer/BatchManagement';
+import GradingQueue from './trainer/GradingQueue';
+import PerformanceReports from './trainer/PerformanceReports';
+import SessionScheduler from './trainer/SessionScheduler';
 import Placeholder from './Placeholder';
 import '../styles/trainer/trainer-dashboard.css';
 

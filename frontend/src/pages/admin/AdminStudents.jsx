@@ -92,16 +92,36 @@ export default function AdminStudents() {
         if (value.trim() === '') {
           const traineesData = await adminUserService.getTrainees();
           setStudents(traineesData);
-        } else {
-          const searchResults = await adminUserService.searchTrainees(value);
-          setStudents(searchResults);
+          return;
         }
+
+        const searchResults = await adminUserService.searchTrainees(value);
+        setStudents(searchResults);
       } catch (err) {
         console.error('Failed to search trainees:', err);
       } finally {
         setLoading(false);
       }
-    }, 400); // 400ms debounce delay
+    }, 400);
+  };
+
+  const handleCourseFilterChange = async (courseId) => {
+    setCourseFilter(courseId);
+    setLoading(true);
+    try {
+      if (courseId === 'All') {
+        const traineesData = await adminUserService.getTrainees();
+        setStudents(traineesData);
+        return;
+      }
+
+      const filtered = await adminUserService.filterTrainees({ course_id: courseId });
+      setStudents(filtered);
+    } catch (err) {
+      console.error('Failed to filter trainees:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const triggerToast = (msg) => {
@@ -275,7 +295,7 @@ export default function AdminStudents() {
             <select 
               className="filter-select"
               value={courseFilter}
-              onChange={(e) => setCourseFilter(e.target.value)}
+              onChange={(e) => handleCourseFilterChange(e.target.value)}
             >
               <option value="All">All Courses</option>
               {courses.map(c => (

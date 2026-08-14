@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Icon from '../Icon';
+import Icon from '../../components/Icon';
 import trainerService from '../../services/trainerService';
 import '../../styles/trainer/performance-reports.css';
 

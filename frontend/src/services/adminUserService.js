@@ -14,16 +14,13 @@ const adminUserService = {
   },
 
   async createTrainee(traineeData) {
-    // Maps frontend inputs to the backend UserCreate schema
     const payload = {
       employee_id: traineeData.employee_id || `EMP_${Date.now()}`,
       name: traineeData.name,
       email: traineeData.email,
-      course_id: traineeData.course_id,
-      role: 'trainee',
-      password: traineeData.password || 'Trainee@123'
+      course_id: Number(traineeData.course_id)
     };
-    const response = await apiClient.post('/auth/users', payload);
+    const response = await apiClient.post('/admin/trainees', payload);
     return response.data;
   },
 
@@ -47,6 +44,18 @@ const adminUserService = {
     const response = await apiClient.get('/admin/trainees/search', {
       params: { keyword }
     });
+    return response.data;
+  },
+
+  async filterTrainees({ course_id, is_active } = {}) {
+    const params = {};
+    if (course_id !== undefined && course_id !== null && course_id !== 'All') {
+      params.course_id = Number(course_id);
+    }
+    if (is_active !== undefined && is_active !== null) {
+      params.is_active = is_active;
+    }
+    const response = await apiClient.get('/admin/trainees/filter', { params });
     return response.data;
   },
 
@@ -93,6 +102,25 @@ const adminUserService = {
 
   async deleteTrainer(id) {
     const response = await apiClient.delete(`/admin/trainers/${id}`);
+    return response.data;
+  },
+
+  async searchTrainers(keyword) {
+    const response = await apiClient.get('/admin/trainers/search', {
+      params: { keyword }
+    });
+    return response.data;
+  },
+
+  async filterTrainers({ course_id, is_active } = {}) {
+    const params = {};
+    if (course_id !== undefined && course_id !== null && course_id !== 'All') {
+      params.course_id = Number(course_id);
+    }
+    if (is_active !== undefined && is_active !== null) {
+      params.is_active = is_active;
+    }
+    const response = await apiClient.get('/admin/trainers/filter', { params });
     return response.data;
   },
 
