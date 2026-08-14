@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.batch_models import Batch
+from app.models.batch_models import Batch, BatchTrainee
 
 from app.models.user import User
 

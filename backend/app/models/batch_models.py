@@ -1,6 +1,7 @@
 from datetime import date, datetime, time
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -94,6 +95,12 @@ class Batch(Base):
     status: Mapped[str] = mapped_column(
         String(20),
         default="UPCOMING",
+        nullable=False,
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
         nullable=False,
     )
 

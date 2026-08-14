@@ -4,8 +4,7 @@ from sqlalchemy import select
 from app.database.session import AsyncSessionLocal
 from app.models.user import User
 from app.models.course import Course
-from app.models.batch import Batch
-from app.models.batch_trainee import BatchTrainee
+from app.models.batch_models import Batch, BatchTrainee
 from app.models.live_session import LiveSession
 from app.models.attendance_record import AttendanceRecord, AttendanceStatus
 

@@ -4,7 +4,7 @@ from sqlalchemy import select
 from app.database.session import AsyncSessionLocal
 from app.models.course import Course
 from app.models.user import User
-from app.models.batch import Batch
+from app.models.batch_models import Batch
 
 
 async def create_mock_data():
