@@ -10,19 +10,16 @@ from app.routers.progress import router as progress_router
 from app.routers.schedule import router as schedule_router
 from app.routers.dashboard_router import router as dashboard_router
 from app.routers.note import router as note_router
-<<<<<<< HEAD
 from app.routers.batch_router import router as batch_router
 
+# Admin routers
 from app.routers.admin_course import router as admin_course_router
 from app.routers.admin_course_assignment import (
     router as admin_course_assignment_router
 )
 from app.routers.admin_user import router as admin_user_router
 
-=======
-
 # Coding / Assignment routers
->>>>>>> feature/backend-trainer-module
 from app.routers.coding_problem_router import router as coding_problem_router
 from app.routers.submission_router import router as submission_router
 from app.routers.assignment import router as assignment_router
@@ -38,7 +35,7 @@ from app.routers.trainer_analytics import (
     router as trainer_analytics_router
 )
 
-# Existing trainer / session / attendance routers
+# Trainer / Session / Attendance routers
 from app.routers import trainer
 from app.routers import live_session
 from app.routers import attendance_record
@@ -48,14 +45,12 @@ from app.database.session import test_connection
 from app.utils.index_setup import setup_indexes
 
 
-
 app = FastAPI()
 
 
 # --------------------------------------------------
 # Startup
 # --------------------------------------------------
-
 
 @app.on_event("startup")
 async def startup():
@@ -93,15 +88,11 @@ app.mount(
 )
 
 
-<<<<<<< HEAD
-# Register routers
-=======
 # --------------------------------------------------
 # Register Routers
 # --------------------------------------------------
 
 # Authentication
->>>>>>> feature/backend-trainer-module
 app.include_router(auth_router)
 
 # User/Profile
@@ -121,17 +112,14 @@ app.include_router(dashboard_router)
 
 # Notes
 app.include_router(note_router)
-<<<<<<< HEAD
-app.include_router(batch_router)
 
+# Admin
+app.include_router(batch_router)
 app.include_router(admin_course_router)
 app.include_router(admin_course_assignment_router)
 app.include_router(admin_user_router)
 
-=======
-
 # Coding Problems
->>>>>>> feature/backend-trainer-module
 app.include_router(coding_problem_router)
 
 # Coding Problem Submissions
@@ -142,8 +130,14 @@ app.include_router(assignment_router)
 
 # Assignment Submissions
 app.include_router(assignment_submission_router)
+
+# Course Day Q&A
 app.include_router(course_day_qa_router)
+
+# Case Study
 app.include_router(case_study_router)
+
+# Generator
 app.include_router(generator_router)
 
 # Trainer
@@ -155,7 +149,7 @@ app.include_router(live_session.router)
 # Attendance Records
 app.include_router(attendance_record.router)
 
-# Trainer Analytics - Member 3
+# Trainer Analytics
 app.include_router(trainer_analytics_router)
 
 

@@ -1,8 +1,8 @@
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.batch import Batch
-from app.models.batch_trainee import BatchTrainee
+from app.models.batch_models import Batch
+
 from app.models.assignment import Assignment
 from app.models.assignment_submission import AssignmentSubmission
 from app.models.course_day import CourseDay

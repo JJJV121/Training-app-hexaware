@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.batch import Batch
+from app.models.batch_models import Batch
 
 from app.models.live_session import LiveSession
 from app.schemas.live_session import (
