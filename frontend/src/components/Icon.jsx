@@ -30,6 +30,7 @@ import {
   Plus,
   Menu,
   X,
+<<<<<<< HEAD
   Users,
   Trash2,
   Shield,
@@ -48,6 +49,25 @@ import {
   Award,
   Upload,
   Unlock
+=======
+  // Trainer Dashboard icons
+  Users,
+  BarChart2,
+  ClipboardCheck,
+  Video,
+  ChevronLeft,
+  AlertTriangle,
+  Megaphone,
+  PenSquare,
+  Timer,
+  GraduationCap,
+  Award,
+  TrendingDown,
+  Send,
+  UserCheck,
+  ChevronDown,
+  BarChart
+>>>>>>> feature/frontend/trainer-dashboard
 } from 'lucide-react';
 
 const iconMap = {
@@ -82,6 +102,7 @@ const iconMap = {
   'plus': Plus,
   'menu': Menu,
   'x': X,
+<<<<<<< HEAD
   'users': Users,
   'trash-2': Trash2,
   'shield': Shield,
@@ -100,6 +121,25 @@ const iconMap = {
   'award': Award,
   'upload': Upload,
   'unlock': Unlock
+=======
+  // Trainer Dashboard icons
+  'users': Users,
+  'bar-chart-2': BarChart2,
+  'bar-chart': BarChart,
+  'clipboard-check': ClipboardCheck,
+  'video': Video,
+  'chevron-left': ChevronLeft,
+  'chevron-down': ChevronDown,
+  'alert-triangle': AlertTriangle,
+  'megaphone': Megaphone,
+  'pen-square': PenSquare,
+  'timer': Timer,
+  'graduation-cap': GraduationCap,
+  'award': Award,
+  'trending-down': TrendingDown,
+  'send': Send,
+  'user-check': UserCheck,
+>>>>>>> feature/frontend/trainer-dashboard
 };
 
 export default function Icon({ name, ...props }) {

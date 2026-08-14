@@ -1,0 +1,303 @@
+/* performance-reports.css */
+/* Trainer Dashboard — Performance Analytics screen styles */
+
+.perf-container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  animation: fadeIn 0.35s ease-out forwards;
+}
+
+/* ──────────────────────────────────────────── */
+/* Page Header Banner                           */
+/* ──────────────────────────────────────────── */
+.perf-banner {
+  background: linear-gradient(135deg, #002060 0%, #1e3a8a 60%, #2563eb 100%);
+  border-radius: 24px;
+  padding: 36px 40px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 15px 40px rgba(0, 32, 96, 0.25);
+}
+
+.perf-banner::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -5%;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.perf-banner-left h2 {
+  font-family: var(--font-family-header);
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.perf-banner-left p {
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+}
+
+.perf-banner-right {
+  display: flex;
+  gap: 12px;
+  z-index: 2;
+}
+
+.perf-summary-pill {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(4px);
+}
+
+/* ──────────────────────────────────────────── */
+/* Performance Split Layout                     */
+/* ──────────────────────────────────────────── */
+.perf-split-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ──────────────────────────────────────────── */
+/* Module Average Chart Panel                   */
+/* ──────────────────────────────────────────── */
+.perf-chart-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.perf-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+}
+
+.perf-chart-title {
+  font-family: var(--font-family-header);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.perf-chart-batch-select {
+  border: 1px solid var(--border-color);
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dark);
+  outline: none;
+  cursor: pointer;
+}
+
+.perf-chart-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.perf-module-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.perf-module-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.perf-module-name {
+  color: var(--text-dark);
+}
+
+.perf-module-avg {
+  font-weight: 800;
+}
+
+/* Flex Bars */
+.perf-bar-track {
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 50px;
+  overflow: hidden;
+  position: relative;
+}
+
+.perf-bar-fill {
+  height: 100%;
+  border-radius: 50px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.perf-bar-fill.bar-high {
+  background: linear-gradient(90deg, #10b981, #34d399); /* Green */
+}
+
+.perf-bar-fill.bar-mid {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24); /* Amber */
+}
+
+.perf-bar-fill.bar-low {
+  background: linear-gradient(90deg, #ef4444, #f87171); /* Red */
+}
+
+/* ──────────────────────────────────────────── */
+/* Struggling Concepts Alert Panel             */
+/* ──────────────────────────────────────────── */
+.perf-alerts-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.perf-alerts-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+}
+
+.perf-alerts-title {
+  font-family: var(--font-family-header);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.perf-alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.perf-alert-item {
+  background: #fff9eb;
+  border: 1px solid #fde68a;
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  animation: fadeInUp 0.3s ease-out both;
+}
+
+.perf-alert-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.perf-alert-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.perf-alert-item-title {
+  font-family: var(--font-family-header);
+  font-size: 14px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.perf-alert-desc {
+  font-size: 12px;
+  color: #b45309;
+  line-height: 1.5;
+}
+
+.perf-alert-badge {
+  background: #fde68a;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 50px;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+/* Empty Alert State */
+.perf-alerts-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.perf-alerts-empty-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.perf-alerts-empty-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.perf-alerts-empty-desc {
+  font-size: 12px;
+}
+
+/* ──────────────────────────────────────────── */
+/* Responsive                                   */
+/* ──────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .perf-split-layout {
+    grid-template-columns: 1fr;
+  }
+}

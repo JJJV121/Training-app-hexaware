@@ -7,6 +7,7 @@ import RegisterCourse from './pages/RegisterCourse';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import DashBoard from './pages/DashBoard';
+import TrainerDashboard from './pages/TrainerDashboard';
 import { useTheme } from './context/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import Icon from './components/Icon';
@@ -189,10 +190,15 @@ function AppRoutes() {
         <Route path="/register-course" element={<RegisterCourse />} />
         <Route path="/forgot-password" element={<ForgotPassword/>}/>
         <Route path="/reset-password" element={<ResetPassword/>}/>
+<<<<<<< HEAD
         <Route path="/dashboard" element={<ProtectedRoute><DashBoard /></ProtectedRoute>}/>
         
         {/* Admin route */}
         <Route path="/admin/*" element={<ProtectedRoute><AdminApp /></ProtectedRoute>}/>
+=======
+        <Route path="/dashboard" element={<DashBoard/>}/>
+        <Route path="/trainer-dashboard" element={<TrainerDashboard/>}/>
+>>>>>>> feature/frontend/trainer-dashboard
         
         {/* Catch-all route to redirect unknown URLs back to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
