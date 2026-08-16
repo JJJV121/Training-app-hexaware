@@ -72,6 +72,80 @@ const skeletonStyles = `
   }
 `;
 
+function CountUp({ end, duration = 1200, suffix = "" }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const endNum = parseFloat(end);
+    if (isNaN(endNum)) {
+      setCount(end);
+      return;
+    }
+    if (endNum === 0) {
+      setCount(0);
+      return;
+    }
+
+    const incrementTime = 20;
+    const totalSteps = Math.ceil(duration / incrementTime);
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      const progress = step / totalSteps;
+      const currentVal = endNum * (progress * (2 - progress));
+      
+      if (step >= totalSteps) {
+        clearInterval(timer);
+        setCount(endNum);
+      } else {
+        if (Number.isInteger(endNum)) {
+          setCount(Math.floor(currentVal));
+        } else {
+          setCount(parseFloat(currentVal.toFixed(1)));
+        }
+      }
+    }, incrementTime);
+
+    return () => clearInterval(timer);
+  }, [end, duration]);
+
+  return <span>{count}{suffix}</span>;
+}
+
+function CountUpHours({ end, duration = 1200 }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const endNum = parseFloat(end);
+    if (isNaN(endNum) || endNum === 0) {
+      setCount(0);
+      return;
+    }
+
+    const incrementTime = 20;
+    const totalSteps = Math.ceil(duration / incrementTime);
+    let step = 0;
+
+    const timer = setInterval(() => {
+      step++;
+      const progress = step / totalSteps;
+      const currentVal = endNum * (progress * (2 - progress));
+      
+      if (step >= totalSteps) {
+        clearInterval(timer);
+        setCount(endNum);
+      } else {
+        setCount(currentVal);
+      }
+    }, incrementTime);
+
+    return () => clearInterval(timer);
+  }, [end, duration]);
+
+  return <span>{formatHours(count)}</span>;
+}
+
 export default function Home() {
   const [dashboardData, setDashboardData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -245,7 +319,7 @@ export default function Home() {
               <div className="stat-icon-wrapper">
                 <Icon name="check-circle" className="stat-icon" />
               </div>
-              <span className="stat-title">{course.completed_modules}</span>
+              <span className="stat-title"><CountUp end={course.completed_modules} /></span>
               <span className="stat-label">Modules Completed</span>
             </div>
 
@@ -253,7 +327,7 @@ export default function Home() {
               <div className="stat-icon-wrapper">
                 <Icon name="trending-up" className="stat-icon" />
               </div>
-              <span className="stat-title">{course.completed_percentage}%</span>
+              <span className="stat-title"><CountUp end={course.completed_percentage} suffix="%" /></span>
               <span className="stat-label">Overall Completion</span>
             </div>
 
@@ -261,7 +335,7 @@ export default function Home() {
               <div className="stat-icon-wrapper">
                 <Icon name="alert-circle" className="stat-icon" />
               </div>
-              <span className="stat-title">{coursesEnrolled}</span>
+              <span className="stat-title"><CountUp end={coursesEnrolled} /></span>
               <span className="stat-label">Courses Enrolled</span>
             </div>
           </div>
@@ -324,10 +398,10 @@ export default function Home() {
               
               <div className="keep-going-content">
                 <h3 className="keep-going-title">
-                  {course.remaining_modules} Modules Remaining
+                  <CountUp end={course.remaining_modules} /> Modules Remaining
                 </h3>
                 <p className="keep-going-desc">
-                  Currently on Day {course.current_day} of {course.name} ({course.completed_percentage}% Completed). {course.motivation_message}
+                  Currently on Day {course.current_day} of {course.name} (<CountUp end={course.completed_percentage} suffix="%" /> Completed). {course.motivation_message}
                 </p>
               </div>
               
@@ -376,7 +450,7 @@ export default function Home() {
                       <Icon name="zap" style={{ width: '12px', height: '12px', fill: '#ffdf40', stroke: '#ffdf40' }} />
                       <span>Time Spent</span>
                     </div>
-                    <span style={{ fontWeight: '700', opacity: 0.8 }}>Total: {formatHours(totalHours)}</span>
+                    <span style={{ fontWeight: '700', opacity: 0.8 }}>Total: <CountUpHours end={totalHours} /></span>
                   </div>
                   
                   <div className="venn-container">
@@ -385,7 +459,7 @@ export default function Home() {
                       className="venn-circle circle-learning" 
                       style={{ width: `${learningSize}px`, height: `${learningSize}px` }}
                     >
-                      <span className="venn-circle-hours">{formatHours(timeSpent.learning_hours)}</span>
+                      <span className="venn-circle-hours"><CountUpHours end={timeSpent.learning_hours} /></span>
                       <span className="venn-circle-label">Learning</span>
                     </div>
                     
@@ -394,7 +468,7 @@ export default function Home() {
                       className="venn-circle circle-assessment" 
                       style={{ width: `${assessmentSize}px`, height: `${assessmentSize}px` }}
                     >
-                      <span className="venn-circle-hours">{formatHours(timeSpent.assessment_hours)}</span>
+                      <span className="venn-circle-hours"><CountUpHours end={timeSpent.assessment_hours} /></span>
                       <span className="venn-circle-label">Assessment</span>
                     </div>
                     
@@ -403,7 +477,7 @@ export default function Home() {
                       className="venn-circle circle-practice" 
                       style={{ width: `${practiceSize}px`, height: `${practiceSize}px` }}
                     >
-                      <span className="venn-circle-hours">{formatHours(timeSpent.practice_hours)}</span>
+                      <span className="venn-circle-hours"><CountUpHours end={timeSpent.practice_hours} /></span>
                       <span className="venn-circle-label">Practice</span>
                     </div>
 
@@ -486,7 +560,13 @@ export default function Home() {
                     else if (isCurrent) statusClass = "current";
 
                     return (
-                      <div key={dayNum} className={`timeline-node ${statusClass}`}>
+                      <div 
+                        key={dayNum} 
+                        className={`timeline-node ${statusClass}`}
+                        style={{
+                          animationDelay: `${i * 80}ms`
+                        }}
+                      >
                         <div className="node-circle">
                           {isCompleted ? (
                             <Icon name="check" style={{ width: '14px', height: '14px', color: '#fff' }} />

@@ -7,7 +7,7 @@ import RegisterCourse from './pages/RegisterCourse';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import DashBoard from './pages/DashBoard';
-import TrainerDashboard from './pages/TrainerDashboard';
+import OverallDashboard from './pages/OverallDashboard';
 import { useTheme } from './context/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import Icon from './components/Icon';
@@ -40,7 +40,7 @@ function AdminApp() {
     };
 
     window.addEventListener('hashchange', handleHashChange);
-    
+
     // Set default hash if none is present
     if (!window.location.hash) {
       window.location.hash = 'admin-dashboard';
@@ -93,7 +93,7 @@ function AdminApp() {
         <div className="sidebar-header" style={{ marginBottom: '24px' }}>
           <h1 className="logo">Hexaware</h1>
         </div>
-        
+
         {/* User profile info */}
         <div className="user-profile-card" style={{ marginBottom: '24px' }}>
           <div className="profile-info">
@@ -102,7 +102,7 @@ function AdminApp() {
             <span className="user-email" id="user-display-email">admin@hexaware.com</span>
           </div>
         </div>
-        
+
         {/* Nav menu list */}
         <nav className="nav-menu" style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', paddingRight: '4px' }}>
           <ul>
@@ -121,8 +121,8 @@ function AdminApp() {
               }
               return (
                 <li key={item.page}>
-                  <a 
-                    href={`#${item.page}`} 
+                  <a
+                    href={`#${item.page}`}
                     className={`nav-item ${currentRoute === item.page ? 'active' : ''}`}
                     data-page={item.page}
                     style={item.isSub ? { paddingLeft: '32px' } : {}}
@@ -135,7 +135,7 @@ function AdminApp() {
             })}
           </ul>
         </nav>
-        
+
         {/* Logout at bottom */}
         <div className="sidebar-footer" style={{ paddingTop: '16px' }}>
           <button
@@ -163,43 +163,19 @@ function AdminApp() {
   );
 }
 
-function ProtectedRoute({ children, allowedRoles }) {
-  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-  const userStr = localStorage.getItem('user');
+function ProtectedRoute({ children }) {
+  const hasAuthToken = Boolean(
+    localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
+  );
 
-  if (!token || !userStr) {
-    return <Navigate to="/login" replace />;
-  }
-
-  try {
-    const user = JSON.parse(userStr);
-    const userRole = user.role ? user.role.toLowerCase() : '';
-    
-    if (allowedRoles && !allowedRoles.includes(userRole)) {
-      if (userRole === 'admin') {
-        return <Navigate to="/admin" replace />;
-      } else if (userRole === 'trainer') {
-        return <Navigate to="/trainer-dashboard" replace />;
-      } else {
-        return <Navigate to="/dashboard" replace />;
-      }
-    }
-  } catch (e) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
+  return hasAuthToken ? children : <Navigate to="/login" replace />;
 }
 
 function AppRoutes() {
   const { isDarkMode } = useTheme();
   const location = useLocation();
   const themeClass = isDarkMode ? 'dark-theme' : '';
-  const isDashboardPage =
-    location.pathname === '/dashboard' ||
-    location.pathname.startsWith('/course/') ||
-    location.pathname.startsWith('/admin') ||
-    location.pathname === '/trainer-dashboard';
+  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin');
 
   return (
     <div className={`app-container ${themeClass}`}>
@@ -207,38 +183,19 @@ function AppRoutes() {
       <Routes>
         {/* Default route (Base URL) loads the Login screen */}
         <Route path="/" element={<LoginScreen />} />
-        
+
         {/* Specific paths for each of your screens */}
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/create-password" element={<CreatePasswordScreen />} />
         <Route path="/register-course" element={<RegisterCourse />} />
-        <Route path="/forgot-password" element={<ForgotPassword/>}/>
-        <Route path="/reset-password" element={<ResetPassword/>}/>
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['trainee']}>
-              <DashBoard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/trainer-dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['trainer']}>
-              <TrainerDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/*"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminApp />
-            </ProtectedRoute>
-          }
-        />
-        
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/dashboard" element={<OverallDashboard />} />
+        <Route path="/dashboard/:courseId" element={<DashBoard />} />
+
+        {/* Admin route */}
+        <Route path="/admin/*" element={<ProtectedRoute><AdminApp /></ProtectedRoute>} />
+
         {/* Catch-all route to redirect unknown URLs back to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

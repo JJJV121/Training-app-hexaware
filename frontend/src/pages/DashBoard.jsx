@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import dashboardService from '../services/dashboardService.js';
 import Icon from '../components/Icon';
 import Home from '../pages/Home';
@@ -10,11 +10,12 @@ import ProgressView from './ProgressView.jsx';
 import StudyNotes from './StudyNotes.jsx';
 import Profile from '../pages/Profile';
 import Assessment from './Assessment.jsx';
-
+ 
 import ThemeToggle from '../components/ThemeToggle';
-
+ 
 export default function DashBoard() {
   const { courseId: paramCourseId } = useParams();
+  const navigate = useNavigate();
 
   // 1. Convert profile to a state object to handle asynchronous API loading
   const [profile, setProfile] = useState({ name: "Loading...", email: "" });
@@ -209,6 +210,25 @@ export default function DashBoard() {
             <span className="user-name" id="user-display-name">{profile.name}</span>
             <span className="user-email" id="user-display-email">{profile.email}</span>
           </div>
+        </div>
+
+        {/* Back to Portal Portal Button */}
+        <div className="back-to-portal-container" style={{ padding: '0 0 16px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+          <button
+            type="button"
+            className="nav-item back-portal-btn"
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: 'var(--primary-blue-light)', color: 'var(--primary-blue)', border: 'none', padding: '12px 16px', borderRadius: '12px', fontWeight: '700', cursor: 'pointer', transition: 'background-color var(--transition-fast)' }}
+            onClick={() => {
+              if (isLocked) {
+                alert("Assessment is in progress. You must submit the assessment before leaving the page.");
+                return;
+              }
+              navigate('/dashboard');
+            }}
+          >
+            <Icon name="arrow-left" className="nav-icon" />
+            <span>All Courses</span>
+          </button>
         </div>
 
         {/* Nav menu list */}

@@ -325,6 +325,7 @@ export default function Assessment({
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState("saved"); // 'saving' | 'saved' | 'error'
+  const [confetti, setConfetti] = useState([]);
 
   // Central answer state representation
   // MCQ: { questionId: selectedIndex } OR { questionId: [selectedIndices] }
@@ -411,6 +412,29 @@ export default function Assessment({
       }
     };
   }, [isSubmitted, onLockChange]);
+
+  // Confetti Particle Generation when user passes
+  useEffect(() => {
+    if (isSubmitted && assessmentResults?.passed) {
+      const particles = [];
+      const colors = ['#3563e9', '#0dcd94', '#ff9f43', '#ff4d4f', '#9b5de5', '#f15bb5', '#00f5d4'];
+      for (let i = 0; i < 80; i++) {
+        particles.push({
+          id: i,
+          left: Math.random() * 100, // percentage width
+          delay: Math.random() * 3, // seconds
+          duration: 2 + Math.random() * 3, // seconds
+          size: 6 + Math.random() * 8, // px
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          shape: Math.random() > 0.5 ? 'circle' : 'rect'
+        });
+      }
+      setConfetti(particles);
+    } else {
+      setConfetti([]);
+    }
+  }, [isSubmitted, assessmentResults]);
 
   // ==========================================
   // 3. TIMER countdown implementation
@@ -769,6 +793,25 @@ export default function Assessment({
     const res = assessmentResults;
     return (
       <div className="results-container">
+        {res.passed && confetti.length > 0 && (
+          <div className="confetti-container">
+            {confetti.map((p) => (
+              <div 
+                key={p.id}
+                className={`confetti-particle ${p.shape}`}
+                style={{
+                  left: `${p.left}%`,
+                  animationDelay: `${p.delay}s`,
+                  animationDuration: `${p.duration}s`,
+                  backgroundColor: p.color,
+                  width: `${p.size}px`,
+                  height: `${p.shape === 'circle' ? p.size : p.size * 0.6}px`,
+                  transform: `rotate(${p.rotation}deg)`
+                }}
+              />
+            ))}
+          </div>
+        )}
         <div className="results-card">
           <div className="results-header">
             <div className="modal-icon-wrapper">
@@ -811,6 +854,58 @@ export default function Assessment({
               </div>
               <div className="ai-feedback-content">
                 {res.aiFeedback}
+              </div>
+            </div>
+          )}
+
+          {activeAssessment.assessmentType === "MCQ" && (
+            <div className="results-review-section">
+              <h3 className="review-title">Review Answers</h3>
+              <div className="review-list">
+                {activeAssessment.questions.map((q, idx) => {
+                  const userAnswer = selectedAnswers[q.id];
+                  let isCorrect = false;
+                  if (q.type === "mcq") {
+                    isCorrect = userAnswer === q.correctAnswer;
+                  } else {
+                    const userArr = Array.isArray(userAnswer) ? userAnswer : [];
+                    const correctArr = q.correctAnswers || [];
+                    isCorrect = userArr.length === correctArr.length && userArr.every(v => correctArr.includes(v));
+                  }
+
+                  return (
+                    <div key={q.id} className={`review-item ${isCorrect ? 'correct' : 'incorrect'}`}>
+                      <div className="review-item-header">
+                        <span className="review-question-num">Question {idx + 1}</span>
+                        <span className={`review-status-badge ${isCorrect ? 'correct' : 'incorrect'}`}>
+                          <Icon name={isCorrect ? "check" : "x"} style={{ width: '14px', height: '14px' }} />
+                          {isCorrect ? "Correct" : "Incorrect"}
+                        </span>
+                      </div>
+                      <p className="review-question-text">{q.questionText}</p>
+                      <div className="review-options">
+                        {q.options.map((opt, oIdx) => {
+                          const isUserSelected = q.type === "mcq" ? userAnswer === oIdx : (userAnswer || []).includes(oIdx);
+                          const isCorrectOpt = q.type === "mcq" ? q.correctAnswer === oIdx : (q.correctAnswers || []).includes(oIdx);
+                          
+                          let optClass = "review-option-pill";
+                          if (isUserSelected && isCorrectOpt) optClass += " correct-selected";
+                          else if (isUserSelected && !isCorrectOpt) optClass += " incorrect-selected";
+                          else if (!isUserSelected && isCorrectOpt) optClass += " correct-missed";
+
+                          return (
+                            <div key={oIdx} className={optClass}>
+                              <span>{opt}</span>
+                              {isUserSelected && isCorrectOpt && <span className="pill-badge">Your Correct Answer</span>}
+                              {isUserSelected && !isCorrectOpt && <span className="pill-badge">Your Incorrect Answer</span>}
+                              {!isUserSelected && isCorrectOpt && <span className="pill-badge">Correct Answer</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

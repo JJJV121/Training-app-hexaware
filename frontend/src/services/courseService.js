@@ -16,7 +16,7 @@ const apiClient = axios.create({
 });
 
 // 👉 TOGGLE THIS TO FALSE WHEN YOUR BACKEND IS READY
-const USE_MOCK_DATA = false; 
+const USE_MOCK_DATA = true;
 
 // Helper to simulate network latency for mock data
 const sleep = (ms = 600) => new Promise(resolve => setTimeout(resolve, ms));
@@ -34,7 +34,7 @@ const courseService = {
       await sleep();
       return {
         course_id: String(courseId), // Normalized to string
-        course_name: "C# Digital Foundation",
+        course_name: String(courseId) === "1" ? "Java Training" : "C# Digital Foundation",
         duration_days: 16,
         days: [
           {
@@ -42,7 +42,7 @@ const courseService = {
             day_number: 1,
             title: "Introduction & Setup",
             learning_units: [
-              { id: "101", title: "What is C#?", type: "theory" },
+              { id: "101", title: String(courseId) === "1" ? "What is Java?" : "What is C#?", type: "theory" },
               { id: "102", title: "Setting up Visual Studio", type: "video" },
               { id: "103", title: "Writing Your First Program", type: "video" }
             ]
@@ -63,7 +63,7 @@ const courseService = {
     this._cache[courseId] = response.data;
     return response.data;
   },
-
+ 
   // 2. Fetch current user progress tracking metrics for a specific course
   async getCourseProgress(courseId, userId) {
     if (USE_MOCK_DATA) {
@@ -71,7 +71,7 @@ const courseService = {
       return {
         course_id: String(courseId),
         user_id: String(userId),
-        progress_percentage: 100.0,
+        progress_percentage: String(courseId) === "1" ? 31.25 : 62.5,
         // Mark every lesson in the mock course as complete so assignments unlock in demo mode.
         completed_learning_units: ["101", "102", "103", "104", "105"],
         completed_videos: [

@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Set to false to use mock data
-const IS_BACKEND_RUNNING = true;
+const IS_BACKEND_RUNNING = false;
 
 const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL)
   ? import.meta.env.VITE_API_BASE_URL
@@ -18,25 +18,27 @@ const apiClient = axios.create({
 const sleep = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
 
 const dashboardService = {
-  _cache: {}, // userId -> { data, timestamp }
-  _pendingRequests: {}, // userId -> Promise
-
+  _cache: {}, // key -> { data, timestamp }
+  _pendingRequests: {}, // key -> Promise
+ 
   // Reusable core fetch function
-  async getDashboard(userId) {
+  async getDashboard(userId, courseId = null) {
     if (!userId) return null;
-
+    const activeCourseId = courseId ? Number(courseId) : 1;
+    const cacheKey = `${userId}_${activeCourseId}`;
+ 
     // Deduplicate concurrent requests
-    if (this._pendingRequests[userId]) {
-      return this._pendingRequests[userId];
+    if (this._pendingRequests[cacheKey]) {
+      return this._pendingRequests[cacheKey];
     }
-
+ 
     // Return cached data if fresh (less than 10 seconds old)
-    const cached = this._cache[userId];
+    const cached = this._cache[cacheKey];
     const now = Date.now();
     if (cached && (now - cached.timestamp < 10000)) {
       return cached.data;
     }
-
+ 
     const promise = (async () => {
       try {
         if (!IS_BACKEND_RUNNING) {
@@ -45,29 +47,55 @@ const dashboardService = {
             name: "John",
             employee_id: "EMP001",
             email: "emp001@example.com",
-            courses_enrolled: 1,
-            course: {
+            courses_enrolled: 2,
+            course: activeCourseId === 2 ? {
+              id: 2,
+              name: "C# Digital Foundation",
+              current_day: 9,
+              total_days: 16,
+              remaining_modules: 15,
+              completed_modules: 25,
+              total_modules: 40,
+              completed_percentage: 62.5,
+              start_date: "2026-07-01",
+              end_date: "2026-07-25",
+              motivation_message: "Keep pushing!"
+            } : {
               id: 1,
               name: "Java Training",
               current_day: 5,
               total_days: 16,
               remaining_modules: 40,
+              completed_modules: 5,
+              total_modules: 45,
               completed_percentage: 31.25,
               start_date: "2026-06-29",
               end_date: "2026-07-14",
               motivation_message: "Great Progress!"
             },
-            progress: {
+            progress: activeCourseId === 2 ? {
+              completed_days: 9,
+              remaining_days: 7
+            } : {
               completed_days: 5,
               remaining_days: 11
             },
-            time_spent: {
+            time_spent: activeCourseId === 2 ? {
+              learning_hours: 32.5,
+              assessment_hours: 15,
+              practice_hours: 12,
+              revision_hours: 4
+            } : {
               learning_hours: 19.75,
               assessment_hours: 10,
               practice_hours: 5,
               revision_hours: 2
             },
-            continue_learning: {
+            continue_learning: activeCourseId === 2 ? {
+              course_id: 2,
+              day: 9,
+              module_id: 15
+            } : {
               course_id: 1,
               day: 5,
               module_id: 27
@@ -80,10 +108,18 @@ const dashboardService = {
                 start_date: "2026-06-29",
                 end_date: "2026-07-14",
                 completion_percentage: 31.25
+              },
+              {
+                course_id: 2,
+                course_name: "C# Digital Foundation",
+                progress: 62.5,
+                start_date: "2026-07-01",
+                end_date: "2026-07-25",
+                completion_percentage: 62.5
               }
             ]
           };
-
+ 
           // Backwards compatibility layer
           mockData.current_course = {
             current_day: mockData.course.current_day,
@@ -94,15 +130,15 @@ const dashboardService = {
             end_date: mockData.course.end_date,
             progress_percentage: mockData.course.completed_percentage
           };
-
-          this._cache[userId] = { data: mockData, timestamp: Date.now() };
+ 
+          this._cache[cacheKey] = { data: mockData, timestamp: Date.now() };
           return mockData;
         }
-
-        console.log("Loading dashboard for user:", userId);
-        const response = await apiClient.get(`/dashboard/${userId}`);
+ 
+        console.log("Loading dashboard for user:", userId, "course:", activeCourseId);
+        const response = await apiClient.get(`/dashboard/${userId}?courseId=${activeCourseId}`);
         console.log("Dashboard Response:", response.data);
-
+ 
         const data = response.data;
         if (data && data.course) {
           // Backwards compatibility injector
@@ -116,15 +152,15 @@ const dashboardService = {
             progress_percentage: data.course.completed_percentage
           };
         }
-
-        this._cache[userId] = { data, timestamp: Date.now() };
+ 
+        this._cache[cacheKey] = { data, timestamp: Date.now() };
         return data;
       } finally {
-        delete this._pendingRequests[userId];
+        delete this._pendingRequests[cacheKey];
       }
     })();
-
-    this._pendingRequests[userId] = promise;
+ 
+    this._pendingRequests[cacheKey] = promise;
     return promise;
   },
 
