@@ -34,11 +34,6 @@ class User(Base):
         nullable=False
     )
 
-    course_id: Mapped[int | None] = mapped_column(
-           Integer,
-          nullable=True
-   )
-
     password_hash: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True
