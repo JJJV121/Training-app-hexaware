@@ -13,6 +13,17 @@ export default function ResetPassword() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Password requirements validation
+  const passwordRequirements = {
+    minLength: password.length >= 8,
+    hasUpperCase: /[A-Z]/.test(password),
+    hasLowerCase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+  };
+
+  const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -216,6 +227,117 @@ export default function ResetPassword() {
                     )}
                   </button>
                 </div>
+
+                {/* Password Requirements Display */}
+                {password && (
+                  <div style={{
+                    backgroundColor: '#F8F9FA',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '12px',
+                    padding: '14px 12px',
+                    marginTop: '8px'
+                  }}>
+                    <p style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
+                      Password Requirements:
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {/* Minimum Length */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          backgroundColor: passwordRequirements.minLength ? '#DCFCE7' : '#F3E8E8',
+                          color: passwordRequirements.minLength ? '#16A34A' : '#DC2626'
+                        }}>
+                          {passwordRequirements.minLength ? '✓' : '✕'}
+                        </span>
+                        <span style={{ fontSize: '12px', color: passwordRequirements.minLength ? '#16A34A' : '#6B7280' }}>
+                          At least 8 characters
+                        </span>
+                      </div>
+
+                      {/* Uppercase Letter */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          backgroundColor: passwordRequirements.hasUpperCase ? '#DCFCE7' : '#F3E8E8',
+                          color: passwordRequirements.hasUpperCase ? '#16A34A' : '#DC2626'
+                        }}>
+                          {passwordRequirements.hasUpperCase ? '✓' : '✕'}
+                        </span>
+                        <span style={{ fontSize: '12px', color: passwordRequirements.hasUpperCase ? '#16A34A' : '#6B7280' }}>
+                          One uppercase letter (A-Z)
+                        </span>
+                      </div>
+
+                      {/* Lowercase Letter */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          backgroundColor: passwordRequirements.hasLowerCase ? '#DCFCE7' : '#F3E8E8',
+                          color: passwordRequirements.hasLowerCase ? '#16A34A' : '#DC2626'
+                        }}>
+                          {passwordRequirements.hasLowerCase ? '✓' : '✕'}
+                        </span>
+                        <span style={{ fontSize: '12px', color: passwordRequirements.hasLowerCase ? '#16A34A' : '#6B7280' }}>
+                          One lowercase letter (a-z)
+                        </span>
+                      </div>
+
+                      {/* Number */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          backgroundColor: passwordRequirements.hasNumber ? '#DCFCE7' : '#F3E8E8',
+                          color: passwordRequirements.hasNumber ? '#16A34A' : '#DC2626'
+                        }}>
+                          {passwordRequirements.hasNumber ? '✓' : '✕'}
+                        </span>
+                        <span style={{ fontSize: '12px', color: passwordRequirements.hasNumber ? '#16A34A' : '#6B7280' }}>
+                          One number (0-9)
+                        </span>
+                      </div>
+
+                      {/* Special Character */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          backgroundColor: passwordRequirements.hasSpecialChar ? '#DCFCE7' : '#F3E8E8',
+                          color: passwordRequirements.hasSpecialChar ? '#16A34A' : '#DC2626'
+                        }}>
+                          {passwordRequirements.hasSpecialChar ? '✓' : '✕'}
+                        </span>
+                        <span style={{ fontSize: '12px', color: passwordRequirements.hasSpecialChar ? '#16A34A' : '#6B7280' }}>
+                          One special character (!@#$%^&*)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Field 2: Confirm Password Input */}
@@ -265,20 +387,46 @@ export default function ResetPassword() {
                     )}
                   </button>
                 </div>
+
+                {/* Password Match Indicator */}
+                {confirmPassword && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                    <span style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      backgroundColor: password === confirmPassword ? '#DCFCE7' : '#FEE2E2',
+                      color: password === confirmPassword ? '#16A34A' : '#DC2626',
+                      fontSize: '12px'
+                    }}>
+                      {password === confirmPassword ? '✓' : '✕'}
+                    </span>
+                    <span style={{
+                      fontSize: '12px',
+                      color: password === confirmPassword ? '#16A34A' : '#DC2626',
+                      fontWeight: '500'
+                    }}>
+                      {password === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Submit trigger button */}
               <button 
                 type="submit" 
-                disabled={isLoading || !token}
+                disabled={isLoading || !token || !allRequirementsMet || password !== confirmPassword || !password}
                 className="w-full bg-[#0061FE] hover:bg-[#0052CC] text-white text-base font-semibold shadow-md shadow-blue-100 transition-all tracking-wide"
                 style={{
                   paddingTop: '16px',
                   paddingBottom: '16px',
                   borderRadius: '12px',
                   border: 'none',
-                  cursor: (isLoading || !token) ? 'not-allowed' : 'pointer',
-                  opacity: (isLoading || !token) ? 0.6 : 1,
+                  cursor: (isLoading || !token || !allRequirementsMet || password !== confirmPassword) ? 'not-allowed' : 'pointer',
+                  opacity: (isLoading || !token || !allRequirementsMet || password !== confirmPassword) ? 0.6 : 1,
                   marginTop: '8px'
                 }}
               >

@@ -65,7 +65,6 @@ export default function LoginScreen() {
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('logged_in_user_id', user.id);
       }
-      alert('Login Successful!');
       if (user && user.role) {
         const role = user.role.toLowerCase();
         if (role === 'admin') {
@@ -124,7 +123,7 @@ export default function LoginScreen() {
                 Welcome to Hexaware
               </h2>
               <p className="text-base text-gray-500 font-normal">
-                Sign in with your User ID and Password
+                Sign in with your E-mail and Password
               </p>
             </div>
 
