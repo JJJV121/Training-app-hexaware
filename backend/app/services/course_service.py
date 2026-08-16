@@ -10,6 +10,8 @@ from app.models.content import Content
 from app.models.enrollment import Enrollment
 from sqlalchemy import func
 from app.utils.cache_utils import cache_get, cache_set
+from datetime import timedelta
+from app.models.user import User
 
 
 async def get_all_courses(
@@ -237,3 +239,139 @@ async def get_course_summaries(db: AsyncSession, page: int = 1, size: int = 20):
         }
         for row in rows
     ]
+async def get_enrollment(
+    db: AsyncSession,
+    user_id: int,
+    course_id: int
+):
+    enrollment = await db.scalar(
+        select(Enrollment).where(
+            Enrollment.user_id == user_id,
+            Enrollment.course_id == course_id
+        )
+    )
+
+    if not enrollment:
+        raise ValueError(
+            "User is not enrolled in this course"
+        )
+
+    return enrollment
+async def get_course_status(
+    db: AsyncSession,
+    user_id: int,
+    course_id: int
+):
+    result = await db.execute(
+        select(Enrollment, Course)
+        .join(
+            Course,
+            Course.id == Enrollment.course_id
+        )
+        .where(
+            Enrollment.user_id == user_id,
+            Enrollment.course_id == course_id
+        )
+    )
+
+    row = result.first()
+
+    if not row:
+        raise ValueError(
+            "User is not enrolled in this course"
+        )
+
+    enrollment, course = row
+
+    start_date = enrollment.enrolled_at.date()
+
+    end_date = start_date + timedelta(
+        days=course.duration_days - 1
+    )
+
+    return {
+        "course_id": course.id,
+        "course_name": course.title,
+        "status": "active" if course.is_active else "inactive",
+        "start_date": start_date,
+        "end_date": end_date
+    }
+async def get_enrolled_courses(
+    db: AsyncSession,
+    user_id: int
+):
+    result = await db.execute(
+        select(Enrollment, Course)
+        .join(
+            Course,
+            Course.id == Enrollment.course_id
+        )
+        .where(
+            Enrollment.user_id == user_id
+        )
+        .order_by(
+            Enrollment.enrolled_at.desc()
+        )
+    )
+
+    rows = result.all()
+
+    enrolled_courses = []
+
+    for enrollment, course in rows:
+
+        start_date = enrollment.enrolled_at.date()
+
+        end_date = start_date + timedelta(
+            days=course.duration_days - 1
+        )
+
+        enrolled_courses.append({
+            "course_id": course.id,
+            "course_name": course.title,
+            "description": course.description,
+            "start_date": start_date,
+            "end_date": end_date,
+            "status": "active" if course.is_active else "inactive"
+        })
+
+    return enrolled_courses
+async def get_trainee(
+    db: AsyncSession,
+    user_id: int
+):
+    user = await db.scalar(
+        select(User).where(
+            User.id == user_id
+        )
+    )
+
+    if not user:
+        raise ValueError("User not found")
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "employee_id": user.employee_id,
+        "email": user.email,
+        "is_active": user.is_active,
+        "role": user.role
+    }
+async def get_enrollment(
+    db: AsyncSession,
+    user_id: int,
+    course_id: int
+):
+    enrollment = await db.scalar(
+        select(Enrollment).where(
+            Enrollment.user_id == user_id,
+            Enrollment.course_id == course_id
+        )
+    )
+
+    if not enrollment:
+        raise ValueError(
+            "User is not enrolled in this course"
+        )
+
+    return enrollment

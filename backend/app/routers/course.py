@@ -12,9 +12,12 @@ from app.services.course_service import (
     get_videos_by_learning_unit,
     get_course_content,
     enroll_user_in_course,
-    get_course_summaries as get_course_summaries_helper,
-
-
+    get_user_courses,
+    get_course_summaries,
+    get_enrollment,
+    get_course_status,
+    get_enrolled_courses,
+    get_trainee,
 )
 
 from app.services.lesson_service import (
@@ -58,19 +61,19 @@ async def get_course(
             detail=str(e)
         )
     
-@router.get("/users/{user_id}")
-async def get_courses_by_user(
+@router.get("/users/{user_id}/enrollments")
+async def get_enrolled_courses_for_user(
     user_id: int,
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        return await get_user_courses(
+        return await get_enrolled_courses(
             db,
             user_id
         )
     except ValueError as e:
         raise HTTPException(
-            status_code=404,  
+            status_code=404,
             detail=str(e)
         )
 
@@ -193,3 +196,35 @@ async def enroll_course(
 async def get_course_summaries(page: int = 1, size: int = 20, db: AsyncSession = Depends(get_db)):
     return await get_course_summaries(db, page, size)
 
+@router.get("/users/{user_id}/trainee")
+async def get_trainee_details(
+    user_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        return await get_trainee(
+            db,
+            user_id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+@router.get("/users/{user_id}/courses/{course_id}/status")
+async def get_user_course_status(
+    user_id: int,
+    course_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        return await get_course_status(
+            db,
+            user_id,
+            course_id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )

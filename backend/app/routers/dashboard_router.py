@@ -19,16 +19,15 @@ router = APIRouter(
 )
 
 
-@router.get(
-    "/{user_id}",
-    response_model=DashboardResponse
-)
+@router.get("/{user_id}", response_model=DashboardResponse)
 async def dashboard(
     user_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-
-    return await get_dashboard(
-        db,
-        user_id
-    )
+    try:
+        return await get_dashboard(db, user_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
