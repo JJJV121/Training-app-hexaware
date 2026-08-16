@@ -380,13 +380,13 @@ export default function OverallDashboard() {
         <button type="button" className="mobile-menu-toggle" aria-label="Toggle navigation" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           <Icon name={isMobileMenuOpen ? 'x' : 'menu'} className="nav-icon" />
         </button>
-        <span className="mobile-topbar-title">Hexaware</span>
+        <span className="mobile-topbar-title">Mavericks Learning</span>
       </header>
 
       {/* Sidebar Navigation */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <h1 className="logo">Hexaware</h1>
+          <h1 className="logo">Mavericks Learning</h1>
         </div>
 
         {/* User Card */}
