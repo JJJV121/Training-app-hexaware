@@ -10,6 +10,7 @@ from app.models.learning_unit import LearningUnit
 from app.models.content import Content
 from app.models.video import Video
 from app.models.progress import Progress
+from app.models.video_progress import VideoProgress
 from app.models.lesson_qa import LessonQA
 from app.models.enrollment import Enrollment
 

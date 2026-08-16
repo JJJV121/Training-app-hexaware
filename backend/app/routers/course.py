@@ -2,7 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.schemas.course import EnrollmentRequest
+from app.schemas.course import (
+    EnrollmentRequest,
+    CourseContentResponse
+)
 from app.services.course_service import (
     get_all_courses,
     get_course_by_id,
@@ -13,9 +16,12 @@ from app.services.course_service import (
     get_course_content,
     enroll_user_in_course,
     get_course_summaries as get_course_summaries_helper,
-
-
+    get_enrollment,
+    get_course_status,
+    get_enrolled_courses,
+    get_trainee,
 )
+
 
 from app.services.lesson_service import (
     get_qa_by_learning_unit,
@@ -74,7 +80,10 @@ async def get_courses_by_user(
             detail=str(e)
         )
 
-@router.get("/{course_id}/content")
+@router.get(
+    "/{course_id}/content",
+    response_model=CourseContentResponse
+)
 async def get_course_full_content(
     course_id: int,
     db: AsyncSession = Depends(get_db)
@@ -187,9 +196,60 @@ async def enroll_course(
             status_code=400,
             detail=str(e)
         )   
-
+    
 # New endpoint for paginated course summaries
 @router.get("/summaries")
 async def get_course_summaries(page: int = 1, size: int = 20, db: AsyncSession = Depends(get_db)):
     return await get_course_summaries(db, page, size)
 
+@router.get("/users/{user_id}/enrollments")
+async def get_enrolled_courses_for_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        return await get_enrolled_courses(
+            db,
+            user_id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+
+@router.get("/users/{user_id}/trainee")
+async def get_trainee_details(
+    user_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        return await get_trainee(
+            db,
+            user_id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+
+@router.get("/users/{user_id}/courses/{course_id}/status")
+async def get_user_course_status(
+    user_id: int,
+    course_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        return await get_course_status(
+            db,
+            user_id,
+            course_id
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
