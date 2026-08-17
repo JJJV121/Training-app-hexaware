@@ -51,13 +51,7 @@ async def create_user(
         email=user_data.email,
         course_id=user_data.course_id,
         role=user_data.role,
-<<<<<<< HEAD
-        is_active=user_data.role in ["trainer", "admin"],
-=======
-        is_active=(
-            role in ["trainer", "admin"]
-        ),
->>>>>>> feature/backend/admin-batch-management
+        is_active=role in ["trainer", "admin"],
     )
 
     if role in ["trainer", "admin"]:
@@ -70,12 +64,8 @@ async def create_user(
     await db.commit()
     await db.refresh(user)
 
-<<<<<<< HEAD
     # Trainees need account activation
-    if user.role == "trainee":
-=======
     if role == "trainee":
->>>>>>> feature/backend/admin-batch-management
         token_obj = await generate_activation_token(
             db,
             user.id,
@@ -120,10 +110,7 @@ async def activate_account(
     password: str,
 ):
 
-<<<<<<< HEAD
     # 1. Get token
-=======
->>>>>>> feature/backend/admin-batch-management
     activation_token = await db.scalar(
         select(ActivationToken).where(
             ActivationToken.token == token
@@ -133,46 +120,26 @@ async def activate_account(
     if not activation_token:
         raise ValueError("Invalid token")
 
-<<<<<<< HEAD
-    # 2. Expiry check
+    # Expiry check
     if activation_token.expires_at < datetime.utcnow():
         raise ValueError("Token expired")
 
-    # 3. Already used check
+    # Already used check
     if activation_token.is_used:
         raise ValueError("Token already used")
 
-    # 4. Get user
-    user = await db.get(
-        User,
-        activation_token.user_id
-=======
-    if activation_token.expires_at < datetime.utcnow():
-        raise ValueError("Token expired")
-
-    if activation_token.is_used:
-        raise ValueError("Token already used")
-
+    # Get user
     user = await db.get(
         User,
         activation_token.user_id,
->>>>>>> feature/backend/admin-batch-management
     )
 
     if not user:
         raise ValueError("User not found")
 
-<<<<<<< HEAD
-    # 5. Update user
+    # Update user
     user.password_hash = hash_password(password)
     user.is_active = True
-
-    # 6. Mark token as used
-=======
-    user.password_hash = hash_password(password)
-    user.is_active = True
-
->>>>>>> feature/backend/admin-batch-management
     activation_token.is_used = True
 
     await db.commit()
@@ -184,11 +151,7 @@ async def login_user(
     db: AsyncSession,
     email: str,
     password: str,
-<<<<<<< HEAD
-    request: Request
-=======
     request: Request,
->>>>>>> feature/backend/admin-batch-management
 ):
 
     user = await db.scalar(
@@ -203,16 +166,10 @@ async def login_user(
     if not user.is_active:
         raise ValueError("Account not activated")
 
-<<<<<<< HEAD
-    # 3. Verify password
-    if not verify_password(
-        password,
-        user.password_hash
-=======
+    # Verify password
     if not verify_password(
         password,
         user.password_hash,
->>>>>>> feature/backend/admin-batch-management
     ):
         raise ValueError("Invalid credentials")
 
@@ -220,10 +177,7 @@ async def login_user(
         data={"sub": str(user.id)}
     )
 
-<<<<<<< HEAD
-    # 5. Extract system information
-=======
->>>>>>> feature/backend/admin-batch-management
+    # Extract system information
     ip_address = (
         request.client.host
         if request.client
@@ -260,27 +214,16 @@ async def login_user(
 
 async def forgot_password(
     db: AsyncSession,
-<<<<<<< HEAD
-    email: str
-):
-
-    # 1. Find user
-=======
     email: str,
 ):
-
->>>>>>> feature/backend/admin-batch-management
+    # Find user
     user = await db.scalar(
         select(User).where(
             User.email == email
         )
     )
 
-<<<<<<< HEAD
-    # 2. Security:
-    # Don't reveal whether the user exists
-=======
->>>>>>> feature/backend/admin-batch-management
+    # Security: Don't reveal whether the user exists
     if not user:
         return {
             "message": "If user exists, reset link sent"
@@ -288,10 +231,7 @@ async def forgot_password(
 
     reset_token = str(uuid.uuid4())
 
-<<<<<<< HEAD
-    # 4. Set expiry
-=======
->>>>>>> feature/backend/admin-batch-management
+    # Set expiry
     expiry_time = (
         datetime.utcnow()
         + timedelta(minutes=15)
@@ -309,26 +249,15 @@ async def forgot_password(
     await db.commit()
     await db.refresh(token_entry)
 
-<<<<<<< HEAD
-    # 6. Create reset link
-    reset_link = (
-        f"http://localhost:5173/reset-password"
-        f"?token={reset_token}"
-    )
-
-    # 7. Send email
-    await send_reset_email(
-        user.email,
-        reset_link
-=======
+    # Create reset link
     reset_link = (
         f"http://localhost:5173/reset-password?token={reset_token}"
     )
 
+    # Send email
     await send_reset_email(
         user.email,
         reset_link,
->>>>>>> feature/backend/admin-batch-management
     )
 
     return {
@@ -351,17 +280,9 @@ async def reset_password(
     if not reset_entry:
         raise ValueError("Invalid token")
 
-<<<<<<< HEAD
-    # 2. Already used check
+    # Already used check
     if reset_entry.is_used:
         raise ValueError("Token already used")
-
-    # 3. Expiry check
-=======
-    if reset_entry.is_used:
-        raise ValueError("Token already used")
-
->>>>>>> feature/backend/admin-batch-management
     if reset_entry.expires_at < datetime.utcnow():
         raise ValueError("Token expired")
 
@@ -374,10 +295,7 @@ async def reset_password(
     if not user:
         raise ValueError("User not found")
 
-<<<<<<< HEAD
-    # 5. Update password
-=======
->>>>>>> feature/backend/admin-batch-management
+    # Update password
     user.password_hash = hash_password(
         new_password
     )
@@ -388,7 +306,6 @@ async def reset_password(
 
     return {
         "message": "Password reset successful"
-<<<<<<< HEAD
     }
 
 
@@ -396,7 +313,6 @@ async def request_activation(
     db: AsyncSession,
     email: str
 ):
-
     # 1. Find user
     user = await db.scalar(
         select(User).where(
@@ -418,8 +334,7 @@ async def request_activation(
 
     # 3. Create activation link
     activation_link = (
-        f"http://localhost:5173/create-password"
-        f"?token={token_obj.token}"
+        f"http://localhost:5173/create-password?token={token_obj.token}"
     )
 
     # 4. Send email
@@ -430,6 +345,4 @@ async def request_activation(
 
     return {
         "message": "Activation email sent"
-=======
->>>>>>> feature/backend/admin-batch-management
     }
