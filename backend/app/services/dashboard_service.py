@@ -81,7 +81,7 @@ async def get_dashboard(
 
     if courses_enrolled == 0:
         return {
-            "name": user.name or user.employee_id,
+            "name": user.employee_id,
             "employee_id": user.employee_id,
             "email": user.email,
             "courses_enrolled": 0,
@@ -331,7 +331,7 @@ async def get_dashboard(
         })
 
     return {
-        "name": user.name or user.employee_id,
+        "name": user.employee_id,
         "employee_id": user.employee_id,
         "email": user.email,
         "courses_enrolled": courses_enrolled,

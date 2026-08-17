@@ -12,6 +12,7 @@ from app.services.progress_service import (
     mark_video_completed,
     get_learning_timeline_data
 )
+from app.schemas.progress import ProgressResponse
 
 router = APIRouter(
     prefix="/progress",
@@ -19,7 +20,8 @@ router = APIRouter(
 )
 
 @router.get(
-    "/course/{course_id}/user/{user_id}"
+    "/course/{course_id}/user/{user_id}",
+    response_model=ProgressResponse
 )
 async def progress(
     course_id: int,
@@ -78,15 +80,14 @@ async def complete_video(
         video_id
     )
 
-@router.get(
-    "/users/{user_id}/timeline"
-)
+@router.get("/users/{user_id}/timeline")
 async def timeline(
     user_id: int,
+    course_id: int | None = None,
     db: AsyncSession = Depends(get_db)
 ):
-
     return await get_learning_timeline_data(
         db,
-        user_id
+        user_id,
+        course_id
     )
