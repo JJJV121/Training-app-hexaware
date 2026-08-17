@@ -120,15 +120,17 @@ export default function OverallDashboard() {
   const enrolledCourses = dashboardData?.enrolled_courses || [];
   
   // Calculate aggregate stats across all courses
-  const totalCourses = enrolledCourses.length;
-  const totalCompletedModules = enrolledCourses.reduce((sum, c) => sum + (c.course_id === 1 ? 5 : 25), 0);
-  const averageCompletion = totalCourses > 0 ? (enrolledCourses.reduce((sum, c) => sum + c.progress, 0) / totalCourses).toFixed(1) : 0;
+  const totalCourses = enrolledCourses.length || coursesEnrolled;
+  const activeCourseCompletedModules = dashboardData?.course?.completed_modules || 0;
+  const totalCompletedModules = activeCourseCompletedModules;
+  const averageCompletion = totalCourses > 0 ? (enrolledCourses.reduce((sum, c) => sum + (c.progress || 0), 0) / totalCourses).toFixed(1) : 0;
   
+  const backendTime = dashboardData?.time_spent || {};
   const timeSpent = {
-    learning: 52.25,
-    assessment: 25.0,
-    practice: 17.0,
-    total: 94.25
+    learning: Number(backendTime.learning_hours || 0),
+    assessment: Number(backendTime.assessment_hours || 0),
+    practice: Number(backendTime.practice_hours || 0),
+    total: Number((backendTime.learning_hours || 0) + (backendTime.assessment_hours || 0) + (backendTime.practice_hours || 0)).toFixed(1)
   };
 
   const getGreeting = () => {

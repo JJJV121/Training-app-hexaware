@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../services/apiClient';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -43,8 +43,8 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(
-        'http://localhost:8000/auth/login',
+      const response = await apiClient.post(
+        '/auth/login',
         {
           email: email,
           password: password

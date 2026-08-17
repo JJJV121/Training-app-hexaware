@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import apiClient from '../services/apiClient.js';
 import { useTheme } from '../context/ThemeContext.jsx';
 import dashboardService from '../services/dashboardService.js';
 import Icon from '../components/Icon';
@@ -71,10 +71,10 @@ export default function Profile() {
     }
 
     try {
-      const response = await axios.post(`http://localhost:5000/api/profile/${userId}/change-password`, {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
-      }, { headers: { 'Content-Type': 'application/json' } });
+      const response = await apiClient.post(`/profile/${userId}/change-password`, {
+        current_password: passwordForm.currentPassword,
+        new_password: passwordForm.newPassword
+      });
 
       setSubmitStatus({
         loading: false,

@@ -340,8 +340,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 2.5 Multiple Courses Enrolled Support Cards */}
-          {enrolledCourses.length > 1 && (
+          {/* 2.5 Enrolled Courses Support Cards */}
+          {enrolledCourses.length > 0 && (
             <div className="enrolled-courses-section">
               <h3 className="section-title">Your Enrolled Courses</h3>
               <div className="course-cards-grid">
@@ -350,7 +350,7 @@ export default function Home() {
                     key={c.course_id} 
                     className="course-card-interactive" 
                     onClick={() => {
-                      navigate(`/course/${c.course_id}`);
+                      navigate(`/dashboard/${c.course_id}`);
                     }}
                   >
                     <div className="course-card-header">

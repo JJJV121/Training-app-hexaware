@@ -1,67 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import noteService from '../services/noteService';
 import "../styles/StudyNotes.css";
-
-const initialNotes = [
-  {
-    id: 1,
-    title: 'AI201',
-    content: 'TEST',
-    date: 'May 3, 2026',
-    color: '#f5e6fe',
-    pinned: true,
-    tag: 'Artificial Intelligence'
-  },
-  {
-    id: 2,
-    title: 'Database Systems',
-    content: 'Normalization: 1NF, 2NF, 3NF, BCNF - Eliminate repeating groups - Remove partial dependencies - Remove transitive dependencies',
-    date: 'May 1, 2026',
-    color: '#e6f0fa',
-    pinned: true,
-    tag: 'Core CS'
-  },
-  {
-    id: 3,
-    title: 'Machine Learning',
-    content: 'Supervised vs Unsupervised Learning Key algorithms to review for midterm.',
-    date: 'Apr 30, 2026',
-    color: '#eafaf1',
-    pinned: false,
-    tag: 'Artificial Intelligence'
-  },
-  {
-    id: 4,
-    title: 'Web Development',
-    content: 'React Hooks: - useState - useEffect - useContext - useMemo - useCallback',
-    date: 'Apr 28, 2026',
-    color: '#fef7e0',
-    pinned: false,
-    tag: 'Fullstack'
-  },
-  {
-    id: 5,
-    title: 'Data Structures',
-    content: 'Time Complexity: O(1) - Constant, O(log n) - Logarithmic, O(n) - Linear, O(n²) - Quadratic',
-    date: 'Apr 27, 2026',
-    color: '#fdeaf2',
-    pinned: false,
-    tag: 'Core CS'
-  },
-  {
-    id: 6,
-    title: 'Algorithms',
-    content: 'Sorting Algorithms: QuickSort, MergeSort, HeapSort Best for different scenarios.',
-    date: 'Apr 25, 2026',
-    color: '#eef2fe',
-    pinned: false,
-    tag: 'Core CS'
-  }
-];
 
 const pastelColors = ['#f5e6fe', '#e6f0fa', '#eafaf1', '#fef7e0', '#fdeaf2', '#eef2fe'];
 
 export default function StudyNotes() {
-  const [notes, setNotes] = useState(initialNotes);
+  const [notes, setNotes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeNote, setActiveNote] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -72,6 +18,35 @@ export default function StudyNotes() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [noteIdToDelete, setNoteIdToDelete] = useState(null);
 
+  const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
+
+  const fetchNotes = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await noteService.getNotes(userId);
+      const mapped = (Array.isArray(data) ? data : []).map(n => ({
+        id: n.id,
+        title: n.title,
+        content: n.content,
+        tag: n.tag || 'General',
+        pinned: n.pinned || false,
+        color: n.color || '#e6f0fa',
+        date: n.updated_at ? new Date(n.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'
+      }));
+      setNotes(mapped);
+    } catch (err) {
+      console.error('Failed to load study notes:', err);
+      setError('Failed to fetch study notes from server.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotes();
+  }, [userId]);
+
   const handleOpenNote = (note) => {
     setActiveNote(note);
     setEditTitle(note.title);
@@ -81,18 +56,36 @@ export default function StudyNotes() {
     setCopySuccess(false);
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
     const finalTitle = editTitle.trim() || 'Untitled Note';
     const finalContent = editContent.trim() || 'No content provided.';
     const finalTag = editTag.trim() || 'General';
 
-    setNotes(prevNotes =>
-      prevNotes.map(note =>
-        note.id === activeNote.id
-          ? { ...note, title: finalTitle, content: finalContent, tag: finalTag }
-          : note
-      )
-    );
+    try {
+      if (activeNote && activeNote.id && typeof activeNote.id === 'number' && activeNote.id > 1000000000000) {
+        // New unsaved note (temp timestamp ID) -> Create
+        const res = await noteService.createNote(userId, {
+          title: finalTitle,
+          content: finalContent,
+          tag: finalTag,
+          pinned: activeNote.pinned || false,
+          color: activeNote.color || '#e6f0fa'
+        });
+        await fetchNotes();
+      } else if (activeNote && activeNote.id) {
+        // Existing note -> Update
+        await noteService.updateNote(userId, activeNote.id, {
+          title: finalTitle,
+          content: finalContent,
+          tag: finalTag,
+          pinned: activeNote.pinned || false,
+          color: activeNote.color || '#e6f0fa'
+        });
+        await fetchNotes();
+      }
+    } catch (err) {
+      console.error('Failed to save note:', err);
+    }
     setActiveNote(null);
   };
 
@@ -101,29 +94,51 @@ export default function StudyNotes() {
     setShowDeleteModal(true);
   };
 
-  const handleConfirmDelete = () => {
-    setNotes(prevNotes => prevNotes.filter(note => note.id !== noteIdToDelete));
+  const handleConfirmDelete = async () => {
+    if (noteIdToDelete) {
+      try {
+        if (typeof noteIdToDelete === 'number' && noteIdToDelete < 1000000000000) {
+          await noteService.deleteNote(userId, noteIdToDelete);
+        }
+        setNotes(prevNotes => prevNotes.filter(note => note.id !== noteIdToDelete));
+      } catch (err) {
+        console.error('Failed to delete note:', err);
+      }
+    }
     setActiveNote(null);
     setShowDeleteModal(false);
     setNoteIdToDelete(null);
   };
 
-  const handleTogglePin = (e, id) => {
+  const handleTogglePin = async (e, noteToPin) => {
     e.stopPropagation();
+    const newPinned = !noteToPin.pinned;
     setNotes(prevNotes =>
-      prevNotes.map(note =>
-        note.id === id ? { ...note, pinned: !note.pinned } : note
-      )
+      prevNotes.map(n => n.id === noteToPin.id ? { ...n, pinned: newPinned } : n)
     );
+    if (typeof noteToPin.id === 'number' && noteToPin.id < 1000000000000) {
+      try {
+        await noteService.updateNote(userId, noteToPin.id, {
+          title: noteToPin.title,
+          content: noteToPin.content,
+          tag: noteToPin.tag || 'General',
+          pinned: newPinned,
+          color: noteToPin.color || '#e6f0fa'
+        });
+      } catch (err) {
+        console.error('Failed to pin note:', err);
+      }
+    }
   };
 
   const handleCreateNote = () => {
     const randomColor = pastelColors[notes.length % pastelColors.length];
+    const tempId = Date.now();
     const newNote = {
-      id: Date.now(),
+      id: tempId,
       title: '',
       content: '',
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      date: 'Today',
       color: randomColor,
       pinned: false,
       tag: ''
@@ -326,7 +341,7 @@ export default function StudyNotes() {
                       {note.pinned && <span className="card-pin-badge">Pinned</span>}
                       <button 
                         className={`card-pin-trigger ${note.pinned ? 'pinned-active' : 'unpinned'}`}
-                        onClick={(e) => handleTogglePin(e, note.id)}
+                        onClick={(e) => handleTogglePin(e, note)}
                         title={note.pinned ? "Unpin Note" : "Pin Note"}
                       >
                         📌

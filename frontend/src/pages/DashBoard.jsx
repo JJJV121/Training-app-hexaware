@@ -20,8 +20,9 @@ export default function DashBoard() {
   // 1. Convert profile to a state object to handle asynchronous API loading
   const [profile, setProfile] = useState({ name: "Loading...", email: "" });
 
-  // 🌟 Dynamic Course ID State tracking user's enrollment assignment
+  // 🌟 Dynamic Course ID & Multi-Course State tracking user's enrollment assignment
   const [courseId, setCourseId] = useState(null);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [isCourseLoading, setIsCourseLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 900);
@@ -68,8 +69,12 @@ export default function DashBoard() {
             name: data.name || data.employee_id || "Student",
             email: data.email || "student@example.com"
           });
-          const assignedId = data.course?.id || 1;
-          setCourseId(assignedId);
+          const courses = data.enrolled_courses || [];
+          setEnrolledCourses(courses);
+          if (!paramCourseId) {
+            const assignedId = data.course?.id || (courses.length > 0 ? courses[0].course_id : 1);
+            setCourseId(assignedId);
+          }
         }
       } catch (error) {
         console.error("Failed to load dashboard shell data:", error);
@@ -87,7 +92,7 @@ export default function DashBoard() {
     };
 
     fetchDashboardShellData();
-  }, [userId]);
+  }, [userId, paramCourseId]);
 
   // 4. Handle hash-based navigation changes
   useEffect(() => {
@@ -212,7 +217,42 @@ export default function DashBoard() {
           </div>
         </div>
 
-        {/* Back to Portal Portal Button */}
+        {/* Multi-course selector if user is enrolled in multiple courses */}
+        {enrolledCourses.length > 1 && (
+          <div className="course-selector-container" style={{ padding: '0 0 16px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+            <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+              Active Course
+            </label>
+            <select
+              value={courseId || ''}
+              onChange={(e) => {
+                const targetId = Number(e.target.value);
+                setCourseId(targetId);
+                navigate(`/dashboard/${targetId}`);
+              }}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-main)',
+                color: 'var(--text-dark)',
+                fontSize: '13px',
+                fontWeight: '600',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {enrolledCourses.map((c) => (
+                <option key={c.course_id} value={c.course_id}>
+                  {c.course_name} ({c.progress}%)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Back to Portal Button */}
         <div className="back-to-portal-container" style={{ padding: '0 0 16px 0', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
           <button
             type="button"
@@ -227,7 +267,7 @@ export default function DashBoard() {
             }}
           >
             <Icon name="arrow-left" className="nav-icon" />
-            <span>All Courses</span>
+            <span>All Courses Overview</span>
           </button>
         </div>
 

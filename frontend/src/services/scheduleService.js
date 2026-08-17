@@ -1,9 +1,6 @@
-// scheduleService.js
+import apiClient from "./apiClient";
 
-import axios from "axios";
-
-const API_BASE_URL = "http://localhost:8000";
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 const mockScheduleData = {
   course_name: "Frontend Development Bootcamp",
@@ -472,7 +469,7 @@ const scheduleService = {
     }
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/schedule/${userId}`, {
+      const response = await apiClient.get(`/schedule/${userId}`, {
         params: { week: weekNumber }
       });
       return transformScheduleResponse(response.data, weekNumber);

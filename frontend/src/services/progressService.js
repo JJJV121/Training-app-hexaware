@@ -1,6 +1,6 @@
 // progressService.js
 // Service managing course requirements, milestones, certificate status, and assessment metrics.
-import axios from 'axios';
+import apiClient from './apiClient';
 
 const progressService = {
   /**
@@ -10,7 +10,7 @@ const progressService = {
   async getProgressOverview(userId) {
     const activeUserId = userId || Number(localStorage.getItem('logged_in_user_id')) || 1;
     try {
-      const response = await axios.get(`http://localhost:8000/dashboard/${activeUserId}`);
+      const response = await apiClient.get(`/dashboard/${activeUserId}`);
       const data = response.data;
       const course = data.course;
 
