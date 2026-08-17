@@ -5,6 +5,9 @@ import Icon from '../components/Icon';
 import Profile from './Profile';
 import ThemeToggle from '../components/ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
+import javaCourseImage from '../assets/Java course.png';
+import cSharpCourseImage from '../assets/csharp-course.png';
+import hexawareLogo from '../assets/HEXAWARE logo.png';
 import '../styles/overallDashboard.css';
 
 function CountUp({ end, duration = 1200, suffix = "" }) {
@@ -47,6 +50,20 @@ function CountUp({ end, duration = 1200, suffix = "" }) {
 
   return <span>{count}{suffix}</span>;
 }
+
+const getCourseImage = (courseName = '') => {
+  const normalizedName = courseName.toLowerCase();
+
+  if (normalizedName.includes('java')) {
+    return javaCourseImage;
+  }
+
+  if (normalizedName.includes('c#') || normalizedName.includes('c sharp')) {
+    return cSharpCourseImage;
+  }
+
+  return javaCourseImage;
+};
 
 export default function OverallDashboard() {
   const navigate = useNavigate();
@@ -147,7 +164,7 @@ export default function OverallDashboard() {
           <div className="overall-tab-panel">
             {/* Banner */}
             <div className="overall-banner">
-              <h2 className="overall-banner-title">{getGreeting()}, {name}! 👋</h2>
+              <h2 className="overall-banner-title">{getGreeting()}, {name}! 😊</h2>
               <span className="overall-banner-subtitle">Welcome back to your Hexaware Learning workspace. Here's your overall progress summary.</span>
             </div>
 
@@ -262,9 +279,16 @@ export default function OverallDashboard() {
               {enrolledCourses.map((course) => (
                 <div key={course.course_id} className="overall-course-card">
                   <div className="overall-course-card-header">
+                    <img
+                      src={getCourseImage(course.course_name)}
+                      alt={`${course.course_name} course`}
+                      className="overall-course-image"
+                    />
+                    <div className="overall-course-header-overlay" />
                     <div className="overall-course-icon-bg">
                       <Icon name="book-open" />
                     </div>
+                    <span className="overall-course-streak">5d Streak</span>
                     <span className="overall-course-card-status active">Active</span>
                   </div>
                   
@@ -368,7 +392,7 @@ export default function OverallDashboard() {
   };
 
   const navItems = [
-    { page: 'home', icon: 'home', label: 'Overall Home' },
+    { page: 'home', icon: 'home', label: 'Dashboard' },
     { page: 'courses', icon: 'book-open', label: 'My Courses' },
     { page: 'performance', icon: 'star', label: 'Performance' },
     { page: 'profile', icon: 'user', label: 'Profile' }
@@ -388,13 +412,16 @@ export default function OverallDashboard() {
       {/* Sidebar Navigation */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
+          <img src={hexawareLogo} alt="Hexaware" className="sidebar-brand-logo" />
           <h1 className="logo">Mavericks Learning</h1>
         </div>
 
         {/* User Card */}
         <div className="user-profile-card">
+          <div className="profile-avatar" aria-hidden="true">
+            <Icon name="user" />
+          </div>
           <div className="profile-info">
-            <span className="user-label">Portal</span>
             <span className="user-name" id="user-display-name">{name}</span>
             <span className="user-email" id="user-display-email">{email}</span>
           </div>

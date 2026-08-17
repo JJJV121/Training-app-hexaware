@@ -10,6 +10,7 @@ import ProgressView from './ProgressView.jsx';
 import StudyNotes from './StudyNotes.jsx';
 import Profile from '../pages/Profile';
 import Assessment from './Assessment.jsx';
+import hexawareLogo from '../assets/HEXAWARE logo.png';
  
 import ThemeToggle from '../components/ThemeToggle';
  
@@ -205,13 +206,16 @@ export default function DashBoard() {
       {/* Sidebar Navigation */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
+          <img src={hexawareLogo} alt="Hexaware" className="sidebar-brand-logo" />
           <h1 className="logo">Mavericks Learning</h1>
         </div>
 
         {/* User profile info */}
         <div className="user-profile-card">
+          <div className="profile-avatar" aria-hidden="true">
+            <Icon name="user" />
+          </div>
           <div className="profile-info">
-            <span className="user-label">Name</span>
             <span className="user-name" id="user-display-name">{profile.name}</span>
             <span className="user-email" id="user-display-email">{profile.email}</span>
           </div>

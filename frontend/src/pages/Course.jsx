@@ -599,7 +599,7 @@ const handleSeeking = (e) => {
         </div>
 
         <div className="video-content-horizontal-nav-row">
-          {['Videos', 'Notes', 'Assignment', 'Q&A', 'Case Studies'].map((tabName) => (
+          {['Videos', 'Notes', 'Assignment', 'Quiz', 'Case Studies'].map((tabName) => (
             <button key={tabName} onClick={() => setActiveHorizontalTab(tabName)} className={`video-horizontal-nav-item ${activeHorizontalTab === tabName ? 'active-nav-pill' : ''}`}>{tabName}</button>
           ))}
         </div>
@@ -621,7 +621,7 @@ const handleSeeking = (e) => {
               isUnlocked={expandedDay <= currentUnlockedDay}
             />
           )}
-          {activeHorizontalTab === 'Q&A' && (
+          {activeHorizontalTab === 'Quiz' && (
             <QnASection 
               courseId={activeCourseId} 
               dayId={activeDayDbId} 
@@ -762,8 +762,8 @@ function QnASection({ courseId, dayId }) {
           setQaList(Array.isArray(data) ? data : []);
         }
       } catch (err) {
-        console.error("Failed to load Q&A data:", err);
-        if (isMounted) setError("Could not pull discussion board feeds.");
+        console.error("Failed to load quiz data:", err);
+        if (isMounted) setError("Could not load quiz questions.");
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -773,19 +773,19 @@ function QnASection({ courseId, dayId }) {
     return () => { isMounted = false; };
   }, [courseId, dayId]);
 
-  if (loading) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-medium)' }}><p>Loading discussions...</p></div>;
+  if (loading) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-medium)' }}><p>Loading quiz...</p></div>;
   if (error) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--accent-red)' }}><p>{error}</p></div>;
 
   return (
     <div style={{ padding: '24px', backgroundColor: 'var(--bg-sidebar)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', color: 'var(--text-dark)' }}>
         <Icon name="message-circle" style={{ width: '20px', height: '20px' }} />
-        <h3 style={{ margin: 0, fontSize: '18px' }}>Questions & Answers</h3>
+        <h3 style={{ margin: 0, fontSize: '18px' }}>Quiz</h3>
       </div>
 
       {qaList.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: '16px' }}>
-          <p>No questions have been submitted for this course day yet.</p>
+          <p>No quiz questions are available for this course day yet.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

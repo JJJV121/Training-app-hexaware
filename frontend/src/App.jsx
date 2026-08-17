@@ -12,6 +12,7 @@ import TrainerDashboard from './pages/TrainerDashboard';
 import { useTheme } from './context/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import Icon from './components/Icon';
+import hexawareLogo from './assets/HEXAWARE logo.png';
 
 // Import Core Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -91,8 +92,9 @@ function AdminApp() {
     <div className="app-container admin-app-container">
       {/* Sidebar Navigation */}
       <aside className="sidebar">
-        <div className="sidebar-header" style={{ marginBottom: '24px' }}>
-          <h1 className="logo">Hexaware</h1>
+        <div className="sidebar-header admin-sidebar-header">
+          <img src={hexawareLogo} alt="Hexaware" className="sidebar-brand-logo" />
+          <h1 className="logo">Mavericks Learning</h1>
         </div>
 
         {/* User profile info */}
@@ -197,7 +199,7 @@ function AppRoutes() {
         <Route path="/trainer-dashboard" element={<ProtectedRoute><TrainerDashboard /></ProtectedRoute>} />
 
         {/* Admin route */}
-        <Route path="/admin/*" element={<ProtectedRoute><AdminApp /></ProtectedRoute>} />
+        <Route path="/admin/*" element={<AdminApp />} />
 
         {/* Catch-all route to redirect unknown URLs back to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />

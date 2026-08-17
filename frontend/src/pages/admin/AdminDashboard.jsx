@@ -90,7 +90,7 @@ export default function AdminDashboard() {
       <div className="admin-banner">
         <div className="admin-banner-left">
           <span className="admin-banner-subtitle">HEXAWARE ADMIN PLATFORM</span>
-          <h2 className="admin-banner-title">Welcome Back, Administrator! 👋</h2>
+          <h2 className="admin-banner-title">Welcome Back, Administrator! 😊</h2>
           <p style={{ margin: '4px 0 0 0', fontSize: '13px', opacity: 0.9 }}>Streamlined Management Portal with Core Operational Modules</p>
         </div>
         <div className="admin-banner-right">

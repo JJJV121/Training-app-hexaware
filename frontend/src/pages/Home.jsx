@@ -298,7 +298,7 @@ export default function Home() {
       {/* 1. Blue Header Banner */}
       <div className="dashboard-banner">
         <div className="banner-content">
-          <h2 className="banner-greeting">{getGreeting(name)}! 👋</h2>
+          <h2 className="banner-greeting">{getGreeting(name)}! 😊</h2>
           <span className="banner-subtitle">READY TO LEARN</span>
         </div>
       </div>

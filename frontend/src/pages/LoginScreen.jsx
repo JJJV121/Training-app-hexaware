@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import apiClient from '../services/apiClient';
+import signInImage from '../assets/sign in image.png';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  
+
   // State for tracking API lifecycle and server messages
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -93,7 +94,7 @@ export default function LoginScreen() {
 
   return (
     <div className="auth-page login-wrapper min-h-screen w-full bg-gradient-to-br from-[#F4F7FC] via-[#F8FAFC] to-[#EFF6FF] font-sans" style={{ position: 'relative', overflow: 'hidden' }}>
-      
+
       {/* --- BACKGROUND BLUR LAYER --- */}
       <div className="blur-layer-1"></div>
       <div className="blur-layer-2"></div>
@@ -102,21 +103,26 @@ export default function LoginScreen() {
 
       {/* --- MAIN CONTENT GRID WRAPPER --- */}
       <div className="content-grid w-full max-w-6xl mx-auto" style={{ position: 'relative', zIndex: 10 }}>
-        
+
         {/* LEFT SIDE: Branding Statement */}
-        <div className="flex flex-col items-center text-center md:items-start md:text-left select-none">
+        <div className="signin-visual-panel flex flex-col items-center text-center md:items-start md:text-left select-none">
           <h1 className="brand-title text-[72px] md:text-[88px] font-black text-[#0061FE] tracking-tight leading-none">
             Sign In
           </h1>
           <p className="text-xl md:text-2xl text-gray-400 font-medium tracking-tight md:ml-1">
             Sign in to your account
           </p>
+          <img
+            src={signInImage}
+            alt="Hexaware sign in illustration"
+            className="signin-illustration"
+          />
         </div>
 
         {/* RIGHT SIDE: White Login Form Card */}
         <div className="form-card-wrapper w-full">
           <div className="form-card w-full bg-white shadow-[0_25px_70px_rgba(0,0,0,0.06)] backdrop-blur-xl border border-white/80 hover:shadow-[0_30px_80px_rgba(0,0,0,0.08)] transition-all duration-300">
-            
+
             {/* Header Text */}
             <div className="card-header">
               <h2 className="text-[32px] font-bold text-[#0061FE] tracking-tight leading-tight">
@@ -136,20 +142,20 @@ export default function LoginScreen() {
 
             {/* Input Form Fields */}
             <form onSubmit={handleSubmit} className="login-form">
-              
+
               {/* Field 1: Email */}
               <div className="input-group">
                 <label htmlFor="email" className="text-[11px] font-bold text-gray-800 tracking-widest uppercase">
                   EMAIL
                 </label>
-                
+
                 <div className="input-wrapper relative">
                   <span className="input-icon">
                     <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                     </svg>
                   </span>
-                  
+
                   <input
                     type="email"
                     id="email"
@@ -168,7 +174,7 @@ export default function LoginScreen() {
                 <label htmlFor="password" className="text-[11px] font-bold text-gray-800 tracking-widest uppercase">
                   PASSWORD
                 </label>
-                
+
                 {/* Note the 'relative' utility class on this wrapper to keep absolute elements bound inside */}
                 <div className="input-wrapper relative">
                   <span className="input-icon">
@@ -176,7 +182,7 @@ export default function LoginScreen() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0V10.5m-2.25 0h13.5m-13.5 0a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25h13.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25M6.75 10.5h10.5" />
                     </svg>
                   </span>
-                  
+
                   {/* Added pr-12 padding-right so long typed text never overlaps behind the eye button */}
                   <input
                     type={showPassword ? "text" : "password"}
@@ -213,8 +219,8 @@ export default function LoginScreen() {
               {/* Options Row: Remember Me & Forgot Password */}
               <div className="options-row">
                 <label className={`remember-label ${isLoading ? 'loading' : ''}`}>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                     disabled={isLoading}
@@ -222,15 +228,15 @@ export default function LoginScreen() {
                   />
                   <span className="text-sm text-gray-600 font-medium select-none">Remember me</span>
                 </label>
-                
+
                 <a href="/forgot-password" className="text-sm font-semibold text-[#0061FE] hover:underline">
                   Forgot password?
                 </a>
               </div>
 
               {/* Submit Trigger Action Button */}
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={isLoading}
                 className="submit-btn w-full bg-[#0061FE] hover:bg-[#0052CC] text-white text-base font-semibold shadow-md shadow-blue-100 transition-all tracking-wide"
               >
@@ -240,7 +246,7 @@ export default function LoginScreen() {
             </form>
           </div>
         </div>
-        
+
       </div>
     </div>
   );

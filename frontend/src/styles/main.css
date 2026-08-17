@@ -91,12 +91,26 @@ body {
 }
 
 .sidebar-header {
-  margin-bottom: 24px;
+  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.sidebar-brand-logo {
+  width: 86px;
+  max-height: 72px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
 }
 
 .logo {
   font-family: var(--font-family-header);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
   background: linear-gradient(90deg, #3563e9, #60a5fa, #7c3aed, #3563e9);
   background-size: 300% 100%;
@@ -104,8 +118,11 @@ body {
   background-clip: text;
   color: transparent;
   animation: logoShimmer 6s linear infinite;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.2px;
   display: inline-block;
+  line-height: 1.22;
+  margin: 0;
+  text-align: center;
 }
 
 @keyframes logoShimmer {
@@ -116,14 +133,20 @@ body {
 /* User Card in Sidebar */
 .user-profile-card {
   background: linear-gradient(135deg, rgba(245, 248, 255, 0.8) 0%, rgba(238, 242, 255, 0.8) 100%);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 32px;
+  border-radius: 10px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  padding-left: 12px;
+  margin-bottom: 24px;
   border: 1px solid rgba(229, 231, 235, 0.8);
   transition: all var(--transition-base);
   position: relative;
   overflow: hidden;
   box-shadow: 0 4px 10px rgba(53, 99, 233, 0.03);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 40px;
 }
 
 .user-profile-card::before {
@@ -144,6 +167,27 @@ body {
 .profile-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.user-profile-card .profile-avatar {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #3563e9 0%, #6d4ee8 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 14px rgba(53, 99, 233, 0.18);
+}
+
+.user-profile-card .profile-avatar svg {
+  width: 11px;
+  height: 11px;
 }
 
 .user-label {
@@ -157,15 +201,22 @@ body {
 
 .user-name {
   font-family: var(--font-family-header);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-dark);
-  margin-bottom: 2px;
+  margin-bottom: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-email {
-  font-size: 12px;
+  font-size: 10.5px;
+  line-height: 1.2;
   color: var(--text-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Nav Menu */
@@ -307,10 +358,19 @@ body {
 
 .theme-toggle-auth {
   position: fixed;
-  top: 24px;
-  right: 24px;
+  top: 16px;
+  right: 18px;
   z-index: 100;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+}
+
+@media (max-width: 560px) {
+  .theme-toggle-auth {
+    top: 12px;
+    right: 12px;
+    min-height: 38px;
+    padding: 8px 10px;
+  }
 }
 
 .logout-btn {

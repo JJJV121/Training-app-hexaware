@@ -40,14 +40,14 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 24px;
+  padding: 88px 24px 24px;
 }
 
 .content-grid {
   position: relative;
   z-index: 10;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: minmax(360px, 1.08fr) minmax(340px, 0.92fr);
   gap: 48px;
   align-items: center;
 }
@@ -79,8 +79,21 @@
 
 /* BRANDING & HEADER */
 .brand-title {
-  margin-bottom: 24px;
+  margin-bottom: 14px;
   animation: slideUp 0.5s ease-out;
+}
+
+.signin-visual-panel {
+  gap: 16px;
+}
+
+.signin-illustration {
+  width: min(100%, 680px);
+  aspect-ratio: 3 / 2;
+  object-fit: contain;
+  margin-top: 12px;
+  filter: drop-shadow(0 24px 36px rgba(50, 105, 190, 0.16));
+  animation: slideUp 0.6s ease-out 0.1s both;
 }
 
 .card-header {
@@ -276,4 +289,47 @@
 .submit-btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+@media (max-width: 900px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    max-width: 560px;
+  }
+
+  .signin-illustration {
+    width: min(100%, 520px);
+    margin-top: 2px;
+  }
+
+  .form-card {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-wrapper {
+    padding: 82px 18px 18px;
+  }
+
+  .brand-title {
+    font-size: 52px;
+  }
+
+  .signin-illustration {
+    width: 100%;
+  }
+
+  .form-card {
+    border-radius: 22px;
+    padding: 30px 22px;
+    gap: 28px;
+  }
+
+  .options-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
 }

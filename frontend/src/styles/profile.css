@@ -147,8 +147,42 @@
 .profile-switch.active span { transform: translateX(20px); }
 .profile-password-form { max-width: 500px; display: grid; gap: 13px; }
 .profile-password-form label { display: grid; gap: 6px; color: var(--profile-text); font-size: 12px; font-weight: 700; }
-.profile-password-form input { width: 100%; padding: 11px 13px; border: 1px solid var(--profile-border); border-radius: 9px; outline: none; color: var(--profile-text); background: var(--profile-surface); font: inherit; }
+.profile-password-input-wrap {
+  position: relative;
+  display: block;
+}
+
+.profile-password-form input {
+  width: 100%;
+  padding: 11px 44px 11px 13px;
+  border: 1px solid var(--profile-border);
+  border-radius: 9px;
+  outline: none;
+  color: var(--profile-text);
+  background: var(--profile-surface);
+  font: inherit;
+}
 .profile-password-form input:focus { border-color: #3563e9; box-shadow: 0 0 0 3px rgba(53,99,233,.12); }
+.profile-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--profile-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.profile-password-toggle:hover {
+  color: #3563e9;
+  background: rgba(53,99,233,.08);
+}
 .profile-primary-button, .profile-danger-button { border: 0; border-radius: 9px; padding: 11px 16px; color: #fff; font-weight: 700; cursor: pointer; }
 .profile-primary-button { background: #3563e9; }
 .profile-primary-button:hover { background: #254dd0; }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import apiClient from '../services/apiClient.js';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext.jsx';
 import dashboardService from '../services/dashboardService.js';
 import Icon from '../components/Icon';
@@ -7,8 +8,8 @@ import '../styles/profile.css';
 
 export default function Profile() {
   const { isDarkMode, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [expandedSection, setExpandedSection] = useState(null);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [profileData, setProfileData] = useState({
     name: 'Loading...',
     email: 'Loading...',
@@ -18,6 +19,11 @@ export default function Profile() {
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
+  });
+  const [visiblePasswords, setVisiblePasswords] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false
   });
   const [submitStatus, setSubmitStatus] = useState({ loading: false, success: null, error: null });
 
@@ -61,6 +67,10 @@ export default function Profile() {
     setPasswordForm((current) => ({ ...current, [name]: value }));
   };
 
+  const togglePasswordVisibility = (fieldName) => {
+    setVisiblePasswords((current) => ({ ...current, [fieldName]: !current[fieldName] }));
+  };
+
   const handlePasswordSubmit = async (event) => {
     event.preventDefault();
     setSubmitStatus({ loading: true, success: null, error: null });
@@ -82,6 +92,9 @@ export default function Profile() {
         error: null
       });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
+      setTimeout(() => navigate('/login', { replace: true }), 900);
     } catch (error) {
       console.error('Password change error:', error);
       setSubmitStatus({
@@ -102,8 +115,13 @@ export default function Profile() {
     { id: 'personal', icon: 'user', tone: 'blue', title: 'Personal details', description: 'Your account information and course' },
     { id: 'password', icon: 'key', tone: 'green', title: 'Password & security', description: 'Keep your account protected' },
     { id: 'preferences', icon: isDarkMode ? 'sun' : 'layout', tone: 'orange', title: 'Appearance', description: `${isDarkMode ? 'Dark' : 'Light'} theme selected` },
-    { id: 'notifications', icon: 'bell', tone: 'purple', title: 'Notifications', description: notificationsEnabled ? 'Learning reminders are on' : 'Learning reminders are off' },
     { id: 'logout', icon: 'log-out', tone: 'red', title: 'Log out', description: 'Sign out of this account' }
+  ];
+
+  const passwordFields = [
+    { name: 'currentPassword', label: 'Current password' },
+    { name: 'newPassword', label: 'New password' },
+    { name: 'confirmPassword', label: 'Confirm new password' }
   ];
 
   return (
@@ -189,19 +207,34 @@ export default function Profile() {
                 <div className="profile-panel"><form onSubmit={handlePasswordSubmit} className="profile-password-form">
                   {submitStatus.error && <div className="form-alert status-error">{submitStatus.error}</div>}
                   {submitStatus.success && <div className="form-alert status-success">{submitStatus.success}</div>}
-                  <label>Current password<input type="password" name="currentPassword" value={passwordForm.currentPassword} onChange={handlePasswordInputChange} required /></label>
-                  <label>New password<input type="password" name="newPassword" value={passwordForm.newPassword} onChange={handlePasswordInputChange} required /></label>
-                  <label>Confirm new password<input type="password" name="confirmPassword" value={passwordForm.confirmPassword} onChange={handlePasswordInputChange} required /></label>
+                  {passwordFields.map((field) => (
+                    <label key={field.name}>
+                      {field.label}
+                      <span className="profile-password-input-wrap">
+                        <input
+                          type={visiblePasswords[field.name] ? 'text' : 'password'}
+                          name={field.name}
+                          value={passwordForm[field.name]}
+                          onChange={handlePasswordInputChange}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="profile-password-toggle"
+                          onClick={() => togglePasswordVisibility(field.name)}
+                          aria-label={visiblePasswords[field.name] ? `Hide ${field.label.toLowerCase()}` : `Show ${field.label.toLowerCase()}`}
+                        >
+                          <Icon name={visiblePasswords[field.name] ? 'eye-off' : 'eye'} size={18} />
+                        </button>
+                      </span>
+                    </label>
+                  ))}
                   <button type="submit" className="profile-primary-button" disabled={submitStatus.loading}>{submitStatus.loading ? 'Updating password...' : 'Update password'}</button>
                 </form></div>
               )}
 
               {expandedSection === 'preferences' && setting.id === 'preferences' && (
                 <div className="profile-panel profile-control-row"><div><strong>Theme preference</strong><span>Switch between light and dark mode</span></div><button className={`profile-switch ${isDarkMode ? 'active' : ''}`} onClick={toggleTheme} aria-label="Toggle theme"><span /></button></div>
-              )}
-
-              {expandedSection === 'notifications' && setting.id === 'notifications' && (
-                <div className="profile-panel profile-control-row"><div><strong>Learning reminders</strong><span>Receive helpful course updates</span></div><button className={`profile-switch ${notificationsEnabled ? 'active' : ''}`} onClick={() => setNotificationsEnabled((current) => !current)} aria-label="Toggle notifications"><span /></button></div>
               )}
 
               {expandedSection === 'logout' && setting.id === 'logout' && (
