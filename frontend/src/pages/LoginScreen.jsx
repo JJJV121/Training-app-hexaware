@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import signInImage from '../assets/sign in image.png';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -104,13 +105,18 @@ export default function LoginScreen() {
       <div className="content-grid w-full max-w-6xl mx-auto" style={{ position: 'relative', zIndex: 10 }}>
         
         {/* LEFT SIDE: Branding Statement */}
-        <div className="flex flex-col items-center text-center md:items-start md:text-left select-none">
+        <div className="signin-visual-panel flex flex-col items-center text-center md:items-start md:text-left select-none">
           <h1 className="brand-title text-[72px] md:text-[88px] font-black text-[#0061FE] tracking-tight leading-none">
             Sign In
           </h1>
           <p className="text-xl md:text-2xl text-gray-400 font-medium tracking-tight md:ml-1">
             Sign in to your account
           </p>
+          <img
+            src={signInImage}
+            alt="Hexaware sign in illustration"
+            className="signin-illustration"
+          />
         </div>
 
         {/* RIGHT SIDE: White Login Form Card */}
