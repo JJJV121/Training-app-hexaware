@@ -32,7 +32,7 @@ export default function Profile() {
         console.error('Error loading profile data:', error);
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         setProfileData({
-          name: user.employee_id || user.name || 'Student',
+          name: user.name || user.employee_id || 'Student',
           email: user.email || 'student@example.com',
           courseName: 'Java Training'
         });

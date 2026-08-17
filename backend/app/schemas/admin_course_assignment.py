@@ -30,10 +30,11 @@ class TrainerResponse(BaseModel):
 class BatchResponse(BaseModel):
     id: int
     name: str
-    trainer_id: int
+    trainer_id: int | None = None
     course_id: int
-    start_date: date
-    end_date: date
+    college_name: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
 
     model_config = {
         "from_attributes": True

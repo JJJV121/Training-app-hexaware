@@ -9,6 +9,8 @@ class AdminUserResponse(BaseModel):
     name: str | None = None
     email: EmailStr
     course_id: int | None = None
+    course_ids: list[int] | None = None
+    college_name: str | None = None
     role: str
     is_active: bool
     created_at: datetime
@@ -30,7 +32,10 @@ class TraineeCreate(BaseModel):
     employee_id: str
     name: str
     email: EmailStr
-    course_id: int
+    password: str
+    course_id: int | None = None
+    course_ids: list[int] | None = None
+    college_name: str | None = None
 
 
 class AdminUserUpdate(BaseModel):
@@ -38,6 +43,8 @@ class AdminUserUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
     course_id: int | None = None
+    course_ids: list[int] | None = None
+    college_name: str | None = None
 
 
 class UserStatusUpdate(BaseModel):

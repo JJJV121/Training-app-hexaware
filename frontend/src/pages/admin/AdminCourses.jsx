@@ -218,20 +218,6 @@ export default function AdminCourses() {
                   <span style={{ fontSize: '12px', color: 'var(--text-medium)', fontWeight: 600 }}>Duration: {course.duration_days} Days | Trainer: {course.trainer || 'Unassigned'}</span>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' }}>
-                  <div>
-                    <span style={{ color: 'var(--text-medium)', display: 'block', marginBottom: '2px' }}>Syllabus:</span>
-                    <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary-blue)', cursor: 'pointer' }} onClick={() => triggerToast(`Downloading ${course.thumbnail_url || 'syllabus.pdf'}`)}>
-                      <Icon name="download" style={{ width: '14px', height: '14px' }} />
-                      {course.thumbnail_url || 'syllabus.pdf'}
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-medium)', display: 'block', marginBottom: '2px' }}>Resources:</span>
-                    <span style={{ fontWeight: 700 }}>📚 {course.resourcesCount || 10} Files Uploaded</span>
-                  </div>
-                </div>
-
                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: '11px', color: 'var(--text-medium)' }}>Enrolled: <strong>{course.enrolled} Students</strong></span>
@@ -282,19 +268,19 @@ export default function AdminCourses() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Course Description</label>
+                <label className="form-label">Description</label>
                 <textarea 
                   className="form-input" 
-                  placeholder="e.g. Master modern backend/frontend technologies..."
+                  rows="3"
+                  placeholder="Brief course summary..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   required
-                  style={{ minHeight: '80px', padding: '8px', fontFamily: 'inherit' }}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Category Department</label>
+                <label className="form-label">Category</label>
                 <select 
                   className="form-input"
                   value={formCategory}
@@ -308,7 +294,7 @@ export default function AdminCourses() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Assign Lead Trainer (Mock)</label>
+                <label className="form-label">Assign Lead Trainer</label>
                 <select 
                   className="form-input"
                   value={formTrainer}
@@ -329,32 +315,6 @@ export default function AdminCourses() {
                   value={formDuration}
                   onChange={(e) => setFormDuration(e.target.value)}
                   required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Syllabus PDF File Name</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="e.g. syllabus.pdf"
-                    value={formSyllabus}
-                    onChange={(e) => setFormSyllabus(e.target.value)}
-                  />
-                  <button type="button" className="action-btn-secondary" style={{ padding: '0 16px' }} onClick={() => triggerToast('Syllabus upload simulated!')}>
-                    <Icon name="upload" style={{ width: '16px', height: '16px' }} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Mock Learning Resources Count</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={formResources}
-                  onChange={(e) => setFormResources(e.target.value)}
                 />
               </div>
 

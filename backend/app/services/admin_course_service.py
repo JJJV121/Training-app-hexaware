@@ -24,7 +24,7 @@ async def create_course(
         title=course.title,
         description=course.description,
         duration_days=course.duration_days,
-        thumbnail_url=course.thumbnail_url,
+        thumbnail_url=course.thumbnail_url or "default_course.png",
         is_active=False
     )
 

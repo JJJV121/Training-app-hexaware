@@ -21,10 +21,9 @@ export default function AdminStudents() {
   // Form Fields
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formPassword, setFormPassword] = useState('');
   const [formCollege, setFormCollege] = useState('');
-  const [formCourseId, setFormCourseId] = useState('');
-  const [formProgress, setFormProgress] = useState(0);
-  const [formAttendance, setFormAttendance] = useState('95%');
+  const [selectedCourseIds, setSelectedCourseIds] = useState([]);
 
   const collegesList = adminUserService.getColleges();
 
@@ -44,27 +43,10 @@ export default function AdminStudents() {
         adminUserService.getTrainees()
       ]);
 
-      // Fetch completions for courses to get progress percentage
-      const distinctCourseIds = [...new Set(traineesData.map(t => t.course_id).filter(Boolean))];
-      const completionsMap = {};
-      await Promise.all(
-        distinctCourseIds.map(async (courseId) => {
-          try {
-            const completions = await adminCourseService.getCourseCompletion(courseId);
-            completions.forEach(c => {
-              completionsMap[c.user_id] = c.completion_percentage;
-            });
-          } catch (e) {
-            console.error(`Failed to load completions for course ${courseId}:`, e);
-          }
-        })
-      );
-
       const enrichedStudents = traineesData.map(t => ({
         ...t,
-        progress: completionsMap[t.id] !== undefined ? Math.round(completionsMap[t.id]) : 0,
-        college: localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
-        attendance: localStorage.getItem(`student_attendance_${t.id}`) || '95%'
+        college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
+        course_ids: t.course_ids || (t.course_id ? [t.course_id] : [])
       }));
 
       setCourses(coursesData);
@@ -133,22 +115,23 @@ export default function AdminStudents() {
     setEditStudent(null);
     setFormName('');
     setFormEmail('');
+    setFormPassword('');
     setFormCollege(collegesList[0] || 'IIT Madras');
-    setFormCourseId(courses[0]?.id || '');
-    setFormProgress(0);
-    setFormAttendance('95%');
+    setSelectedCourseIds(courses.length > 0 ? [courses[0].id] : []);
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (student, e) => {
     e.stopPropagation();
     setEditStudent(student);
-    setFormName(student.name);
-    setFormEmail(student.email);
+    setFormName(student.name || '');
+    setFormEmail(student.email || '');
+    setFormPassword('');
     setFormCollege(student.college || collegesList[0]);
-    setFormCourseId(student.course_id || '');
-    setFormProgress(student.progress || 0);
-    setFormAttendance(student.attendance || '95%');
+    const currentCourses = student.course_ids && student.course_ids.length > 0
+      ? student.course_ids
+      : (student.course_id ? [student.course_id] : []);
+    setSelectedCourseIds(currentCourses);
     setIsModalOpen(true);
   };
 
@@ -192,42 +175,53 @@ export default function AdminStudents() {
     }
   };
 
+  const toggleCourseSelection = (courseId) => {
+    setSelectedCourseIds(prev =>
+      prev.includes(courseId)
+        ? prev.filter(id => id !== courseId)
+        : [...prev, courseId]
+    );
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!formName || !formEmail) {
-      alert('Please fill out all fields.');
+      alert('Please fill out all required fields.');
+      return;
+    }
+    if (!editStudent && !formPassword) {
+      alert('Please enter a password for the student.');
       return;
     }
 
     setSubmitting(true);
     const payload = {
+      employee_id: editStudent ? editStudent.employee_id : `ST_${Date.now()}`,
       name: formName,
       email: formEmail,
-      course_id: formCourseId ? Number(formCourseId) : null,
-      college: formCollege,
-      progress: parseInt(formProgress),
-      attendance: formAttendance
+      password: formPassword || 'Password123!',
+      course_ids: selectedCourseIds,
+      course_id: selectedCourseIds.length > 0 ? selectedCourseIds[0] : null,
+      college_name: formCollege
     };
 
     try {
       if (editStudent) {
         await adminUserService.updateTrainee(editStudent.id, payload);
         localStorage.setItem(`student_college_${editStudent.id}`, formCollege);
-        localStorage.setItem(`student_attendance_${editStudent.id}`, formAttendance);
         triggerToast('Student details updated.');
       } else {
         const newStudent = await adminUserService.createTrainee(payload);
         if (newStudent && newStudent.id) {
           localStorage.setItem(`student_college_${newStudent.id}`, formCollege);
-          localStorage.setItem(`student_attendance_${newStudent.id}`, formAttendance);
         }
-        triggerToast('New student added successfully.');
+        triggerToast('New student enrolled successfully. Welcome email sent!');
       }
       setIsModalOpen(false);
       loadCoursesAndTrainees();
     } catch (err) {
       console.error('Failed to save student:', err);
-      alert(err.response?.data?.detail || 'Failed to save student.');
+      alert(err.response?.data?.detail || 'Failed to save student record.');
     } finally {
       setSubmitting(false);
     }
@@ -322,65 +316,72 @@ export default function AdminStudents() {
               <thead>
                 <tr>
                   <th>Student & College</th>
-                  <th>Enrolled Course</th>
-                  <th>Attendance</th>
+                  <th>Enrolled Courses</th>
                   <th>Account Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStudents.length > 0 ? (
-                  filteredStudents.map((s) => (
-                    <tr 
-                      key={s.id}
-                      style={{ cursor: 'pointer', backgroundColor: selectedStudent?.id === s.id ? '#f8fafc' : '' }}
-                      onClick={() => setSelectedStudent(s)}
-                    >
-                      <td>
-                        <div className="user-cell">
-                          <div className="user-avatar-circle" style={{ backgroundColor: 'var(--primary-blue-light)' }}>
-                            {s.name ? s.name.split(' ').map(n => n[0]).join('') : 'U'}
+                  filteredStudents.map((s) => {
+                    const cIds = s.course_ids && s.course_ids.length > 0 ? s.course_ids : (s.course_id ? [s.course_id] : []);
+                    return (
+                      <tr 
+                        key={s.id}
+                        style={{ cursor: 'pointer', backgroundColor: selectedStudent?.id === s.id ? '#f8fafc' : '' }}
+                        onClick={() => setSelectedStudent(s)}
+                      >
+                        <td>
+                          <div className="user-cell">
+                            <div className="user-avatar-circle" style={{ backgroundColor: 'var(--primary-blue-light)' }}>
+                              {s.name ? s.name.split(' ').map(n => n[0]).join('') : 'U'}
+                            </div>
+                            <div className="user-details">
+                              <span className="user-cell-name">{s.name || 'Unnamed Student'}</span>
+                              <span style={{ fontSize: '11px', color: 'var(--primary-blue)', fontWeight: 600 }}>🏛️ {s.college || 'Hexaware Academy'}</span>
+                            </div>
                           </div>
-                          <div className="user-details">
-                            <span className="user-cell-name">{s.name || 'Unnamed Student'}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--primary-blue)', fontWeight: 600 }}>🏛️ {s.college || 'Hexaware Academy'}</span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {cIds.length > 0 ? cIds.map(cid => (
+                              <span key={cid} className="admin-badge blue" style={{ fontSize: '11px' }}>
+                                {getCourseTitle(cid)}
+                              </span>
+                            )) : (
+                              <span className="admin-badge orange" style={{ fontSize: '11px' }}>Unassigned</span>
+                            )}
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="admin-badge blue">{getCourseTitle(s.course_id)}</span>
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: 700 }}>{s.attendance || '95%'}</span>
-                      </td>
-                      <td>
-                        <div className="toggle-switch-wrapper" onClick={(e) => toggleStudentStatus(s.id, s.is_active, s.name, e)}>
-                          <div className={`toggle-switch-track ${s.is_active ? 'active' : ''}`}>
-                            <div className="toggle-switch-thumb"></div>
+                        </td>
+                        <td>
+                          <div className="toggle-switch-wrapper" onClick={(e) => toggleStudentStatus(s.id, s.is_active, s.name, e)}>
+                            <div className={`toggle-switch-track ${s.is_active ? 'active' : ''}`}>
+                              <div className="toggle-switch-thumb"></div>
+                            </div>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: s.is_active ? 'var(--accent-green)' : 'var(--text-light)' }}>
+                              {s.is_active ? 'Active' : 'Inactive'}
+                            </span>
                           </div>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: s.is_active ? 'var(--accent-green)' : 'var(--text-light)' }}>
-                            {s.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="table-row-actions">
-                          <button className="row-action-btn" title="Edit Student" onClick={(e) => handleOpenEditModal(s, e)}>
-                            <Icon name="edit-3" style={{ width: '14px', height: '14px' }} />
-                          </button>
-                          <button className="row-action-btn" title="Reset Password" onClick={(e) => handleResetPassword(s, e)}>
-                            <Icon name="key" style={{ width: '14px', height: '14px' }} />
-                          </button>
-                          <button className="row-action-btn delete" title="Delete Profile" onClick={(e) => handleDeleteStudent(s.id, e)}>
-                            <Icon name="trash-2" style={{ width: '14px', height: '14px' }} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td>
+                          <div className="table-row-actions">
+                            <button className="row-action-btn" title="Edit Student" onClick={(e) => handleOpenEditModal(s, e)}>
+                              <Icon name="edit-3" style={{ width: '14px', height: '14px' }} />
+                            </button>
+                            <button className="row-action-btn" title="Reset Password" onClick={(e) => handleResetPassword(s, e)}>
+                              <Icon name="key" style={{ width: '14px', height: '14px' }} />
+                            </button>
+                            <button className="row-action-btn delete" title="Delete Profile" onClick={(e) => handleDeleteStudent(s.id, e)}>
+                              <Icon name="trash-2" style={{ width: '14px', height: '14px' }} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-light)' }}>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-light)' }}>
                       No student records matching query.
                     </td>
                   </tr>
@@ -504,42 +505,32 @@ export default function AdminStudents() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Enrolled Course</label>
-                <select 
-                  className="form-input"
-                  value={formCourseId}
-                  onChange={(e) => setFormCourseId(e.target.value)}
-                >
-                  <option value="">Unassigned</option>
+                <label className="form-label">Account Password {!editStudent && '*'}</label>
+                <input 
+                  type="password" 
+                  className="form-input" 
+                  placeholder={editStudent ? "Leave blank to keep current" : "Set password"}
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  required={!editStudent}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Enrolling Courses (Select Multiple)</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '140px', overflowY: 'auto', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-main)' }}>
                   {courses.map(c => (
-                    <option key={c.id} value={c.id}>{c.title}</option>
+                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedCourseIds.includes(c.id)}
+                        onChange={() => toggleCourseSelection(c.id)}
+                        style={{ width: '16px', height: '16px' }}
+                      />
+                      <span>{c.title}</span>
+                    </label>
                   ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Course Progress ({formProgress}%)</label>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  step="5"
-                  className="form-input"
-                  value={formProgress}
-                  onChange={(e) => setFormProgress(e.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Attendance Record</label>
-                <input 
-                  type="text" 
-                  className="form-input"
-                  placeholder="e.g. 96%"
-                  value={formAttendance}
-                  onChange={(e) => setFormAttendance(e.target.value)}
-                  required
-                />
+                </div>
               </div>
 
               <div className="modal-footer">

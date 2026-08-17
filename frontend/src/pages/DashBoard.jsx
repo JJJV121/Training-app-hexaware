@@ -66,7 +66,7 @@ export default function DashBoard() {
         const data = await dashboardService.getDashboard(userId);
         if (data) {
           setProfile({
-            name: data.name || data.employee_id || "Student",
+            name: data.name || "Student",
             email: data.email || "student@example.com"
           });
           const courses = data.enrolled_courses || [];
@@ -82,7 +82,7 @@ export default function DashBoard() {
         // Smart Fallback
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
         setProfile({
-          name: storedUser.employee_id || "Student",
+          name: storedUser.name || storedUser.employee_id || "Student",
           email: storedUser.email || "student@example.com"
         });
         setCourseId(1);

@@ -37,6 +37,11 @@ class User(Base):
         nullable=True
     )
 
+    college_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True
+    )
+
     password_hash: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True

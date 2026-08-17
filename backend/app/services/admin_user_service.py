@@ -60,16 +60,60 @@ async def create_trainee(
     db: AsyncSession,
     trainee_data: TraineeCreate,
 ):
-    user = UserCreate(
+    from app.core.security import hash_password
+    from app.models.enrollment import Enrollment
+    from app.models.course import Course
+    from app.services.email_service import send_student_welcome_email
+
+    existing_user = await db.scalar(
+        select(User).where(User.email == trainee_data.email)
+    )
+    if existing_user:
+        raise ValueError("User with this email already exists")
+
+    # Initial state is False (Inactive) per requirement
+    user = User(
         employee_id=trainee_data.employee_id,
         name=trainee_data.name,
         email=trainee_data.email,
-        course_id=trainee_data.course_id,
+        college_name=trainee_data.college_name,
         role="trainee",
-        password=None,
+        is_active=False,
+        password_hash=hash_password(trainee_data.password) if trainee_data.password else None,
     )
 
-    return await create_user(db, user)
+    db.add(user)
+    await db.flush()
+
+    # Handle multi-course or single course enrollment
+    course_ids = []
+    if trainee_data.course_ids:
+        course_ids = trainee_data.course_ids
+    elif trainee_data.course_id:
+        course_ids = [trainee_data.course_id]
+
+    course_names = []
+    for cid in course_ids:
+        enrollment = Enrollment(
+            user_id=user.id,
+            course_id=cid,
+        )
+        db.add(enrollment)
+        
+        c = await db.get(Course, cid)
+        if c:
+            course_names.append(c.title)
+
+    await db.commit()
+    await db.refresh(user)
+
+    # Trigger welcome email upon successful creation
+    try:
+        await send_student_welcome_email(user.email, user.name or "Student", course_names)
+    except Exception as e:
+        print("Notice: email trigger log:", e)
+
+    return user
 
 
 async def update_user(

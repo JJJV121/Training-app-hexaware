@@ -24,9 +24,9 @@ export default function AdminCourseAssignment() {
   const [selectedBatchId, setSelectedBatchId] = useState('');
   const [selectedTraineeId, setSelectedTraineeId] = useState('');
   const [selectedTrainerId, setSelectedTrainerId] = useState('');
-  const [capacity, setCapacity] = useState(30);
-  const [startDate, setStartDate] = useState('2026-08-15');
-  const [endDate, setEndDate] = useState('2026-08-27');
+  const [collegeName, setCollegeName] = useState('IIT Madras');
+
+  const collegesList = adminUserService.getColleges();
 
   useEffect(() => {
     loadData();
@@ -67,9 +67,7 @@ export default function AdminCourseAssignment() {
             type: 'Batch',
             courseId: b.course_id,
             trainerId: b.trainer_id,
-            capacity: b.max_strength,
-            startDate: b.start_date,
-            endDate: b.end_date
+            collegeName: b.college_name || 'Hexaware Academy'
           });
         }
       });
@@ -83,10 +81,8 @@ export default function AdminCourseAssignment() {
             targetName: t.name || 'Unnamed Trainee',
             type: 'Trainee',
             courseId: t.course_id,
-            trainerId: null, // Trainee level does not link trainer directly in schema
-            capacity: 1,
-            startDate: 'N/A',
-            endDate: 'N/A'
+            trainerId: null,
+            collegeName: t.college_name || t.college || 'Hexaware Academy'
           });
         }
       });
@@ -122,9 +118,7 @@ export default function AdminCourseAssignment() {
           name: batch.name,
           course_id: Number(selectedCourseId),
           trainer_id: selectedTrainerId ? Number(selectedTrainerId) : null,
-          max_strength: Number(capacity),
-          start_date: startDate,
-          end_date: endDate
+          college_name: collegeName
         };
 
         await batchService.updateBatch(batch.id, payload);
@@ -136,7 +130,8 @@ export default function AdminCourseAssignment() {
         const payload = {
           name: student.name,
           email: student.email,
-          course_id: Number(selectedCourseId)
+          course_id: Number(selectedCourseId),
+          college_name: collegeName
         };
 
         await adminUserService.updateTrainee(student.id, payload);
@@ -253,7 +248,7 @@ export default function AdminCourseAssignment() {
                   <th>Target & Type</th>
                   <th>Course Name</th>
                   <th>Assigned Trainer</th>
-                  <th>Capacity / Duration</th>
+                  <th>College Name</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -291,10 +286,7 @@ export default function AdminCourseAssignment() {
                         </div>
                       </td>
                       <td>
-                        <span style={{ fontWeight: 700 }}>{a.capacity} Seats</span>
-                        <span style={{ fontSize: '11px', color: 'var(--text-medium)', display: 'block' }}>
-                          {a.startDate === 'N/A' ? 'Open learning duration' : `${a.startDate} to ${a.endDate}`}
-                        </span>
+                        <span style={{ fontWeight: 600, color: 'var(--primary-blue)' }}>🏛️ {a.collegeName || 'Hexaware Academy'}</span>
                       </td>
                       <td>
                         <button className="row-action-btn delete" title="Remove Allocation" onClick={() => handleUnassign(a)}>
@@ -376,33 +368,24 @@ export default function AdminCourseAssignment() {
                 </div>
               )}
 
+              <div className="form-group">
+                <label className="form-label">College Name</label>
+                <select className="form-input" value={collegeName} onChange={(e) => setCollegeName(e.target.value)}>
+                  {collegesList.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
               {assignType === 'Batch' && (
-                <>
-                  <div className="form-group">
-                    <label className="form-label">Assign Lead Trainer (Mock)</label>
-                    <select className="form-input" value={selectedTrainerId} onChange={(e) => setSelectedTrainerId(e.target.value)}>
-                      {trainers.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Batch Seat Capacity</label>
-                    <input type="number" className="form-input" value={capacity} onChange={(e) => setCapacity(e.target.value)} required />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div className="form-group">
-                      <label className="form-label">Start Date</label>
-                      <input type="date" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">End Date</label>
-                      <input type="date" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
-                    </div>
-                  </div>
-                </>
+                <div className="form-group">
+                  <label className="form-label">Assign Lead Trainer</label>
+                  <select className="form-input" value={selectedTrainerId} onChange={(e) => setSelectedTrainerId(e.target.value)}>
+                    {trainers.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               <button type="submit" className="action-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px' }} disabled={submitting}>

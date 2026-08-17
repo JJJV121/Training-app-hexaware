@@ -11,11 +11,12 @@ from pydantic import BaseModel, Field
 class BatchCreate(BaseModel):
     name: str = Field(..., max_length=150)
     course_id: int
-    start_date: date
-    end_date: date
+    college_name: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     start_time: Optional[time] = None
     end_time: Optional[time] = None
-    max_strength: int = Field(default=30, ge=1)
+    max_strength: Optional[int] = Field(default=30, ge=1)
 
 
 # ============================================================
@@ -26,6 +27,7 @@ class BatchUpdate(BaseModel):
     name: Optional[str] = Field(default=None, max_length=150)
     course_id: Optional[int] = None
     trainer_id: Optional[int] = None
+    college_name: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     start_time: Optional[time] = None
@@ -42,12 +44,13 @@ class BatchResponse(BaseModel):
     id: int
     name: str
     course_id: int
-    trainer_id: Optional[int]
-    start_date: date
-    end_date: date
-    start_time: Optional[time]
-    end_time: Optional[time]
-    max_strength: int
+    trainer_id: Optional[int] = None
+    college_name: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+    max_strength: Optional[int] = None
     status: str
     created_by: int
     created_at: datetime

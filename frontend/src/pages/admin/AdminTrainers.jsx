@@ -22,6 +22,7 @@ export default function AdminTrainers() {
   // Form Fields
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
+  const [formPassword, setFormPassword] = useState('');
   const [formCourseId, setFormCourseId] = useState('');
   const [formWorkload, setFormWorkload] = useState(50);
   const [formRating, setFormRating] = useState(4.5);
@@ -162,6 +163,7 @@ export default function AdminTrainers() {
     setEditTrainer(null);
     setFormName('');
     setFormEmail('');
+    setFormPassword('');
     setFormCourseId(courses[0]?.id || '');
     setFormWorkload(50);
     setFormRating(4.5);
@@ -173,9 +175,10 @@ export default function AdminTrainers() {
     setEditTrainer(trainer);
     setFormName(trainer.name || '');
     setFormEmail(trainer.email || '');
+    setFormPassword('');
     setFormCourseId(trainer.course_id || courses[0]?.id || '');
     setFormWorkload(trainer.workload);
-    setFormRating(trainer.rating);
+    setFormRating(trainer.rating || 4.5);
     setIsModalOpen(true);
   };
 
@@ -199,7 +202,11 @@ export default function AdminTrainers() {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!formName || !formEmail || !formCourseId) {
-      alert('Please fill out all fields.');
+      alert('Please fill out all required fields.');
+      return;
+    }
+    if (!editTrainer && !formPassword) {
+      alert('Please enter a password.');
       return;
     }
 
@@ -208,7 +215,8 @@ export default function AdminTrainers() {
       name: formName,
       email: formEmail,
       course_id: Number(formCourseId),
-      employee_id: editTrainer ? editTrainer.employee_id : `TR_${Date.now()}`
+      employee_id: editTrainer ? editTrainer.employee_id : `TR_${Date.now()}`,
+      password: formPassword || 'Password123!'
     };
 
     try {
@@ -510,15 +518,14 @@ export default function AdminTrainers() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Initial Workload Target ({formWorkload}%)</label>
+                <label className="form-label">Account Password {!editTrainer && '*'}</label>
                 <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  step="5"
+                  type="password" 
                   className="form-input" 
-                  value={formWorkload}
-                  onChange={(e) => setFormWorkload(e.target.value)}
+                  placeholder={editTrainer ? "Leave blank to keep existing" : "Set login password"}
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  required={!editTrainer}
                 />
               </div>
 

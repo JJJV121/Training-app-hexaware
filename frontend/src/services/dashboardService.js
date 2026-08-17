@@ -79,7 +79,7 @@ const dashboardService = {
   async getUserProfile(userId) {
     const data = await this.getDashboard(userId);
     return {
-      name: data?.name || data?.employee_id || "Student",
+      name: data?.name || "Student",
       email: data?.email || ""
     };
   },
@@ -157,7 +157,7 @@ const dashboardService = {
     try {
       const data = await this.getDashboard(userId);
       return {
-        name: data?.name || data?.employee_id || "Student",
+        name: data?.name || "Student",
         email: data?.email || ""
       };
     } catch (error) {

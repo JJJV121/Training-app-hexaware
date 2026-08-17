@@ -40,78 +40,30 @@ async def create_batch(
     created_by: int,
     batch: BatchCreate,
 ):
-    # --------------------------------------------------------
-    # Validate Course
-    # --------------------------------------------------------
+    from datetime import timedelta
+    today = date.today()
+    s_date = batch.start_date or today
+    e_date = batch.end_date or (s_date + timedelta(days=30))
 
-    course = await db.scalar(
-        select(Course).where(
-            Course.id == batch.course_id
-        )
-    )
-
-    if not course:
-        raise ValueError(
-            "Course not found"
-        )
-
-    # --------------------------------------------------------
-    # Validate Dates
-    # --------------------------------------------------------
-
-    if batch.start_date > batch.end_date:
-        raise ValueError(
-            "Start date cannot be greater than end date"
-        )
-
-    # --------------------------------------------------------
-    # Validate Time
-    # --------------------------------------------------------
-
-    if (
-        batch.start_time
-        and
-        batch.end_time
-        and
-        batch.start_time >= batch.end_time
-    ):
-        raise ValueError(
-            "Start time must be before end time"
-        )
-
-    # --------------------------------------------------------
-    # Validate Capacity
-    # --------------------------------------------------------
-
-    if batch.max_strength <= 0:
-        raise ValueError(
-            "Maximum batch strength must be greater than zero"
-        )
-
-    # --------------------------------------------------------
-    # Create Batch
-    # --------------------------------------------------------
+    if s_date > e_date:
+        raise ValueError("Start date cannot be greater than end date")
 
     new_batch = Batch(
         name=batch.name,
         course_id=batch.course_id,
         trainer_id=None,
-        start_date=batch.start_date,
-        end_date=batch.end_date,
+        college_name=batch.college_name,
+        start_date=s_date,
+        end_date=e_date,
         start_time=batch.start_time,
         end_time=batch.end_time,
-        max_strength=batch.max_strength,
-        status=calculate_batch_status(
-            batch.start_date,
-            batch.end_date,
-        ),
+        max_strength=batch.max_strength or 30,
+        status=calculate_batch_status(s_date, e_date),
         created_by=created_by,
     )
 
     db.add(new_batch)
-
     await db.commit()
-
     await db.refresh(new_batch)
 
     return {
@@ -318,6 +270,9 @@ async def update_batch(
 
     if batch_data.trainer_id is not None:
         batch.trainer_id = batch_data.trainer_id
+
+    if batch_data.college_name is not None:
+        batch.college_name = batch_data.college_name
 
     # --------------------------------------------------------
     # Dates
