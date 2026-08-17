@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 class ProfileResponse(BaseModel):
 
-    name: str
+    name: str | None = None
     email: str
     model_config = {
         "from_attributes": True

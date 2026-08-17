@@ -8,6 +8,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import DashBoard from './pages/DashBoard';
 import OverallDashboard from './pages/OverallDashboard';
+import TrainerDashboard from './pages/TrainerDashboard';
 import { useTheme } from './context/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import Icon from './components/Icon';
@@ -175,7 +176,7 @@ function AppRoutes() {
   const { isDarkMode } = useTheme();
   const location = useLocation();
   const themeClass = isDarkMode ? 'dark-theme' : '';
-  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin');
+  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/trainer-dashboard');
 
   return (
     <div className={`app-container ${themeClass}`}>
@@ -190,8 +191,10 @@ function AppRoutes() {
         <Route path="/register-course" element={<RegisterCourse />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/dashboard" element={<OverallDashboard />} />
-        <Route path="/dashboard/:courseId" element={<DashBoard />} />
+        <Route path="/dashboard" element={<ProtectedRoute><OverallDashboard /></ProtectedRoute>} />
+        <Route path="/dashboard/:courseId" element={<ProtectedRoute><DashBoard /></ProtectedRoute>} />
+        <Route path="/trainer-dashboard/*" element={<ProtectedRoute><TrainerDashboard /></ProtectedRoute>} />
+        <Route path="/trainer-dashboard" element={<ProtectedRoute><TrainerDashboard /></ProtectedRoute>} />
 
         {/* Admin route */}
         <Route path="/admin/*" element={<ProtectedRoute><AdminApp /></ProtectedRoute>} />

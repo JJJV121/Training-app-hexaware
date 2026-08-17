@@ -21,10 +21,20 @@ class User(Base):
         nullable=False
     )
 
+    name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True
+    )
+
     email: Mapped[str] = mapped_column(
         String(255),
         unique=True,
         nullable=False
+    )
+
+    role: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True
     )
 
     password_hash: Mapped[str | None] = mapped_column(
