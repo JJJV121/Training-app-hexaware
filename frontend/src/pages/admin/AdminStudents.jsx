@@ -221,7 +221,12 @@ export default function AdminStudents() {
       loadCoursesAndTrainees();
     } catch (err) {
       console.error('Failed to save student:', err);
-      alert(err.response?.data?.detail || 'Failed to save student record.');
+      const errorMessage = typeof err.response?.data?.detail === 'string'
+        ? err.response.data.detail
+        : (Array.isArray(err.response?.data?.detail)
+            ? err.response.data.detail.map(i => typeof i === 'string' ? i : `${Array.isArray(i.loc) ? i.loc.join('.') : ''}: ${i.msg}`).join('; ')
+            : (err.message || 'Failed to save student record.'));
+      alert(errorMessage);
     } finally {
       setSubmitting(false);
     }

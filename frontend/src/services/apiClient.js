@@ -25,7 +25,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle unauthorized/forbidden errors
+// Response interceptor to handle unauthorized/forbidden errors and format validation errors
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -33,6 +33,24 @@ apiClient.interceptors.response.use(
       const status = error.response.status;
       if (status === 401 || status === 403) {
         console.warn('Authentication expired or unauthorized access.');
+      }
+
+      // Convert FastAPI 422 detail array/object to clean readable text instead of [object Object]
+      const detail = error.response.data?.detail;
+      if (Array.isArray(detail)) {
+        const formatted = detail
+          .map((item) => {
+            if (typeof item === 'string') return item;
+            const field = Array.isArray(item.loc)
+              ? item.loc.filter((l) => l !== 'body' && l !== 'query').join('.')
+              : '';
+            const msg = item.msg || JSON.stringify(item);
+            return field ? `${field}: ${msg}` : msg;
+          })
+          .join('; ');
+        error.response.data.detail = formatted;
+      } else if (typeof detail === 'object' && detail !== null) {
+        error.response.data.detail = detail.msg || JSON.stringify(detail);
       }
     }
     return Promise.reject(error);

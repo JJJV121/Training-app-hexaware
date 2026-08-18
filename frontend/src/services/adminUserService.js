@@ -14,11 +14,20 @@ const adminUserService = {
   },
 
   async createTrainee(traineeData) {
+    const primaryCourseId = traineeData.course_id 
+      ? Number(traineeData.course_id) 
+      : (Array.isArray(traineeData.course_ids) && traineeData.course_ids.length > 0 ? Number(traineeData.course_ids[0]) : null);
+
     const payload = {
-      employee_id: traineeData.employee_id || `EMP_${Date.now()}`,
+      employee_id: traineeData.employee_id || `ST_${Date.now()}`,
       name: traineeData.name,
       email: traineeData.email,
-      course_id: Number(traineeData.course_id)
+      password: traineeData.password || 'Password123!',
+      course_id: primaryCourseId,
+      course_ids: Array.isArray(traineeData.course_ids) && traineeData.course_ids.length > 0 
+        ? traineeData.course_ids.map(Number) 
+        : (primaryCourseId ? [primaryCourseId] : []),
+      college_name: traineeData.college_name || traineeData.college || null
     };
     const response = await apiClient.post('/admin/trainees', payload);
     return response.data;
@@ -26,10 +35,17 @@ const adminUserService = {
 
   async updateTrainee(id, traineeData) {
     // Maps to AdminUserUpdate schema
+    const primaryCourseId = traineeData.course_id 
+      ? Number(traineeData.course_id) 
+      : (Array.isArray(traineeData.course_ids) && traineeData.course_ids.length > 0 ? Number(traineeData.course_ids[0]) : null);
+
     const payload = {
+      employee_id: traineeData.employee_id,
       name: traineeData.name,
       email: traineeData.email,
-      course_id: traineeData.course_id
+      course_id: primaryCourseId,
+      course_ids: Array.isArray(traineeData.course_ids) ? traineeData.course_ids.map(Number) : undefined,
+      college_name: traineeData.college_name || traineeData.college || undefined
     };
     const response = await apiClient.put(`/admin/trainees/${id}`, payload);
     return response.data;
