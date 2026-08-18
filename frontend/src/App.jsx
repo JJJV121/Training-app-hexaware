@@ -174,11 +174,15 @@ function ProtectedRoute({ children }) {
   return hasAuthToken ? children : <Navigate to="/login" replace />;
 }
 
+import Leaderboard from './pages/Leaderboard';
+import Badges from './pages/Badges';
+
 function AppRoutes() {
-  const { isDarkMode } = useTheme();
   const location = useLocation();
+  const { isDarkMode } = useTheme();
+
   const themeClass = isDarkMode ? 'dark-theme' : '';
-  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/trainer-dashboard');
+  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/trainer-dashboard') || location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/badges');
 
   return (
     <div className={`app-container ${themeClass}`}>
@@ -195,6 +199,8 @@ function AppRoutes() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/dashboard" element={<ProtectedRoute><OverallDashboard /></ProtectedRoute>} />
         <Route path="/dashboard/:courseId" element={<ProtectedRoute><DashBoard /></ProtectedRoute>} />
+        <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+        <Route path="/badges" element={<ProtectedRoute><Badges /></ProtectedRoute>} />
         <Route path="/trainer-dashboard/*" element={<ProtectedRoute><TrainerDashboard /></ProtectedRoute>} />
         <Route path="/trainer-dashboard" element={<ProtectedRoute><TrainerDashboard /></ProtectedRoute>} />
 

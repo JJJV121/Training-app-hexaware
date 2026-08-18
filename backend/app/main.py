@@ -162,6 +162,11 @@ app.include_router(trainer_analytics_router)
 # Messaging & Community
 app.include_router(messaging_router)
 
+# Gamification & Leaderboard
+from app.routers.gamification_router import router as gamification_router
+app.include_router(gamification_router)
+
+
 
 
 # --------------------------------------------------

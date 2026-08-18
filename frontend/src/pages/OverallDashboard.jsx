@@ -10,7 +10,10 @@ import cSharpCourseImage from '../assets/csharp-course.png';
 import hexawareLogo from '../assets/HEXAWARE logo.png';
 import MentorConnect from './trainee/MentorConnect';
 import CommunityConnect from './trainee/CommunityConnect';
+import Leaderboard from './Leaderboard';
+import Badges from './Badges';
 import '../styles/overallDashboard.css';
+
 
 
 function CountUp({ end, duration = 1200, suffix = "" }) {
@@ -351,6 +354,57 @@ export default function OverallDashboard() {
       case 'performance':
         return (
           <div className="overall-tab-panel">
+            {/* Gamification & Ranking Overview Banner */}
+            <div style={{ backgroundColor: 'var(--card-bg)', borderRadius: '16px', border: '1px solid var(--border-color)', padding: '24px', marginBottom: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-dark)' }}>
+                    🏆 Gamification & Ranking Overview
+                  </h3>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-medium)' }}>Track your level, total XP, current rank, earned badges, and learning streaks.</span>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/leaderboard')}
+                    style={{ padding: '9px 16px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#fff', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem', boxShadow: '0 4px 10px rgba(37,99,235,0.25)' }}
+                  >
+                    View Leaderboard →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/badges')}
+                    style={{ padding: '9px 16px', borderRadius: '10px', backgroundColor: 'var(--bg-main)', color: 'var(--text-dark)', border: '1px solid var(--border-color)', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    View Badges →
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '16px' }}>
+                <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--bg-main)', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-medium)', textTransform: 'uppercase' }}>Level</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-dark)', marginTop: '2px' }}>Level {dashboardData?.level || 1}</div>
+                </div>
+                <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--bg-main)', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-medium)', textTransform: 'uppercase' }}>XP</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#2563eb', marginTop: '2px' }}>{dashboardData?.xp || 0} XP</div>
+                </div>
+                <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--bg-main)', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-medium)', textTransform: 'uppercase' }}>Rank</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#f59e0b', marginTop: '2px' }}>#{dashboardData?.rank || 1}</div>
+                </div>
+                <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--bg-main)', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-medium)', textTransform: 'uppercase' }}>Badges</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981', marginTop: '2px' }}>🏅 {dashboardData?.badge_count || 0}</div>
+                </div>
+                <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: 'var(--bg-main)', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-medium)', textTransform: 'uppercase' }}>Streak</span>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ef4444', marginTop: '2px' }}>🔥 {dashboardData?.current_streak || 1}d</div>
+                </div>
+              </div>
+            </div>
+
             <div className="performance-chart-card">
               <h3 className="performance-chart-title">Course Completion Rates</h3>
               <div className="performance-bar-chart">
@@ -399,6 +453,12 @@ export default function OverallDashboard() {
           </div>
         );
 
+      case 'leaderboard':
+        return <Leaderboard />;
+
+      case 'badges':
+        return <Badges />;
+
       case 'mentor-connect':
         return <MentorConnect />;
 
@@ -419,8 +479,11 @@ export default function OverallDashboard() {
     { page: 'mentor-connect', icon: 'message-square', label: 'Mentor Connect' },
     { page: 'community-connect', icon: 'users', label: 'Community Connect' },
     { page: 'performance', icon: 'star', label: 'Performance' },
+    { page: 'leaderboard', icon: 'award', label: 'Leaderboard' },
+    { page: 'badges', icon: 'shield', label: 'Badges' },
     { page: 'profile', icon: 'user', label: 'Profile' }
   ];
+
 
 
   return (

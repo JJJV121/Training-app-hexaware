@@ -15,6 +15,9 @@ import hexawareLogo from '../assets/HEXAWARE logo.png';
 import ThemeToggle from '../components/ThemeToggle';
 import MentorConnect from './trainee/MentorConnect';
 import CommunityConnect from './trainee/CommunityConnect';
+import Leaderboard from './Leaderboard';
+import Badges from './Badges';
+
  
 export default function DashBoard() {
   const { courseId: paramCourseId } = useParams();
@@ -191,6 +194,10 @@ export default function DashBoard() {
         return <MentorConnect />;
       case 'community-connect':
         return <CommunityConnect />;
+      case 'leaderboard':
+        return <Leaderboard />;
+      case 'badges':
+        return <Badges />;
       case 'profile':
         return <Profile />;
       case 'logout':
@@ -205,11 +212,14 @@ export default function DashBoard() {
     { page: 'course', icon: 'book-open', label: 'My Courses' },
     { page: 'mentor-connect', icon: 'message-square', label: 'Mentor Connect' },
     { page: 'community-connect', icon: 'users', label: 'Community Connect' },
+    { page: 'leaderboard', icon: 'award', label: 'Leaderboard' },
+    { page: 'badges', icon: 'shield', label: 'Badges' },
     { page: 'schedule', icon: 'clock', label: 'Schedule' },
     { page: 'progress', icon: 'star', label: 'Progress' },
     { page: 'notes', icon: 'file-text', label: 'Notes' },
     { page: 'profile', icon: 'user', label: 'Profile' }
   ];
+
 
 
   const closeMobileMenu = () => {

@@ -35,4 +35,11 @@ from app.models.messaging import (
     Community,
     CommunityMember,
 )
+from app.models.gamification import (
+    UserGamification,
+    Badge,
+    UserBadge,
+    XPLog,
+)
+
 

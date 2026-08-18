@@ -70,12 +70,23 @@ def resolve_active_course(user_enrollments, selected_course_id=None):
     return user_enrollments[0]
 
 
+_dashboard_cache = {}
+_dashboard_cache_ttl = 10  # seconds
+
 async def get_dashboard(
     db: AsyncSession,
     user_id: int,
     selected_course_id: int | None = None
 ):
+    cache_key = f"dash_{user_id}_{selected_course_id or 'none'}"
+    now_ts = datetime.utcnow().timestamp()
+    if cache_key in _dashboard_cache:
+        cached_entry, cached_at = _dashboard_cache[cache_key]
+        if now_ts - cached_at < _dashboard_cache_ttl:
+            return cached_entry
+
     # Fetch user details
+
     user_stmt = select(User).where(User.id == user_id)
     user_res = await db.execute(user_stmt)
     user = user_res.scalar_one_or_none()
@@ -514,7 +525,7 @@ async def get_dashboard(
             "completion_percentage": c_pct
         })
 
-    return {
+    final_res = {
         "name": user.name or user.employee_id,
         "employee_id": user.employee_id,
         "email": user.email,
@@ -525,3 +536,6 @@ async def get_dashboard(
         "continue_learning": continue_learning_response_data,
         "enrolled_courses": enrolled_courses_data
     }
+    _dashboard_cache[cache_key] = (final_res, now_ts)
+    return final_res
+
