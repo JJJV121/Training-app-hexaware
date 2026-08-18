@@ -97,6 +97,47 @@ async def get_day_qas(
     )
     return result.scalars().all()
 
+
+# Get 25 MCQs (Low, Medium, Hard) for a specific course day
+@router.get("/course/{course_id}/day/{day_id}/mcqs")
+async def get_day_mcqs(
+    course_id: int,
+    day_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    day = await db.scalar(
+        select(CourseDay).where(
+            CourseDay.id == day_id,
+            CourseDay.course_id == course_id
+        )
+    )
+    if not day:
+        # Fallback fetch by day_id
+        day = await db.scalar(select(CourseDay).where(CourseDay.id == day_id))
+
+    day_title = day.title if day else f"Day {day_id}"
+    day_desc = day.description if day else ""
+
+    from app.models.course import Course
+    c_res = await db.execute(select(Course).where(Course.id == course_id))
+    c = c_res.scalars().first()
+    course_title = c.title if c else "Java Training"
+
+    from app.services.mcq_generator_service import generate_25_mcqs_for_day
+    mcqs = generate_25_mcqs_for_day(course_title, day_title, day_desc)
+
+    return {
+        "course_id": course_id,
+        "day_id": day_id,
+        "total_mcqs": len(mcqs),
+        "low_count": len([m for m in mcqs if m["difficulty"] == "low"]),
+        "medium_count": len([m for m in mcqs if m["difficulty"] == "medium"]),
+        "hard_count": len([m for m in mcqs if m["difficulty"] == "hard"]),
+        "mcqs": mcqs
+    }
+
+
 # Update Q&A (Admin Only)
 @router.put("/{id}", response_model=CourseDayQAResponse)
 async def update_course_day_qa(

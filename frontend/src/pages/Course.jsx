@@ -745,7 +745,10 @@ function NotesSection({ learningUnitId }) {
 }
 
 function QnASection({ courseId, dayId }) {
-  const [qaList, setQaList] = useState([]);
+  const [mcqs, setMcqs] = useState([]);
+  const [selectedAnswers, setSelectedAnswers] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -753,56 +756,335 @@ function QnASection({ courseId, dayId }) {
     if (!courseId || !dayId) return;
 
     let isMounted = true;
-    const fetchQA = async () => {
+    const fetchMCQs = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await qaService.getDayQAs(courseId, dayId);
+        setIsSubmitted(false);
+        setSelectedAnswers({});
+        const res = await qaService.getDayMCQs(courseId, dayId);
         if (isMounted) {
-          setQaList(Array.isArray(data) ? data : []);
+          setMcqs(res?.mcqs || []);
         }
       } catch (err) {
-        console.error("Failed to load quiz data:", err);
+        console.error("Failed to load MCQ quiz:", err);
         if (isMounted) setError("Could not load quiz questions.");
       } finally {
         if (isMounted) setLoading(false);
       }
     };
 
-    fetchQA();
+    fetchMCQs();
     return () => { isMounted = false; };
   }, [courseId, dayId]);
 
-  if (loading) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-medium)' }}><p>Loading quiz...</p></div>;
-  if (error) return <div style={{ padding: '24px', textAlign: 'center', color: 'var(--accent-red)' }}><p>{error}</p></div>;
+  const handleSelectOption = (questionId, optionIdx) => {
+    if (isSubmitted) return;
+    setSelectedAnswers((prev) => ({
+      ...prev,
+      [questionId]: optionIdx,
+    }));
+  };
+
+  const handleReset = () => {
+    setSelectedAnswers({});
+    setIsSubmitted(false);
+  };
+
+  const filteredMcqs = mcqs.filter((m) => {
+    if (filterDifficulty === 'all') return true;
+    return m.difficulty === filterDifficulty;
+  });
+
+  const lowCount = mcqs.filter((m) => m.difficulty === 'low').length;
+  const mediumCount = mcqs.filter((m) => m.difficulty === 'medium').length;
+  const hardCount = mcqs.filter((m) => m.difficulty === 'hard').length;
+
+  const totalAnswered = Object.keys(selectedAnswers).length;
+  const correctCount = mcqs.reduce((acc, m) => {
+    return selectedAnswers[m.id] === m.correct_index ? acc + 1 : acc;
+  }, 0);
+
+  const scorePercentage = mcqs.length > 0 ? Math.round((correctCount / mcqs.length) * 100) : 0;
+
+  if (loading) {
+    return (
+      <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-medium)' }}>
+        <p style={{ fontWeight: 600 }}>Loading 25 Practice MCQs based on Course Notes & Transcripts...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '24px', textAlign: 'center', color: 'var(--accent-red)' }}>
+        <p>{error}</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '24px', backgroundColor: 'var(--bg-sidebar)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', color: 'var(--text-dark)' }}>
-        <Icon name="message-circle" style={{ width: '20px', height: '20px' }} />
-        <h3 style={{ margin: 0, fontSize: '18px' }}>Quiz</h3>
+    <div style={{ padding: '24px', backgroundColor: 'var(--bg-sidebar)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+      {/* Quiz Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Icon name="help-circle" style={{ width: '22px', height: '22px', color: 'var(--primary-blue)' }} />
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-dark)' }}>
+              Practice Quiz (25 MCQs)
+            </h3>
+          </div>
+          <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-medium)' }}>
+            Evaluates key concepts from course lecture notes & transcripts across Low, Medium, and Hard difficulties.
+          </p>
+        </div>
+
+        {/* Retake or Submit Buttons */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {isSubmitted ? (
+            <button
+              type="button"
+              onClick={handleReset}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--bg-main)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-dark)',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontSize: '0.85rem'
+              }}
+            >
+              🔄 Reset / Retake Quiz
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsSubmitted(true)}
+              disabled={totalAnswered === 0}
+              style={{
+                padding: '9px 18px',
+                borderRadius: '8px',
+                backgroundColor: totalAnswered > 0 ? '#2563eb' : '#cbd5e1',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 700,
+                cursor: totalAnswered > 0 ? 'pointer' : 'not-allowed',
+                fontSize: '0.85rem',
+                boxShadow: totalAnswered > 0 ? '0 4px 10px rgba(37,99,235,0.25)' : 'none'
+              }}
+            >
+              Submit Quiz ({totalAnswered}/{mcqs.length} Answered)
+            </button>
+          )}
+        </div>
       </div>
 
-      {qaList.length === 0 ? (
-        <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: '16px' }}>
-          <p>No quiz questions are available for this course day yet.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {qaList.map((item, idx) => (
-            <div key={item.id || idx} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-              <h4 style={{ margin: '0 0 4px 0', color: 'var(--text-dark)', fontSize: '15px' }}>Q: {item.question}</h4>
-              <p style={{ margin: 0, color: 'var(--text-medium)', fontSize: '14px', paddingLeft: '20px' }}>
-                <span style={{ fontWeight: '600', color: 'var(--primary-blue)' }}>A: </span>
-                {item.answer || <span style={{ color: 'var(--text-light)', fontStyle: 'italic' }}>Pending answer from instructors...</span>}
-              </p>
-            </div>
-          ))}
+      {/* Submitted Score Summary Banner */}
+      {isSubmitted && (
+        <div
+          style={{
+            padding: '16px 20px',
+            borderRadius: '12px',
+            marginBottom: '20px',
+            background: scorePercentage >= 70
+              ? 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.1))'
+              : 'linear-gradient(135deg, rgba(239,68,68,0.1), rgba(220,38,38,0.1))',
+            border: scorePercentage >= 70 ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(239,68,68,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px'
+
+          }}
+        >
+          <div>
+            <h4 style={{ margin: '0 0 2px 0', fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-dark)' }}>
+              {scorePercentage >= 70 ? '🎉 Excellent Job!' : '💪 Keep Practicing!'}
+            </h4>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-medium)' }}>
+              You scored <strong>{correctCount}</strong> out of <strong>{mcqs.length}</strong> questions correctly ({scorePercentage}% Accuracy).
+            </span>
+          </div>
+          <div
+            style={{
+              fontSize: '1.6rem',
+              fontWeight: 900,
+              color: scorePercentage >= 70 ? '#059669' : '#dc2626'
+            }}
+          >
+            {scorePercentage}%
+          </div>
         </div>
       )}
+
+      {/* Difficulty Filter Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        {[
+          { key: 'all', label: `All Questions (${mcqs.length})` },
+          { key: 'low', label: `🟢 Low / Easy (${lowCount})` },
+          { key: 'medium', label: `🟡 Medium (${mediumCount})` },
+          { key: 'hard', label: `🔴 Hard (${hardCount})` },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setFilterDifficulty(tab.key)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '20px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              border: filterDifficulty === tab.key ? '1px solid #2563eb' : '1px solid var(--border-color)',
+              backgroundColor: filterDifficulty === tab.key ? 'rgba(37,99,235,0.1)' : 'var(--bg-main)',
+              color: filterDifficulty === tab.key ? '#2563eb' : 'var(--text-medium)',
+              cursor: 'pointer'
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* MCQ Questions List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {filteredMcqs.map((mcq, idx) => {
+          const selectedOpt = selectedAnswers[mcq.id];
+          const isCorrect = selectedOpt === mcq.correct_index;
+
+          const diffBadgeColor =
+            mcq.difficulty === 'low'
+              ? { bg: 'rgba(16,185,129,0.12)', text: '#059669', label: 'Low / Easy' }
+              : mcq.difficulty === 'medium'
+              ? { bg: 'rgba(245,158,11,0.12)', text: '#d97706', label: 'Medium' }
+              : { bg: 'rgba(239,68,68,0.12)', text: '#dc2626', label: 'Hard' };
+
+          return (
+            <div
+              key={mcq.id}
+              style={{
+                padding: '18px 20px',
+                borderRadius: '12px',
+                backgroundColor: 'var(--bg-main)',
+                border: isSubmitted
+                  ? isCorrect
+                    ? '1px solid rgba(16,185,129,0.5)'
+                    : selectedOpt !== undefined
+                    ? '1px solid rgba(239,68,68,0.5)'
+                    : '1px solid var(--border-color)'
+                  : '1px solid var(--border-color)',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+              }}
+            >
+              {/* Question Header & Difficulty Badge */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-dark)', lineHeight: 1.5 }}>
+                  <span style={{ color: 'var(--primary-blue)', marginRight: '6px' }}>Q{idx + 1}.</span>
+                  {mcq.question}
+                </h4>
+                <span
+                  style={{
+                    fontSize: '0.725rem',
+                    fontWeight: 800,
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    backgroundColor: diffBadgeColor.bg,
+                    color: diffBadgeColor.text,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {diffBadgeColor.label}
+                </span>
+              </div>
+
+              {/* Options Radio List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {mcq.options.map((optText, optIdx) => {
+                  const isThisSelected = selectedOpt === optIdx;
+                  const isThisCorrectOption = mcq.correct_index === optIdx;
+
+                  let optionBg = 'var(--bg-sidebar)';
+                  let optionBorder = 'var(--border-color)';
+                  let optionTextColor = 'var(--text-dark)';
+
+                  if (isSubmitted) {
+                    if (isThisCorrectOption) {
+                      optionBg = 'rgba(16,185,129,0.12)';
+                      optionBorder = '#10b981';
+                      optionTextColor = '#047857';
+                    } else if (isThisSelected && !isThisCorrectOption) {
+                      optionBg = 'rgba(239,68,68,0.12)';
+                      optionBorder = '#ef4444';
+                      optionTextColor = '#b91c1c';
+                    }
+                  } else if (isThisSelected) {
+                    optionBg = 'rgba(37,99,235,0.08)';
+                    optionBorder = '#2563eb';
+                    optionTextColor = '#1d4ed8';
+                  }
+
+                  return (
+                    <label
+                      key={optIdx}
+                      onClick={() => handleSelectOption(mcq.id, optIdx)}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: `1px solid ${optionBorder}`,
+                        backgroundColor: optionBg,
+                        color: optionTextColor,
+                        cursor: isSubmitted ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        fontSize: '0.875rem',
+                        fontWeight: isThisSelected || (isSubmitted && isThisCorrectOption) ? 700 : 500,
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name={`mcq-${mcq.id}`}
+                        checked={isThisSelected}
+                        onChange={() => handleSelectOption(mcq.id, optIdx)}
+                        disabled={isSubmitted}
+                        style={{ accentColor: '#2563eb', width: '16px', height: '16px' }}
+                      />
+                      <span>{optText}</span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* Collapsible / Auto Technical Explanation Box after submission */}
+              {isSubmitted && (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    padding: '12px 14px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(59,130,246,0.06)',
+                    border: '1px solid rgba(59,130,246,0.2)',
+                    fontSize: '0.825rem',
+                    color: 'var(--text-dark)',
+                    lineHeight: 1.5
+                  }}
+                >
+                  <span style={{ fontWeight: 800, color: '#2563eb', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                    💡 Technical Rationale
+                  </span>
+                  <span>{mcq.explanation}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
 
 function CaseStudiesSection({ courseId, dayId }) {
   const [casesList, setCasesList] = useState([]);

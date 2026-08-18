@@ -6,6 +6,12 @@ export const qaService = {
     return response.data;
   },
 
+  async getDayMCQs(courseId, dayId) {
+    const response = await apiClient.get(`/qa/course/${courseId}/day/${dayId}/mcqs`);
+    return response.data;
+  },
+
+
   async createQA(payload) {
     const response = await apiClient.post('/qa/', payload);
     return response.data;
