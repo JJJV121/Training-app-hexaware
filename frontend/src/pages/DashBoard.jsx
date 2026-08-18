@@ -67,6 +67,11 @@ export default function DashBoard() {
     localStorage.setItem('selected_course_id', String(targetId));
   };
 
+  const clearSelectedCourseId = () => {
+    localStorage.removeItem('selected_course_id');
+    dashboardService._cache = {};
+  };
+
   useEffect(() => {
     if (paramCourseId) {
       const targetId = Number(paramCourseId);
@@ -298,6 +303,7 @@ export default function DashBoard() {
                 alert("Assessment is in progress. You must submit the assessment before leaving the page.");
                 return;
               }
+              clearSelectedCourseId();
               navigate('/dashboard');
             }}
           >

@@ -5,12 +5,17 @@ const dashboardService = {
   _cache: {}, // key -> { data, timestamp }
   _pendingRequests: {}, // key -> Promise
 
+  clearCourseSelection() {
+    localStorage.removeItem('selected_course_id');
+    this._cache = {};
+  },
+
   // Reusable core fetch function
-  async getDashboard(userId, courseId = null) {
+  async getDashboard(userId, courseId = undefined) {
     if (!userId) return null;
 
-    const selectedCourseId = courseId !== null && courseId !== undefined
-      ? Number(courseId)
+    const selectedCourseId = courseId !== undefined
+      ? (courseId === null ? null : Number(courseId))
       : (Number(localStorage.getItem('selected_course_id')) || null);
 
     const cacheKey = `${userId}_${selectedCourseId || 'default'}`;

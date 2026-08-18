@@ -46,7 +46,7 @@ export default function AdminStudents() {
       const enrichedStudents = traineesData.map(t => ({
         ...t,
         college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
-        course_ids: t.course_ids || (t.course_id ? [t.course_id] : [])
+        course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
       }));
 
       setCourses(coursesData);
@@ -73,12 +73,20 @@ export default function AdminStudents() {
       try {
         if (value.trim() === '') {
           const traineesData = await adminUserService.getTrainees();
-          setStudents(traineesData);
+          setStudents(traineesData.map(t => ({
+            ...t,
+            college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
+            course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
+          })));
           return;
         }
 
         const searchResults = await adminUserService.searchTrainees(value);
-        setStudents(searchResults);
+        setStudents(searchResults.map(t => ({
+          ...t,
+          college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
+          course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
+        })));
       } catch (err) {
         console.error('Failed to search trainees:', err);
       } finally {
@@ -93,12 +101,20 @@ export default function AdminStudents() {
     try {
       if (courseId === 'All') {
         const traineesData = await adminUserService.getTrainees();
-        setStudents(traineesData);
+        setStudents(traineesData.map(t => ({
+          ...t,
+          college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
+          course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
+        })));
         return;
       }
 
       const filtered = await adminUserService.filterTrainees({ course_id: courseId });
-      setStudents(filtered);
+      setStudents(filtered.map(t => ({
+        ...t,
+        college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
+        course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
+      })));
     } catch (err) {
       console.error('Failed to filter trainees:', err);
     } finally {
@@ -238,9 +254,20 @@ export default function AdminStudents() {
     return c ? c.title : 'Unassigned';
   };
 
+  const normalizeStudentCourseIds = (student) => {
+    if (Array.isArray(student?.course_ids) && student.course_ids.length > 0) {
+      return student.course_ids.map(Number);
+    }
+    if (student?.course_id !== undefined && student?.course_id !== null) {
+      return [Number(student.course_id)];
+    }
+    return [];
+  };
+
   const filteredStudents = students.filter(s => {
     if (courseFilter === 'All') return true;
-    return s.course_id === Number(courseFilter);
+    const courseIds = normalizeStudentCourseIds(s);
+    return courseIds.includes(Number(courseFilter));
   });
 
   return (

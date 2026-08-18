@@ -1,15 +1,50 @@
-from sqlalchemy import and_, or_, select, func
+from sqlalchemy import and_, or_, select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.activation_token import ActivationToken
+from app.models.enrollment import Enrollment
+from app.models.password_reset_token import PasswordResetToken
+from app.models.login_history import LoginHistory
+from app.models.progress import Progress
+from app.models.video_progress import VideoProgress
+from app.models.batch_models import BatchTrainee
+from app.models.assignment_submission import AssignmentSubmission
+from app.models.attendance_record import AttendanceRecord
 from app.schemas.user import UserCreate
 from app.schemas.admin_user import (
     TrainerCreate,
     TraineeCreate,
     AdminUserUpdate,
 )
-from app.services.auth_service import create_user
+from app.services.auth_service import create_user, generate_activation_token, build_activation_link
+from app.services.email_service import send_activation_email
+
+
+async def _serialize_user_with_courses(db: AsyncSession, user: User | None):
+    if user is None:
+        return None
+
+    course_rows = await db.execute(
+        select(Enrollment.course_id)
+        .where(Enrollment.user_id == user.id)
+        .order_by(Enrollment.enrolled_at.desc())
+    )
+    course_ids = [int(course_id) for course_id, in course_rows.all() if course_id is not None]
+    primary_course_id = course_ids[0] if course_ids else None
+
+    return {
+        "id": user.id,
+        "employee_id": user.employee_id,
+        "name": user.name,
+        "email": user.email,
+        "course_id": primary_course_id,
+        "course_ids": course_ids,
+        "college_name": user.college_name,
+        "role": user.role,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+    }
 
 
 async def get_users_by_role(
@@ -22,7 +57,8 @@ async def get_users_by_role(
         .order_by(User.name)
     )
 
-    return result.scalars().all()
+    users = result.scalars().all()
+    return [await _serialize_user_with_courses(db, user) for user in users]
 
 
 async def get_user_by_id_and_role(
@@ -37,7 +73,8 @@ async def get_user_by_id_and_role(
         )
     )
 
-    return result.scalar_one_or_none()
+    user = result.scalar_one_or_none()
+    return await _serialize_user_with_courses(db, user)
 
 
 async def create_trainer(
@@ -122,11 +159,13 @@ async def update_user(
     role: str,
     data: AdminUserUpdate,
 ):
-    user = await get_user_by_id_and_role(
-        db,
-        user_id,
-        role,
+    user = await db.execute(
+        select(User).where(
+            User.id == user_id,
+            func.lower(User.role) == role.lower(),
+        )
     )
+    user = user.scalar_one_or_none()
 
     if not user:
         return None
@@ -139,7 +178,7 @@ async def update_user(
     await db.commit()
     await db.refresh(user)
 
-    return user
+    return await _serialize_user_with_courses(db, user)
 
 
 async def delete_user(
@@ -147,26 +186,26 @@ async def delete_user(
     user_id: int,
     role: str,
 ):
-    user = await get_user_by_id_and_role(
-        db,
-        user_id,
-        role,
+    user = await db.execute(
+        select(User).where(
+            User.id == user_id,
+            func.lower(User.role) == role.lower(),
+        )
     )
+    user = user.scalar_one_or_none()
 
     if not user:
         return False
 
-    # Delete activation tokens first.
-    # Trainees may have an activation token before
-    # they activate their account.
-    activation_tokens = await db.execute(
-        select(ActivationToken).where(
-            ActivationToken.user_id == user_id
-        )
-    )
-
-    for token in activation_tokens.scalars().all():
-        await db.delete(token)
+    await db.execute(delete(ActivationToken).where(ActivationToken.user_id == user_id))
+    await db.execute(delete(PasswordResetToken).where(PasswordResetToken.user_id == user_id))
+    await db.execute(delete(LoginHistory).where(LoginHistory.user_id == user_id))
+    await db.execute(delete(Progress).where(Progress.user_id == user_id))
+    await db.execute(delete(VideoProgress).where(VideoProgress.user_id == user_id))
+    await db.execute(delete(Enrollment).where(Enrollment.user_id == user_id))
+    await db.execute(delete(BatchTrainee).where(BatchTrainee.trainee_id == user_id))
+    await db.execute(delete(AssignmentSubmission).where(AssignmentSubmission.user_id == user_id))
+    await db.execute(delete(AttendanceRecord).where(AttendanceRecord.trainee_id == user_id))
 
     await db.delete(user)
     await db.commit()
@@ -190,7 +229,8 @@ async def search_users(
         )
     )
 
-    return result.scalars().all()
+    users = result.scalars().all()
+    return [await _serialize_user_with_courses(db, user) for user in users]
 
 
 async def filter_users(
@@ -200,20 +240,24 @@ async def filter_users(
     is_active: bool | None = None,
 ):
     filters = [func.lower(User.role) == role.lower()]
+    user_query = select(User)
 
     if course_id is not None:
-        filters.append(User.course_id == course_id)
+        user_query = user_query.join(Enrollment, Enrollment.user_id == User.id)
+        filters.append(Enrollment.course_id == course_id)
 
     if is_active is not None:
         filters.append(User.is_active == is_active)
 
     result = await db.execute(
-        select(User)
+        user_query
         .where(and_(*filters))
+        .distinct()
         .order_by(User.name)
     )
 
-    return result.scalars().all()
+    users = result.scalars().all()
+    return [await _serialize_user_with_courses(db, user) for user in users]
 
 
 async def update_user_status(
@@ -222,18 +266,26 @@ async def update_user_status(
     role: str,
     is_active: bool,
 ):
-    user = await get_user_by_id_and_role(
-        db,
-        user_id,
-        role,
+    user = await db.execute(
+        select(User).where(
+            User.id == user_id,
+            func.lower(User.role) == role.lower(),
+        )
     )
+    user = user.scalar_one_or_none()
 
     if not user:
         return None
 
+    was_inactive = not user.is_active and is_active
     user.is_active = is_active
+
+    if was_inactive:
+        token_obj = await generate_activation_token(db, user.id)
+        activation_link = build_activation_link(token_obj.token, user.email)
+        await send_activation_email(user.email, activation_link, user.name)
 
     await db.commit()
     await db.refresh(user)
 
-    return user
+    return await _serialize_user_with_courses(db, user)

@@ -125,6 +125,158 @@ async def get_dashboard(
         }
 
 
+    if selected_course_id is None:
+        overall_course_ids = [course.id for _, course in user_enrollments]
+        overall_all_cdays_res = await db.scalars(
+            select(CourseDay)
+            .where(CourseDay.course_id.in_(overall_course_ids))
+            .order_by(CourseDay.day_number)
+        )
+        overall_all_cdays = overall_all_cdays_res.all()
+        overall_course_days_map = {}
+        for day in overall_all_cdays:
+            overall_course_days_map.setdefault(day.course_id, []).append(day)
+
+        overall_day_ids = [day.id for day in overall_all_cdays]
+        overall_day_stats_map = {}
+        if overall_day_ids:
+            overall_day_progress_stmt = (
+                select(
+                    LearningUnit.day_id,
+                    func.count(LearningUnit.id),
+                    func.count(Progress.id),
+                    func.max(Progress.completed_at)
+                )
+                .outerjoin(
+                    Progress,
+                    (Progress.learning_unit_id == LearningUnit.id)
+                    & (Progress.user_id == user_id)
+                    & (Progress.is_completed.is_(True))
+                )
+                .where(LearningUnit.day_id.in_(overall_day_ids))
+                .group_by(LearningUnit.day_id)
+            )
+            overall_day_progress_res = await db.execute(overall_day_progress_stmt)
+            for row_dp in overall_day_progress_res.all():
+                d_id, tot, comp, comp_at = row_dp
+                overall_day_stats_map[d_id] = (tot, comp, comp_at)
+
+        overall_completed_days = 0
+        overall_total_modules = 0
+        overall_completed_modules = 0
+        overall_total_days = 0
+        for course_days in overall_course_days_map.values():
+            overall_total_days += len(course_days)
+            for day in course_days:
+                day_total_modules, day_completed_modules, completed_at_max_raw = overall_day_stats_map.get(day.id, (0, 0, None))
+                overall_total_modules += day_total_modules
+                overall_completed_modules += day_completed_modules
+                if day_total_modules > 0 and day_completed_modules >= day_total_modules:
+                    overall_completed_days += 1
+
+        overall_completed_percentage = 0.0
+        if overall_total_days > 0:
+            overall_completed_percentage = round((overall_completed_days / overall_total_days) * 100, 2)
+        elif overall_total_modules > 0:
+            overall_completed_percentage = round((overall_completed_modules / overall_total_modules) * 100, 2)
+
+        overall_time_learning_mins = 0
+        overall_time_assessment_mins = 0
+        overall_time_practice_mins = 0
+        overall_time_revision_mins = 0
+        if overall_day_ids:
+            overall_stmt = (
+                select(LearningUnit.title, LearningUnit.duration_minutes)
+                .join(Progress, Progress.learning_unit_id == LearningUnit.id)
+                .where(
+                    Progress.user_id == user_id,
+                    Progress.is_completed.is_(True),
+                    LearningUnit.day_id.in_(overall_day_ids)
+                )
+            )
+            overall_res_units = await db.execute(overall_stmt)
+            for title, duration_minutes in overall_res_units.all():
+                dur = duration_minutes or 0
+                title_lower = title.lower() if title else ""
+                if any(word in title_lower for word in ["assessment", "challenge", "quiz", "exam", "test"]):
+                    overall_time_assessment_mins += dur
+                elif any(word in title_lower for word in ["assignment", "q&a", "practice", "lab", "case study", "development", "project"]):
+                    overall_time_practice_mins += dur
+                elif any(word in title_lower for word in ["review", "recap", "revision", "summary"]):
+                    overall_time_revision_mins += dur
+                else:
+                    overall_time_learning_mins += dur
+
+        overall_time_spent_response_data = {
+            "learning_hours": round(overall_time_learning_mins / 60, 2),
+            "assessment_hours": round(overall_time_assessment_mins / 60, 2),
+            "practice_hours": round(overall_time_practice_mins / 60, 2),
+            "revision_hours": round(overall_time_revision_mins / 60, 2),
+        }
+
+        overall_course_response_data = {
+            "id": -1,
+            "name": "All Courses Overview",
+            "current_day": 1,
+            "total_days": overall_total_days,
+            "total_modules": overall_total_modules,
+            "completed_modules": overall_completed_modules,
+            "remaining_modules": max(0, overall_total_modules - overall_completed_modules),
+            "completed_percentage": overall_completed_percentage,
+            "start_date": min(enrollment.enrolled_at.date() for enrollment, _ in user_enrollments),
+            "end_date": max((enrollment.enrolled_at.date() + timedelta(days=course.duration_days - 1)) for enrollment, course in user_enrollments),
+            "motivation_message": "Great progress across your enrolled courses!"
+        }
+
+        overall_continue_learning_response_data = {
+            "course_id": user_enrollments[0][1].id,
+            "day": 1,
+            "module_id": None
+        }
+
+        enrolled_courses_data = []
+        for enrollment_item, course_item in user_enrollments:
+            cdays = overall_course_days_map.get(course_item.id, [])
+            ctotal_modules = 0
+            ccompleted_modules = 0
+            ccompleted_days = 0
+            for d in cdays:
+                tot, comp, _ = overall_day_stats_map.get(d.id, (0, 0, None))
+                ctotal_modules += tot
+                ccompleted_modules += comp
+                if tot > 0 and comp >= tot:
+                    ccompleted_days += 1
+            c_pct = 0.0
+            if cdays:
+                c_pct = round((ccompleted_days / len(cdays)) * 100, 2)
+            elif ctotal_modules > 0:
+                c_pct = round((ccompleted_modules / ctotal_modules) * 100, 2)
+            c_start_date = enrollment_item.enrolled_at.date()
+            c_end_date = c_start_date + timedelta(days=course_item.duration_days - 1)
+            enrolled_courses_data.append({
+                "course_id": course_item.id,
+                "course_name": course_item.title,
+                "progress": c_pct,
+                "start_date": c_start_date,
+                "end_date": c_end_date,
+                "completion_percentage": c_pct
+            })
+
+        return {
+            "name": user.name or user.employee_id,
+            "employee_id": user.employee_id,
+            "email": user.email,
+            "courses_enrolled": courses_enrolled,
+            "course": overall_course_response_data,
+            "progress": {
+                "completed_days": overall_completed_days,
+                "remaining_days": max(0, overall_total_days - overall_completed_days)
+            },
+            "time_spent": overall_time_spent_response_data,
+            "continue_learning": overall_continue_learning_response_data,
+            "enrolled_courses": enrolled_courses_data
+        }
+
     active_enrollment, active_course = resolve_active_course(user_enrollments, selected_course_id)
 
     course_ids = [c.id for _, c in user_enrollments]

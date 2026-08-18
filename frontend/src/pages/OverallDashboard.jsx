@@ -83,9 +83,8 @@ export default function OverallDashboard() {
     try {
       setIsLoading(true);
       setError(null);
-      dashboardService._cache = {}; // Clear stale in-memory cache
-      const selectedCourseId = Number(localStorage.getItem('selected_course_id')) || null;
-      const data = await dashboardService.getDashboard(userId, selectedCourseId || 1);
+      dashboardService.clearCourseSelection();
+      const data = await dashboardService.getDashboard(userId, null);
       setDashboardData(data);
     } catch (err) {
       console.error("Error loading overall telemetry:", err);

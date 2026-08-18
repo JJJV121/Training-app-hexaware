@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from urllib.parse import urlencode
 from uuid import uuid4
 import uuid
 
@@ -20,6 +21,13 @@ from app.services.email_service import (
     send_activation_email,
     send_reset_email,
 )
+
+
+def build_activation_link(token: str, email: str | None = None) -> str:
+    params = {"token": token}
+    if email:
+        params["email"] = email
+    return f"http://localhost:5173/create-password?{urlencode(params)}"
 
 
 async def create_user(
@@ -70,14 +78,12 @@ async def create_user(
             user.id,
         )
 
-        activation_link = (
-            f"http://localhost:5173/create-password"
-            f"?token={token_obj.token}"
-        )
+        activation_link = build_activation_link(token_obj.token, user.email)
 
         await send_activation_email(
             user.email,
             activation_link,
+            user.name,
         )
 
     return user
@@ -332,14 +338,13 @@ async def request_activation(
     )
 
     # 3. Create activation link
-    activation_link = (
-        f"http://localhost:5173/create-password?token={token_obj.token}"
-    )
+    activation_link = build_activation_link(token_obj.token, user.email)
 
     # 4. Send email
     await send_activation_email(
         user.email,
-        activation_link
+        activation_link,
+        user.name
     )
 
     return {
