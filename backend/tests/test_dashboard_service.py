@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.services.dashboard_service import calculate_unlocked_day
+from app.services.dashboard_service import calculate_unlocked_day, resolve_active_course
 
 
 class CalculateUnlockedDayTests(unittest.TestCase):
@@ -77,6 +77,17 @@ class CalculateUnlockedDayTests(unittest.TestCase):
         }
         # Since it was completed yesterday, day 2 should unlock
         self.assertEqual(calculate_unlocked_day(course_days, day_progress), 2)
+
+    def test_resolves_selected_course_before_most_recent_enrollment(self):
+        courses = [
+            (SimpleNamespace(course_id=2), SimpleNamespace(id=2, title="Java Training")),
+            (SimpleNamespace(course_id=1), SimpleNamespace(id=1, title="C# Training")),
+        ]
+
+        resolved_enrollment, resolved_course = resolve_active_course(courses, 1)
+
+        self.assertEqual(resolved_course.id, 1)
+        self.assertEqual(resolved_course.title, "C# Training")
 
 
 if __name__ == "__main__":

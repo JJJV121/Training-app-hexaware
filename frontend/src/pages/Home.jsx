@@ -153,12 +153,13 @@ export default function Home() {
 
   const navigate = useNavigate();
   const userId = Number(localStorage.getItem('logged_in_user_id')) || 1;
+  const selectedCourseId = Number(localStorage.getItem('selected_course_id')) || null;
 
   const fetchDashboardTelemetry = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await dashboardService.getDashboard(userId);
+      const data = await dashboardService.getDashboard(userId, selectedCourseId);
       setDashboardData(data);
     } catch (err) {
       console.error("Critical error mapping dashboard metrics:", err);
@@ -170,7 +171,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchDashboardTelemetry();
-  }, [userId]);
+  }, [userId, selectedCourseId]);
 
   // Handle Loading Skeletons State
   if (isLoading) {

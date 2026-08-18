@@ -8,15 +8,17 @@ const dashboardService = {
   // Reusable core fetch function
   async getDashboard(userId, courseId = null) {
     if (!userId) return null;
-    const activeCourseId = courseId ? Number(courseId) : null;
-    const cacheKey = `${userId}_${activeCourseId || 'default'}`;
 
-    // Deduplicate concurrent requests
+    const selectedCourseId = courseId !== null && courseId !== undefined
+      ? Number(courseId)
+      : (Number(localStorage.getItem('selected_course_id')) || null);
+
+    const cacheKey = `${userId}_${selectedCourseId || 'default'}`;
+
     if (this._pendingRequests[cacheKey]) {
       return this._pendingRequests[cacheKey];
     }
 
-    // Return cached data if fresh (less than 10 seconds old)
     const cached = this._cache[cacheKey];
     const now = Date.now();
     if (cached && (now - cached.timestamp < 10000)) {
@@ -25,13 +27,14 @@ const dashboardService = {
 
     const promise = (async () => {
       try {
-        console.log("Loading dashboard from backend for user:", userId);
-        const response = await apiClient.get(`/dashboard/${userId}`);
+        console.log("Loading dashboard from backend for user:", userId, "course:", selectedCourseId || "default");
+        const response = await apiClient.get(`/dashboard/${userId}`, {
+          params: selectedCourseId ? { course_id: selectedCourseId } : {}
+        });
         console.log("Dashboard Response:", response.data);
 
         const data = response.data;
         if (data && data.course) {
-          // Backwards compatibility injector
           data.current_course = {
             current_day: data.course.current_day,
             course_id: data.course.id,
@@ -41,6 +44,10 @@ const dashboardService = {
             end_date: data.course.end_date,
             progress_percentage: data.course.completed_percentage
           };
+        }
+
+        if (data?.course?.id) {
+          localStorage.setItem('selected_course_id', String(data.course.id));
         }
 
         this._cache[cacheKey] = { data, timestamp: Date.now() };

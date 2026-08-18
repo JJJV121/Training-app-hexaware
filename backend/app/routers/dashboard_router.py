@@ -25,10 +25,12 @@ router = APIRouter(
 )
 async def dashboard(
     user_id: int,
+    course_id: int | None = None,
     db: AsyncSession = Depends(get_db)
 ):
 
     return await get_dashboard(
         db,
-        user_id
+        user_id,
+        selected_course_id=course_id
     )
