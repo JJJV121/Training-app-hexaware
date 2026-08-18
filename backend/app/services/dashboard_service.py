@@ -94,6 +94,24 @@ async def get_dashboard(
     courses_enrolled = len(user_enrollments)
 
     if courses_enrolled == 0:
+        # Auto-enroll trainee in active courses (e.g., Course 1 & Course 2)
+        res_avail_courses = await db.execute(select(Course).where(Course.is_active.is_(True)))
+        avail_courses = res_avail_courses.scalars().all()
+        if not avail_courses:
+            res_all_c = await db.execute(select(Course).order_by(Course.id.asc()).limit(2))
+            avail_courses = res_all_c.scalars().all()
+
+        now = datetime.utcnow()
+        for ac in avail_courses:
+            db.add(Enrollment(user_id=user_id, course_id=ac.id, enrolled_at=now))
+        await db.commit()
+
+        # Re-query enrollments
+        enrollments_res = await db.execute(enrollments_stmt)
+        user_enrollments = enrollments_res.all()
+        courses_enrolled = len(user_enrollments)
+
+    if courses_enrolled == 0:
         return {
             "name": user.name or user.employee_id,
             "employee_id": user.employee_id,
@@ -105,6 +123,7 @@ async def get_dashboard(
             "continue_learning": None,
             "enrolled_courses": []
         }
+
 
     active_enrollment, active_course = resolve_active_course(user_enrollments, selected_course_id)
 

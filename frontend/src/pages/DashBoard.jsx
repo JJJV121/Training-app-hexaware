@@ -13,6 +13,8 @@ import Assessment from './Assessment.jsx';
 import hexawareLogo from '../assets/HEXAWARE logo.png';
  
 import ThemeToggle from '../components/ThemeToggle';
+import MentorConnect from './trainee/MentorConnect';
+import CommunityConnect from './trainee/CommunityConnect';
  
 export default function DashBoard() {
   const { courseId: paramCourseId } = useParams();
@@ -47,6 +49,18 @@ export default function DashBoard() {
   useEffect(() => {
     currentRouteRef.current = currentRoute;
   }, [currentRoute]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1);
+      if (hash) {
+        setCurrentRoute(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
 
   const persistSelectedCourseId = (targetId) => {
     if (!targetId) return;
@@ -168,6 +182,10 @@ export default function DashBoard() {
         return <Assessment assessmentType="Coding" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
       case 'notes':
         return <StudyNotes />;
+      case 'mentor-connect':
+        return <MentorConnect />;
+      case 'community-connect':
+        return <CommunityConnect />;
       case 'profile':
         return <Profile />;
       case 'logout':
@@ -179,12 +197,15 @@ export default function DashBoard() {
 
   const navItems = [
     { page: 'home', icon: 'home', label: 'Home' },
-    { page: 'course', icon: 'book-open', label: 'Course' },
+    { page: 'course', icon: 'book-open', label: 'My Courses' },
+    { page: 'mentor-connect', icon: 'message-square', label: 'Mentor Connect' },
+    { page: 'community-connect', icon: 'users', label: 'Community Connect' },
     { page: 'schedule', icon: 'clock', label: 'Schedule' },
     { page: 'progress', icon: 'star', label: 'Progress' },
     { page: 'notes', icon: 'file-text', label: 'Notes' },
     { page: 'profile', icon: 'user', label: 'Profile' }
   ];
+
 
   const closeMobileMenu = () => {
     if (isMobile) {
@@ -292,22 +313,25 @@ export default function DashBoard() {
               const isDisabled = isLocked && currentRoute !== item.page;
               return (
                 <li key={item.page}>
-                  <a
-                    href={isDisabled ? undefined : `#${item.page}`}
+                  <button
+                    type="button"
                     className={`nav-item ${currentRoute === item.page ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
                     data-page={item.page}
-                    onClick={(e) => {
+                    onClick={() => {
                       if (isDisabled) {
-                        e.preventDefault();
                         alert("Assessment is in progress. You must submit the assessment before leaving the page.");
                         return;
                       }
+                      setCurrentRoute(item.page);
+                      window.location.hash = item.page;
                       closeMobileMenu();
                     }}
                   >
+
                     <Icon name={item.icon} className="nav-icon" />
                     <span>{item.label}</span>
-                  </a>
+                  </button>
+
                 </li>
               );
             })}

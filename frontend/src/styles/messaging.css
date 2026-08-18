@@ -7,7 +7,7 @@
   --msg-primary: var(--primary-blue, #2563eb);
   --msg-primary-gradient: linear-gradient(135deg, #2563eb, #3b82f6);
   --msg-mentor-gradient: linear-gradient(135deg, #6366f1, #4f46e5);
-  --msg-community-gradient: linear-gradient(135deg, #10b981, #059669);
+  --msg-community-gradient: linear-gradient(135deg, #0061FE, #2563eb);
   --msg-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
 }
 
@@ -180,7 +180,7 @@
 
 .conversation-avatar.community-avatar {
   background: var(--msg-community-gradient);
-  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
 .online-status-dot {
@@ -190,9 +190,9 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background-color: #10b981;
+  background-color: #3b82f6;
   border: 2px solid var(--msg-card-bg);
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
 }
 
 .offline-status-dot {
@@ -367,9 +367,9 @@
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 6px;
-  background: var(--hover-bg, #f1f5f9);
-  color: var(--text-dark, #334155);
-  border: 1px solid var(--msg-border);
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 /* Messages Container */
@@ -549,8 +549,8 @@
 
 .community-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.12);
-  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 16px 36px -8px rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.35);
 }
 
 .community-card-top {
@@ -570,7 +570,7 @@
   justify-content: center;
   font-size: 1.6rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .community-card-title {
@@ -638,11 +638,12 @@
 .community-action-btn.open {
   background: var(--msg-community-gradient);
   color: #ffffff;
-  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
 }
 
 .community-action-btn.open:hover {
   transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.35);
 }
 
 /* Skeleton Loading Animation */

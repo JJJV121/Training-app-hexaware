@@ -54,18 +54,9 @@ function CountUp({ end, duration = 1200, suffix = "" }) {
 }
 
 const getCourseImage = (courseName = '') => {
-  const normalizedName = courseName.toLowerCase();
-
-  if (normalizedName.includes('java')) {
-    return javaCourseImage;
-  }
-
-  if (normalizedName.includes('c#') || normalizedName.includes('c sharp')) {
-    return cSharpCourseImage;
-  }
-
   return javaCourseImage;
 };
+
 
 export default function OverallDashboard() {
   const navigate = useNavigate();
@@ -92,6 +83,7 @@ export default function OverallDashboard() {
     try {
       setIsLoading(true);
       setError(null);
+      dashboardService._cache = {}; // Clear stale in-memory cache
       const selectedCourseId = Number(localStorage.getItem('selected_course_id')) || null;
       const data = await dashboardService.getDashboard(userId, selectedCourseId || 1);
       setDashboardData(data);
@@ -102,6 +94,7 @@ export default function OverallDashboard() {
       setIsLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchOverallTelemetry();
@@ -277,62 +270,78 @@ export default function OverallDashboard() {
             <div className="overall-section-header">
               <h3 className="overall-section-title">My Courses</h3>
             </div>
-            <div className="overall-courses-grid">
-              {enrolledCourses.map((course) => (
-                <div key={course.course_id} className="overall-course-card">
-                  <div className="overall-course-card-header">
-                    <img
-                      src={getCourseImage(course.course_name)}
-                      alt={`${course.course_name} course`}
-                      className="overall-course-image"
-                    />
-                    <div className="overall-course-header-overlay" />
-                    <div className="overall-course-icon-bg">
-                      <Icon name="book-open" />
+            {enrolledCourses.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 24px', backgroundColor: 'var(--card-bg)', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '12px' }}>📚</div>
+                <h4 style={{ color: 'var(--text-dark)', margin: '0 0 8px 0', fontWeight: 800, fontSize: '1.2rem' }}>No Courses Displayed</h4>
+                <p style={{ color: 'var(--text-medium)', margin: '0 0 20px 0', fontSize: '0.9rem' }}>Synchronizing course enrollments from backend database...</p>
+                <button
+                  type="button"
+                  onClick={fetchOverallTelemetry}
+                  style={{ padding: '10px 22px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', boxShadow: '0 4px 10px rgba(37,99,235,0.25)' }}
+                >
+                  Refresh Courses List
+                </button>
+              </div>
+            ) : (
+              <div className="overall-courses-grid">
+                {enrolledCourses.map((course) => (
+                  <div key={course.course_id} className="overall-course-card">
+                    <div className="overall-course-card-header">
+                      <img
+                        src={getCourseImage(course.course_name)}
+                        alt={`${course.course_name} course`}
+                        className="overall-course-image"
+                      />
+                      <div className="overall-course-header-overlay" />
+                      <div className="overall-course-icon-bg">
+                        <Icon name="book-open" />
+                      </div>
+                      <span className="overall-course-streak">5d Streak</span>
+                      <span className="overall-course-card-status active">Active</span>
                     </div>
-                    <span className="overall-course-streak">5d Streak</span>
-                    <span className="overall-course-card-status active">Active</span>
-                  </div>
-                  
-                  <div className="overall-course-card-body">
-                    <h4 className="overall-course-card-title">{course.course_name}</h4>
                     
-                    <div className="overall-course-card-dates">
-                      <div className="overall-course-date-item">
-                        <span className="overall-course-date-label">Start Date</span>
-                        <span className="overall-course-date-value">{course.start_date}</span>
+                    <div className="overall-course-card-body">
+                      <h4 className="overall-course-card-title">{course.course_name}</h4>
+                      
+                      <div className="overall-course-card-dates">
+                        <div className="overall-course-date-item">
+                          <span className="overall-course-date-label">Start Date</span>
+                          <span className="overall-course-date-value">{course.start_date}</span>
+                        </div>
+                        <div className="overall-course-date-item">
+                          <span className="overall-course-date-label">End Date</span>
+                          <span className="overall-course-date-value">{course.end_date}</span>
+                        </div>
                       </div>
-                      <div className="overall-course-date-item">
-                        <span className="overall-course-date-label">End Date</span>
-                        <span className="overall-course-date-value">{course.end_date}</span>
+
+                      <div className="overall-course-progress-container">
+                        <div className="overall-course-progress-info">
+                          <span className="overall-course-progress-label">Course Progress</span>
+                          <span className="overall-course-progress-value">{course.progress}%</span>
+                        </div>
+                        <div className="overall-course-progress-rail">
+                          <div className="overall-course-progress-fill" style={{ width: `${course.progress}%` }} />
+                        </div>
                       </div>
                     </div>
 
-                    <div className="overall-course-progress-container">
-                      <div className="overall-course-progress-info">
-                        <span className="overall-course-progress-label">Course Progress</span>
-                        <span className="overall-course-progress-value">{course.progress}%</span>
-                      </div>
-                      <div className="overall-course-progress-rail">
-                        <div className="overall-course-progress-fill" style={{ width: `${course.progress}%` }} />
-                      </div>
+                    <div className="overall-course-card-footer">
+                      <button 
+                        className="overall-course-card-btn" 
+                        onClick={() => navigate(`/dashboard/${course.course_id}`)}
+                      >
+                        <span>Open Course Dashboard</span>
+                        <Icon name="arrow-right" style={{ width: '16px', height: '16px' }} />
+                      </button>
                     </div>
                   </div>
-
-                  <div className="overall-course-card-footer">
-                    <button 
-                      className="overall-course-card-btn" 
-                      onClick={() => navigate(`/dashboard/${course.course_id}`)}
-                    >
-                      <span>Open Course Dashboard</span>
-                      <Icon name="arrow-right" style={{ width: '16px', height: '16px' }} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         );
+
 
       case 'performance':
         return (

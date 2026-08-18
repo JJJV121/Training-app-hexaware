@@ -18,21 +18,48 @@ export default function CommunityList({
     );
   });
 
+  const totalMemberships = communities.reduce((acc, c) => acc + (c.is_member ? 1 : 0), 0);
+
   return (
     <div className="communities-page">
-      <div>
-        <h2 className="communities-header-title">Community Connect</h2>
-        <p className="communities-header-sub">
-          Join learning communities to collaborate, share resources, and connect with peers.
-        </p>
+      <div className="messaging-page-header">
+        <div>
+          <h2 className="messaging-page-title">
+            <Icon name="users" style={{ color: '#2563eb' }} />
+            <span>Community Connect</span>
+          </h2>
+          <p className="messaging-page-sub">
+            Join learning communities to collaborate, share resources, and connect with peers in real time.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div
+            style={{
+              padding: '6px 14px',
+              borderRadius: '20px',
+              backgroundColor: 'rgba(37, 99, 235, 0.08)',
+              border: '1px solid rgba(37, 99, 235, 0.2)',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              color: '#2563eb',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563eb' }} />
+            Joined {totalMemberships} / {communities.length} Communities
+          </div>
+        </div>
       </div>
 
-      <div className="messaging-search-wrapper" style={{ maxWidth: '400px' }}>
+      <div className="messaging-search-wrapper" style={{ maxWidth: '420px' }}>
         <Icon name="search" className="messaging-search-icon" />
         <input
           type="text"
           className="messaging-search-input"
-          placeholder="Search communities..."
+          placeholder="Search communities by name or topic..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -40,7 +67,7 @@ export default function CommunityList({
 
       <div className="communities-grid">
         {filtered.length === 0 ? (
-          <div style={{ color: 'var(--text-light)', padding: '24px 0' }}>
+          <div style={{ color: 'var(--text-light)', padding: '32px 0', gridColumn: '1 / -1', textAlign: 'center' }}>
             No communities matching "{searchTerm}".
           </div>
         ) : (
