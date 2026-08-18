@@ -48,9 +48,16 @@ export default function DashBoard() {
     currentRouteRef.current = currentRoute;
   }, [currentRoute]);
 
+  const persistSelectedCourseId = (targetId) => {
+    if (!targetId) return;
+    localStorage.setItem('selected_course_id', String(targetId));
+  };
+
   useEffect(() => {
     if (paramCourseId) {
-      setCourseId(Number(paramCourseId));
+      const targetId = Number(paramCourseId);
+      setCourseId(targetId);
+      persistSelectedCourseId(targetId);
       setCurrentRoute('course');
       setIsCourseLoading(false);
     }
@@ -73,8 +80,10 @@ export default function DashBoard() {
           const courses = data.enrolled_courses || [];
           setEnrolledCourses(courses);
           if (!paramCourseId) {
-            const assignedId = data.course?.id || (courses.length > 0 ? courses[0].course_id : 1);
+            const storedSelectedId = Number(localStorage.getItem('selected_course_id'));
+            const assignedId = storedSelectedId || data.course?.id || (courses.length > 0 ? courses[0].course_id : 1);
             setCourseId(assignedId);
+            persistSelectedCourseId(assignedId);
           }
         }
       } catch (error) {
@@ -232,6 +241,7 @@ export default function DashBoard() {
               onChange={(e) => {
                 const targetId = Number(e.target.value);
                 setCourseId(targetId);
+                persistSelectedCourseId(targetId);
                 navigate(`/dashboard/${targetId}`);
               }}
               style={{

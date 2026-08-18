@@ -57,9 +57,23 @@ def calculate_unlocked_day(course_days, day_progress_map):
     return unlocked_day
 
 
+def resolve_active_course(user_enrollments, selected_course_id=None):
+    if not user_enrollments:
+        return None, None
+
+    if selected_course_id is not None:
+        selected_course_id = int(selected_course_id)
+        for enrollment, course in user_enrollments:
+            if course.id == selected_course_id:
+                return enrollment, course
+
+    return user_enrollments[0]
+
+
 async def get_dashboard(
     db: AsyncSession,
-    user_id: int
+    user_id: int,
+    selected_course_id: int | None = None
 ):
     # Fetch user details
     user_stmt = select(User).where(User.id == user_id)
@@ -92,8 +106,7 @@ async def get_dashboard(
             "enrolled_courses": []
         }
 
-    # Primary active course is the first one (most recently enrolled)
-    active_enrollment, active_course = user_enrollments[0]
+    active_enrollment, active_course = resolve_active_course(user_enrollments, selected_course_id)
 
     course_ids = [c.id for _, c in user_enrollments]
     all_cdays_res = await db.scalars(
@@ -340,4 +353,4 @@ async def get_dashboard(
         "time_spent": time_spent_response_data,
         "continue_learning": continue_learning_response_data,
         "enrolled_courses": enrolled_courses_data
-    }
+    }

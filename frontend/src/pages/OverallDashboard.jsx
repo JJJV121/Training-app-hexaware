@@ -90,8 +90,8 @@ export default function OverallDashboard() {
     try {
       setIsLoading(true);
       setError(null);
-      // Fetch default course dashboard data (which contains overall list of courses)
-      const data = await dashboardService.getDashboard(userId, 1);
+      const selectedCourseId = Number(localStorage.getItem('selected_course_id')) || null;
+      const data = await dashboardService.getDashboard(userId, selectedCourseId || 1);
       setDashboardData(data);
     } catch (err) {
       console.error("Error loading overall telemetry:", err);
