@@ -6,6 +6,7 @@ import Profile from './Profile';
 import ThemeToggle from '../components/ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
 import javaCourseImage from '../assets/Java course.png';
+import cSharpCourseImage from '../assets/csharp-course.png';
 import hexawareLogo from '../assets/HEXAWARE logo.png';
 import MentorConnect from './trainee/MentorConnect';
 import CommunityConnect from './trainee/CommunityConnect';
@@ -54,8 +55,13 @@ function CountUp({ end, duration = 1200, suffix = "" }) {
 }
 
 const getCourseImage = (courseName = '') => {
+  const normalizedName = (courseName || '').toLowerCase();
+  if (normalizedName.includes('c#') || normalizedName.includes('c sharp') || normalizedName.includes('csharp')) {
+    return cSharpCourseImage;
+  }
   return javaCourseImage;
 };
+
 
 
 export default function OverallDashboard() {

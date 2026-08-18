@@ -132,21 +132,19 @@ body {
 
 /* User Card in Sidebar */
 .user-profile-card {
-  background: linear-gradient(135deg, rgba(245, 248, 255, 0.8) 0%, rgba(238, 242, 255, 0.8) 100%);
-  border-radius: 10px;
-  padding-top: 16px;
-  padding-bottom: 16px;
-  padding-left: 12px;
+  background: linear-gradient(135deg, rgba(245, 248, 255, 0.95) 0%, rgba(238, 242, 255, 0.95) 100%);
+  border-radius: 12px;
+  padding: 14px 16px;
   margin-bottom: 24px;
-  border: 1px solid rgba(229, 231, 235, 0.8);
+  border: 1px solid rgba(229, 231, 235, 0.9);
   transition: all var(--transition-base);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 10px rgba(53, 99, 233, 0.03);
+  box-shadow: 0 4px 12px rgba(53, 99, 233, 0.06);
   display: flex;
   align-items: center;
-  gap: 9px;
-  min-height: 40px;
+  gap: 14px;
+  min-height: 56px;
 }
 
 .user-profile-card::before {
@@ -155,12 +153,12 @@ body {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 3.5px;
   background: linear-gradient(90deg, #3563e9 0%, #7c3aed 100%);
 }
 
 .user-profile-card:hover {
-  box-shadow: 0 8px 20px rgba(53, 99, 233, 0.12);
+  box-shadow: 0 8px 22px rgba(53, 99, 233, 0.15);
   transform: translateY(-2px);
 }
 
@@ -168,26 +166,25 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 4px;
-  padding: 8px 0;
+  gap: 3px;
 }
 
 .user-profile-card .profile-avatar {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
-  border-radius: 6px;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #3563e9 0%, #6d4ee8 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 14px rgba(53, 99, 233, 0.18);
+  box-shadow: 0 4px 12px rgba(53, 99, 233, 0.25);
 }
 
 .user-profile-card .profile-avatar svg {
-  width: 11px;
-  height: 11px;
+  width: 20px;
+  height: 20px;
 }
 
 .user-label {
@@ -201,8 +198,8 @@ body {
 
 .user-name {
   font-family: var(--font-family-header);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
   color: var(--text-dark);
   margin-bottom: 0;
   overflow: hidden;
@@ -211,13 +208,14 @@ body {
 }
 
 .user-email {
-  font-size: 10.5px;
-  line-height: 1.2;
+  font-size: 12px;
+  line-height: 1.3;
   color: var(--text-medium);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 
 /* Nav Menu */
 .nav-menu {
