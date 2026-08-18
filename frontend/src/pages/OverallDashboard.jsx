@@ -6,9 +6,11 @@ import Profile from './Profile';
 import ThemeToggle from '../components/ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
 import javaCourseImage from '../assets/Java course.png';
-import cSharpCourseImage from '../assets/csharp-course.png';
 import hexawareLogo from '../assets/HEXAWARE logo.png';
+import MentorConnect from './trainee/MentorConnect';
+import CommunityConnect from './trainee/CommunityConnect';
 import '../styles/overallDashboard.css';
+
 
 function CountUp({ end, duration = 1200, suffix = "" }) {
   const [count, setCount] = useState(0);
@@ -383,6 +385,12 @@ export default function OverallDashboard() {
           </div>
         );
 
+      case 'mentor-connect':
+        return <MentorConnect />;
+
+      case 'community-connect':
+        return <CommunityConnect />;
+
       case 'profile':
         return <Profile />;
 
@@ -394,9 +402,12 @@ export default function OverallDashboard() {
   const navItems = [
     { page: 'home', icon: 'home', label: 'Dashboard' },
     { page: 'courses', icon: 'book-open', label: 'My Courses' },
+    { page: 'mentor-connect', icon: 'message-square', label: 'Mentor Connect' },
+    { page: 'community-connect', icon: 'users', label: 'Community Connect' },
     { page: 'performance', icon: 'star', label: 'Performance' },
     { page: 'profile', icon: 'user', label: 'Profile' }
   ];
+
 
   return (
     <div className={`app-container ${isDarkMode ? 'dark-theme' : ''}`}>

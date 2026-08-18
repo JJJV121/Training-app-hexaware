@@ -40,9 +40,13 @@ from app.routers import trainer
 from app.routers import live_session
 from app.routers import attendance_record
 
-# Database
-from app.database.session import test_connection
+# Messaging & Community router
+from app.routers.messaging_router import router as messaging_router
+from app.database.session import test_connection, AsyncSessionLocal
 from app.utils.index_setup import setup_indexes
+from app.services.messaging_service import seed_default_communities
+
+
 
 
 app = FastAPI()
@@ -56,6 +60,9 @@ app = FastAPI()
 async def startup():
     await test_connection()
     await setup_indexes()
+    async with AsyncSessionLocal() as db:
+        await seed_default_communities(db)
+
 
 
 # --------------------------------------------------
@@ -151,6 +158,10 @@ app.include_router(attendance_record.router)
 
 # Trainer Analytics
 app.include_router(trainer_analytics_router)
+
+# Messaging & Community
+app.include_router(messaging_router)
+
 
 
 # --------------------------------------------------

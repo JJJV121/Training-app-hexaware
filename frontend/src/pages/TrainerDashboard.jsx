@@ -6,8 +6,10 @@ import BatchManagement from './trainer/BatchManagement';
 import GradingQueue from './trainer/GradingQueue';
 import PerformanceReports from './trainer/PerformanceReports';
 import SessionScheduler from './trainer/SessionScheduler';
+import TrainerMentorConnect from './trainer/MentorConnect';
 import Placeholder from './Placeholder';
 import '../styles/trainer/trainer-dashboard.css';
+
 
 export default function TrainerDashboard() {
   const [trainerProfile, setTrainerProfile] = useState(() => {
@@ -84,6 +86,8 @@ export default function TrainerDashboard() {
         return <GradingQueue />;
       case 'scheduler':
         return <SessionScheduler />;
+      case 'mentor-connect':
+        return <TrainerMentorConnect />;
       case 'reports':
         return <PerformanceReports />;
       default:
@@ -93,11 +97,13 @@ export default function TrainerDashboard() {
 
   const navItems = [
     { page: 'overview', icon: 'home', label: 'Home/Overview' },
+    { page: 'mentor-connect', icon: 'message-square', label: 'Mentor Connect' },
     { page: 'batches', icon: 'users', label: 'Enrolled Batches' },
     { page: 'grading', icon: 'clipboard-check', label: 'Grading Queue' },
     { page: 'scheduler', icon: 'clock', label: 'Session Scheduler' },
     { page: 'reports', icon: 'bar-chart-2', label: 'Performance Reports' },
   ];
+
 
   const closeMobileMenu = () => {
     if (isMobile) {

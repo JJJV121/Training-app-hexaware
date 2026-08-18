@@ -14,12 +14,14 @@ const apiClient = axios.create({
 // Request interceptor to dynamically inject the token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    const rawToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    if (rawToken) {
+      const cleanToken = rawToken.replace(/^bearer\s+/i, '');
+      config.headers.Authorization = `Bearer ${cleanToken}`;
     }
     return config;
   },
+
   (error) => {
     return Promise.reject(error);
   }

@@ -28,3 +28,11 @@ from app.models.batch_models import Batch, BatchTrainee
 
 from app.models.live_session import LiveSession
 from app.models.attendance_record import AttendanceRecord, AttendanceStatus
+from app.models.messaging import (
+    Conversation,
+    ConversationParticipant,
+    Message,
+    Community,
+    CommunityMember,
+)
+
