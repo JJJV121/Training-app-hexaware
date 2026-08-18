@@ -135,6 +135,45 @@ async def get_batches(
     return enriched_batches
 
 
+async def get_trainee_batches(
+    db: AsyncSession,
+    trainee_id: int,
+):
+    result = await db.execute(
+        select(Batch)
+        .join(BatchTrainee, Batch.id == BatchTrainee.batch_id)
+        .where(BatchTrainee.trainee_id == trainee_id)
+        .order_by(Batch.start_date.desc())
+    )
+    batches = result.scalars().all()
+
+    enriched_batches = []
+    for batch in batches:
+        trainee_count = await db.scalar(
+            select(func.count(BatchTrainee.trainee_id)).where(BatchTrainee.batch_id == batch.id)
+        )
+        course = await db.get(Course, batch.course_id)
+        trainer = await db.get(User, batch.trainer_id) if batch.trainer_id else None
+
+        enriched_batches.append({
+            "id": batch.id,
+            "name": batch.name,
+            "course_id": batch.course_id,
+            "course_name": course.title if course else "Course",
+            "trainer_id": batch.trainer_id,
+            "trainer_name": trainer.name if trainer else "Assigned Trainer",
+            "start_date": batch.start_date,
+            "end_date": batch.end_date,
+            "is_active": batch.is_active,
+            "status": batch.status,
+            "trainee_count": trainee_count or 0,
+            "college_name": batch.college_name,
+            "description": f"{course.title} batch for {batch.college_name or 'your cohort'}" if course else batch.name,
+        })
+
+    return enriched_batches
+
+
 # --------------------------------------------------
 # Get Batch By ID
 # --------------------------------------------------

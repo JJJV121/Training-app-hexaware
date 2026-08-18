@@ -207,6 +207,8 @@ export default function DashBoard() {
     }
   };
 
+  const isCourseDashboardView = Boolean(paramCourseId) || currentRoute === 'course';
+
   const navItems = [
     { page: 'home', icon: 'home', label: 'Home' },
     { page: 'course', icon: 'book-open', label: 'My Courses' },
@@ -218,7 +220,7 @@ export default function DashBoard() {
     { page: 'progress', icon: 'star', label: 'Progress' },
     { page: 'notes', icon: 'file-text', label: 'Notes' },
     { page: 'profile', icon: 'user', label: 'Profile' }
-  ];
+  ].filter((item) => !(isCourseDashboardView && ['leaderboard', 'badges'].includes(item.page)));
 
 
 

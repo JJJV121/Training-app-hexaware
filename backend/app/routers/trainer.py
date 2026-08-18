@@ -1,12 +1,13 @@
 from fastapi import (
     APIRouter,
     Depends,
+    HTTPException,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 
 from app.database.session import get_db
-from app.core.dependencies import get_current_trainer
+from app.core.dependencies import get_current_trainer, get_current_user
 
 from app.schemas.trainer import (
     DashboardOverviewResponse,
@@ -20,6 +21,7 @@ from app.services.trainer_service import (
     get_batches,
     get_batch_by_id,
     get_batch_trainees,
+    get_trainee_batches,
     get_trainer_grading_queue,
 )
 
@@ -63,6 +65,19 @@ async def get_batches_api(
         db=db,
         trainer_id=current_trainer.id,
     )
+
+
+@router.get(
+    "/trainee/batches",
+    response_model=list[BatchResponse],
+)
+async def get_trainee_batches_api(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.role or current_user.role.upper() != "TRAINEE":
+        raise HTTPException(status_code=403, detail="Access denied. Trainee role required.")
+    return await get_trainee_batches(db=db, trainee_id=current_user.id)
 
 
 # --------------------------------------------------

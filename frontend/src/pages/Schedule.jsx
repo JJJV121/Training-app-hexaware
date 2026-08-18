@@ -41,6 +41,7 @@ export default function Schedule() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+  const selectedCourseId = Number(localStorage.getItem("selected_course_id")) || null;
 
   useEffect(() => {
     const loadSchedule = async () => {
@@ -57,7 +58,7 @@ export default function Schedule() {
     };
 
     loadSchedule();
-  }, [currentWeekIndex]);
+  }, [currentWeekIndex, selectedCourseId]);
 
   const handleShare = () => {
     alert("Sharing schedule...");
@@ -67,12 +68,14 @@ export default function Schedule() {
     alert("Downloading schedule...");
   };
 
+  const maxWeekIndex = Math.max((data?.weeks?.length || 1) - 1, 0);
+
   const handlePreviousWeek = () => {
     setCurrentWeekIndex((prev) => Math.max(prev - 1, 0));
   };
 
   const handleNextWeek = () => {
-    setCurrentWeekIndex((prev) => prev + 1);
+    setCurrentWeekIndex((prev) => Math.min(prev + 1, maxWeekIndex));
   };
 
   if (loading) {
@@ -91,7 +94,7 @@ export default function Schedule() {
     );
   }
 
-  const currentWeek = data.weeks[0];
+  const currentWeek = data.weeks[Math.min(currentWeekIndex, maxWeekIndex)] || data.weeks[0];
 
   return (
     <div className="page-view schedule-container">

@@ -1,9 +1,9 @@
 import apiClient from './apiClient';
 
 const communityService = {
-  // Fetch all communities
+  // Fetch batches assigned to the logged-in trainee
   getCommunities: async () => {
-    const response = await apiClient.get('/api/communities');
+    const response = await apiClient.get('/api/trainer/trainee/batches');
     return response.data;
   },
 

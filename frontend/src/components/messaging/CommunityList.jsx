@@ -29,7 +29,7 @@ export default function CommunityList({
             <span>Community Connect</span>
           </h2>
           <p className="messaging-page-sub">
-            Join learning communities to collaborate, share resources, and connect with peers in real time.
+            View the batches assigned to you and connect with your current trainer or cohort in real time.
           </p>
         </div>
 
@@ -49,7 +49,7 @@ export default function CommunityList({
             }}
           >
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563eb' }} />
-            Joined {totalMemberships} / {communities.length} Communities
+            {totalMemberships} / {communities.length} Batches
           </div>
         </div>
       </div>
@@ -59,7 +59,7 @@ export default function CommunityList({
         <input
           type="text"
           className="messaging-search-input"
-          placeholder="Search communities by name or topic..."
+          placeholder="Search batches by name or course..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -68,7 +68,7 @@ export default function CommunityList({
       <div className="communities-grid">
         {filtered.length === 0 ? (
           <div style={{ color: 'var(--text-light)', padding: '32px 0', gridColumn: '1 / -1', textAlign: 'center' }}>
-            No communities matching "{searchTerm}".
+            No batches matching "{searchTerm}".
           </div>
         ) : (
           filtered.map((comm) => (

@@ -2,6 +2,11 @@ import apiClient from "./apiClient";
 
 const USE_MOCK_DATA = false;
 
+function getSelectedCourseId() {
+  const storedCourseId = Number(localStorage.getItem("selected_course_id"));
+  return Number.isFinite(storedCourseId) && storedCourseId > 0 ? storedCourseId : null;
+}
+
 const mockScheduleData = {
   course_name: "Frontend Development Bootcamp",
   summary: {
@@ -388,11 +393,19 @@ function transformScheduleResponse(api, weekNumber = 0) {
       }))
     }));
   } else if (api.schedule) {
-    // Map backend schedule to weeks format
-    const days = api.schedule.map((day) => {
-      const dateParts = day.date.split("-");
-      const dayDate = dateParts[2] ? dateParts[2].replace(/^0+/, '') : "";
-      
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${months[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const days = (api.schedule || []).map((day) => {
+      const dateValue = day.date ? new Date(day.date) : null;
+      const dateParts = day.date ? String(day.date).split("-") : [];
+      const dayDate = dateParts[2] ? dateParts[2].replace(/^0+/, "") : (dateValue ? String(dateValue.getDate()) : "");
+
       const shortWeekday = day.weekday ? day.weekday.substring(0, 3) : "";
       const frontendStatus = day.status === "current" ? "inprogress" : day.status;
 
@@ -407,23 +420,24 @@ function transformScheduleResponse(api, weekNumber = 0) {
       };
     });
 
-    const formatDate = (dateStr) => {
-      if (!dateStr) return "";
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return "";
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      return `${months[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}`;
-    };
+    const totalWeekCount = Math.max(1, Math.ceil(days.length / 7));
+    const safeWeekIndex = Math.min(Math.max(weekNumber, 0), totalWeekCount - 1);
+    const startIndex = safeWeekIndex * 7;
+    const selectedWeekDays = days.slice(startIndex, startIndex + 7);
 
-    const startRange = api.schedule.length > 0 ? formatDate(api.schedule[0].date) : "";
-    const endRange = api.schedule.length > 0 ? formatDate(api.schedule[api.schedule.length - 1].date) : "";
+    const startRange = selectedWeekDays.length > 0 && selectedWeekDays[0].date
+      ? formatDate((api.schedule[startIndex] || api.schedule[0])?.date)
+      : "";
+    const endRange = selectedWeekDays.length > 0 && selectedWeekDays[selectedWeekDays.length - 1].date
+      ? formatDate((api.schedule[Math.min(startIndex + selectedWeekDays.length - 1, api.schedule.length - 1)] || api.schedule[api.schedule.length - 1])?.date)
+      : "";
     const range = startRange && endRange ? `${startRange} - ${endRange}` : "";
 
     weeks = [
       {
-        label: `Week ${weekNumber + 1}`,
-        range: range,
-        days: days
+        label: `Week ${safeWeekIndex + 1}`,
+        range,
+        days: selectedWeekDays
       }
     ];
   }
@@ -459,7 +473,6 @@ function transformScheduleResponse(api, weekNumber = 0) {
 const scheduleService = {
   async getScheduleData(userId = 1, weekNumber = 0) {
     if (USE_MOCK_DATA) {
-      // Return only requested week from mock data
       const allWeeks = mockScheduleData.weeks;
       const week = allWeeks[weekNumber] || allWeeks[0];
       return transformScheduleResponse({
@@ -469,8 +482,12 @@ const scheduleService = {
     }
 
     try {
+      const selectedCourseId = getSelectedCourseId();
       const response = await apiClient.get(`/schedule/${userId}`, {
-        params: { week: weekNumber }
+        params: {
+          week: weekNumber,
+          ...(selectedCourseId ? { course_id: selectedCourseId } : {})
+        }
       });
       return transformScheduleResponse(response.data, weekNumber);
     } catch (error) {

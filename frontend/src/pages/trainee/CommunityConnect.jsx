@@ -22,9 +22,22 @@ export default function CommunityConnect() {
     try {
       setIsLoading(true);
       const data = await communityService.getCommunities();
-      setCommunities(data);
+      const normalized = Array.isArray(data)
+        ? data.map((batch) => ({
+            ...batch,
+            id: batch.id,
+            name: batch.name,
+            description: batch.description || `${batch.course_name || 'Course'} batch discussion`,
+            member_count: Number(batch.trainee_count || 0),
+            is_member: true,
+            trainer_id: batch.trainer_id,
+            conversation_id: null,
+          }))
+        : [];
+      setCommunities(normalized);
     } catch (err) {
-      console.error('Failed to load communities:', err);
+      console.error('Failed to load assigned batches:', err);
+      setCommunities([]);
     } finally {
       setIsLoading(false);
     }
@@ -59,16 +72,18 @@ export default function CommunityConnect() {
 
   const handleOpenChat = async (community) => {
     try {
-      if (!community.conversation_id) {
-        // Join if not already joined
-        await handleJoin(community.id);
+      if (!community.trainer_id) {
+        setActiveCommunity(community);
+        setViewMode('browse');
+        return;
       }
-      const conv = await messagingService.getConversationById(community.conversation_id);
+
+      const conv = await messagingService.createOrGetDirectConversation(community.trainer_id);
       setActiveCommunity(community);
       setActiveConversation(conv);
       setViewMode('chat');
     } catch (err) {
-      console.error('Failed to open community chat:', err);
+      console.error('Failed to open trainer chat for batch:', err);
     }
   };
 
@@ -86,7 +101,7 @@ export default function CommunityConnect() {
   if (isLoading) {
     return (
       <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-medium)' }}>
-        Loading Community Connect...
+        Loading assigned batches...
       </div>
     );
   }

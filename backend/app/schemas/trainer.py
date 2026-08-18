@@ -26,7 +26,7 @@ class BatchResponse(BaseModel):
     id: int
     name: str
     course_id: int
-    trainer_id: int
+    trainer_id: int | None = None
     start_date: date
     end_date: date
     is_active: bool

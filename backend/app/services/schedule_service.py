@@ -25,20 +25,28 @@ TIME_SLOTS = [
 async def get_user_schedule(
     db: AsyncSession,
     user_id: int,
-    week: int = 0
+    week: int = 0,
+    course_id: int | None = None
 ):
 
-    enrollment_course_res = await db.execute(
+    enrollment_stmt = (
         select(Enrollment, Course)
         .join(Course, Course.id == Enrollment.course_id)
         .where(
             Enrollment.user_id == user_id
         )
-        .order_by(
-            Enrollment.enrolled_at.desc()
-        )
-        .limit(1)
     )
+
+    if course_id is not None:
+        enrollment_stmt = enrollment_stmt.where(
+            Enrollment.course_id == course_id
+        )
+
+    enrollment_stmt = enrollment_stmt.order_by(
+        Enrollment.enrolled_at.desc()
+    ).limit(1)
+
+    enrollment_course_res = await db.execute(enrollment_stmt)
     enrollment_course = enrollment_course_res.first()
 
     if not enrollment_course:
