@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '../../components/Icon';
 import adminUserService from '../../services/adminUserService';
 import adminCourseService from '../../services/adminCourseService';
@@ -24,10 +24,7 @@ export default function AdminTrainers() {
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
   const [formCourseId, setFormCourseId] = useState('');
-  const [formWorkload, setFormWorkload] = useState(50);
   const [formRating, setFormRating] = useState(4.5);
-
-  const searchTimeoutRef = useRef(null);
 
   const triggerToast = (msg) => {
     setToastMsg(msg);
@@ -39,49 +36,11 @@ export default function AdminTrainers() {
   }, []);
 
   const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    searchTimeoutRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        if (value.trim() === '') {
-          const trainersData = await adminUserService.getTrainers();
-          setTrainers(trainersData);
-          return;
-        }
-
-        const results = await adminUserService.searchTrainers(value);
-        setTrainers(results);
-      } catch (err) {
-        console.error('Failed to search trainers:', err);
-      } finally {
-        setLoading(false);
-      }
-    }, 400);
+    setSearchQuery(e.target.value);
   };
 
-  const handleExpertFilterChange = async (courseId) => {
-    setExpertFilter(courseId);
-    setLoading(true);
-    try {
-      if (courseId === 'All') {
-        const trainersData = await adminUserService.getTrainers();
-        setTrainers(trainersData);
-        return;
-      }
-
-      const filtered = await adminUserService.filterTrainers({ course_id: courseId });
-      setTrainers(filtered);
-    } catch (err) {
-      console.error('Failed to filter trainers:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleExpertFilterChange = (courseId) => {
+    setExpertFilter(courseId || 'All');
   };
 
   const loadTrainersAndCourses = async () => {
@@ -115,8 +74,8 @@ export default function AdminTrainers() {
         const trainerBatches = batchesList.filter(b => b.trainer_id === t.id);
         const trainerBatchNames = trainerBatches.map(b => b.name);
         
-        const trainerCourseIds = new Set();
-        if (t.course_id) trainerCourseIds.add(t.course_id);
+        const trainerCourseIds = new Set((t.course_ids || []).map(Number));
+        if (t.course_id) trainerCourseIds.add(Number(t.course_id));
         trainerBatches.forEach(b => {
           if (b.course_id) trainerCourseIds.add(b.course_id);
         });
@@ -132,14 +91,13 @@ export default function AdminTrainers() {
         const totalStudents = trainerBatches.reduce((sum, b) => sum + (batchTraineesMap[b.id] || 0), 0);
 
         const rating = Number(localStorage.getItem(`trainer_rating_${t.id}`)) || 4.8;
-        const workload = Number(localStorage.getItem(`trainer_workload_${t.id}`)) || (40 + (t.id % 5) * 10);
         const attendance = localStorage.getItem(`trainer_attendance_${t.id}`) || '96%';
         const comments = localStorage.getItem(`trainer_comments_${t.id}`) || 'Thorough explanations, highly recommended by trainees.';
 
         return {
           ...t,
+          assignedCourseIds: Array.from(trainerCourseIds),
           expertise,
-          workload,
           rating,
           batches: trainerBatchNames.length > 0 ? trainerBatchNames : ['No Active Batches'],
           courses: trainerCourses.length > 0 ? trainerCourses : ['Assigned Course'],
@@ -165,7 +123,6 @@ export default function AdminTrainers() {
     setFormEmail('');
     setFormPassword('');
     setFormCourseId(courses[0]?.id || '');
-    setFormWorkload(50);
     setFormRating(4.5);
     setIsModalOpen(true);
   };
@@ -177,7 +134,6 @@ export default function AdminTrainers() {
     setFormEmail(trainer.email || '');
     setFormPassword('');
     setFormCourseId(trainer.course_id || courses[0]?.id || '');
-    setFormWorkload(trainer.workload);
     setFormRating(trainer.rating || 4.5);
     setIsModalOpen(true);
   };
@@ -223,13 +179,11 @@ export default function AdminTrainers() {
       if (editTrainer) {
         await adminUserService.updateTrainer(editTrainer.id, payload);
         localStorage.setItem(`trainer_rating_${editTrainer.id}`, formRating);
-        localStorage.setItem(`trainer_workload_${editTrainer.id}`, formWorkload);
         triggerToast('Trainer details updated.');
       } else {
         const savedTrainer = await adminUserService.createTrainer(payload);
         if (savedTrainer && savedTrainer.id) {
           localStorage.setItem(`trainer_rating_${savedTrainer.id}`, formRating);
-          localStorage.setItem(`trainer_workload_${savedTrainer.id}`, formWorkload);
         }
         triggerToast('New trainer registered successfully.');
       }
@@ -248,7 +202,7 @@ export default function AdminTrainers() {
     const matchesSearch = (t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (t.email || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (t.expertise || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesExpert = expertFilter === 'All' || t.course_id === Number(expertFilter);
+    const matchesExpert = expertFilter === 'All' || (t.assignedCourseIds || [t.course_id]).map(Number).includes(Number(expertFilter));
     return matchesSearch && matchesExpert;
   });
 
@@ -329,7 +283,6 @@ export default function AdminTrainers() {
                 <tr>
                   <th>Trainer Name</th>
                   <th>Expertise Domain</th>
-                  <th>Workload</th>
                   <th>Rating</th>
                   <th>Actions</th>
                 </tr>
@@ -357,20 +310,6 @@ export default function AdminTrainers() {
                         <span className="admin-badge blue">{t.expertise}</span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 700 }}>{t.workload}%</span>
-                          <div className="admin-hbar-track" style={{ width: '60px', height: '6px' }}>
-                            <div 
-                              className="admin-hbar-fill" 
-                              style={{ 
-                                width: `${t.workload}%`, 
-                                backgroundColor: t.workload > 85 ? 'var(--accent-red)' : 'var(--primary-blue)' 
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
                         <span style={{ fontWeight: 700 }}>⭐ {t.rating}</span>
                       </td>
                       <td>
@@ -387,7 +326,7 @@ export default function AdminTrainers() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-light)' }}>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-light)' }}>
                       No trainers match your criteria.
                     </td>
                   </tr>
@@ -459,7 +398,7 @@ export default function AdminTrainers() {
             ) : (
               <div className="admin-card" style={{ justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '300px', color: 'var(--text-light)', textAlign: 'center', border: '1px dashed #cbd5e1', background: 'none' }}>
                 <Icon name="user" style={{ width: '48px', height: '48px', marginBottom: '12px', opacity: 0.5 }} />
-                <p style={{ fontSize: '13px', fontWeight: 600 }}>Select a trainer from the list to view profile details, assigned students, ratings, and course workloads.</p>
+                <p style={{ fontSize: '13px', fontWeight: 600 }}>Select a trainer from the list to view profile details, assigned students, ratings, and course expertise.</p>
               </div>
             )}
           </div>

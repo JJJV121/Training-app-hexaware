@@ -12,7 +12,7 @@ from app.models.learning_unit import LearningUnit
 
 from app.schemas.course import CourseCreate
 from app.schemas.admin_course import CourseUpdate
-from app.utils.cache_utils import cache_get, cache_set, clear_course_cache
+from app.utils.cache_utils import cache_get, cache_set, clear_admin_courses_cache, clear_course_cache
 
 
 # 1. Create Course
@@ -32,6 +32,7 @@ async def create_course(
 
     await db.commit()
     await db.refresh(new_course)
+    await clear_admin_courses_cache()
 
     return new_course
 
@@ -95,6 +96,7 @@ async def update_course(
 
     await db.commit()
     await db.refresh(course)
+    await clear_admin_courses_cache()
     await clear_course_cache(course_id)
 
     return course
@@ -132,6 +134,7 @@ async def delete_course(
 
     await db.delete(course)
     await db.commit()
+    await clear_admin_courses_cache()
     await clear_course_cache(course_id)
 
     return {
@@ -158,6 +161,7 @@ async def update_course_status(
 
     await db.commit()
     await db.refresh(course)
+    await clear_admin_courses_cache()
     await clear_course_cache(course_id)
 
     return course

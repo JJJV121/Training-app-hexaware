@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Icon from '../../components/Icon';
 import adminCourseService from '../../services/adminCourseService';
-import trainerMockService from '../../services/trainerMockService';
 
 export default function AdminCourses() {
   const [toastMsg, setToastMsg] = useState(null);
@@ -17,14 +16,9 @@ export default function AdminCourses() {
   // Form Fields
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formCategory, setFormCategory] = useState('Backend Development');
-  const [formTrainer, setFormTrainer] = useState('');
   const [formDuration, setFormDuration] = useState('10');
   const [formSyllabus, setFormSyllabus] = useState('');
   const [formResources, setFormResources] = useState(10);
-
-  // Fetch all trainers for assigning dropdown (mock fallback)
-  const trainersList = trainerMockService.getTrainers();
 
   useEffect(() => {
     loadCourses();
@@ -79,8 +73,6 @@ export default function AdminCourses() {
     setEditCourse(null);
     setFormTitle('');
     setFormDescription('');
-    setFormCategory('Backend Development');
-    setFormTrainer(trainersList[0]?.name || '');
     setFormDuration('10');
     setFormSyllabus('');
     setFormResources(10);
@@ -91,8 +83,6 @@ export default function AdminCourses() {
     setEditCourse(course);
     setFormTitle(course.title);
     setFormDescription(course.description || '');
-    setFormCategory(course.category || 'Backend Development');
-    setFormTrainer(course.trainer || trainersList[0]?.name || '');
     setFormDuration(String(course.duration_days));
     setFormSyllabus(course.thumbnail_url || '');
     setFormResources(course.resourcesCount || 10);
@@ -104,7 +94,7 @@ export default function AdminCourses() {
       try {
         await adminCourseService.deleteCourse(id);
         triggerToast('Course deleted successfully.');
-        loadCourses();
+        await loadCourses();
       } catch (err) {
         console.error('Failed to delete course:', err);
         alert(err.response?.data?.detail || 'Failed to delete course.');
@@ -117,7 +107,7 @@ export default function AdminCourses() {
     try {
       await adminCourseService.updateCourseStatus(id, nextState);
       triggerToast(`Course status updated to ${nextState ? 'Published' : 'Draft'}.`);
-      loadCourses();
+      await loadCourses();
     } catch (err) {
       console.error('Failed to update course status:', err);
       alert(err.response?.data?.detail || 'Failed to update course status.');
@@ -148,7 +138,7 @@ export default function AdminCourses() {
         triggerToast('Course created successfully.');
       }
       setIsModalOpen(false);
-      loadCourses();
+      await loadCourses();
     } catch (err) {
       console.error('Failed to save course:', err);
       alert(err.response?.data?.detail || 'Failed to save course structure.');
@@ -215,7 +205,7 @@ export default function AdminCourses() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <h3 style={{ fontFamily: 'var(--font-family-header)', fontSize: '18px', fontWeight: 800, color: 'var(--text-dark)' }}>{course.title}</h3>
                   <p style={{ fontSize: '12px', color: 'var(--text-medium)', margin: '4px 0 8px 0', lineHeight: '1.4' }}>{course.description}</p>
-                  <span style={{ fontSize: '12px', color: 'var(--text-medium)', fontWeight: 600 }}>Duration: {course.duration_days} Days | Trainer: {course.trainer || 'Unassigned'}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-medium)', fontWeight: 600 }}>Duration: {course.duration_days} Days</span>
                 </div>
 
                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -277,33 +267,6 @@ export default function AdminCourses() {
                   onChange={(e) => setFormDescription(e.target.value)}
                   required
                 />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Category</label>
-                <select 
-                  className="form-input"
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
-                >
-                  <option value="Backend Development">Backend Development</option>
-                  <option value="Frontend Development">Frontend Development</option>
-                  <option value="Database Systems">Database Systems</option>
-                  <option value="Data Science">Data Science</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Assign Lead Trainer</label>
-                <select 
-                  className="form-input"
-                  value={formTrainer}
-                  onChange={(e) => setFormTrainer(e.target.value)}
-                >
-                  {trainersList.map(t => (
-                    <option key={t.id} value={t.name}>{t.name}</option>
-                  ))}
-                </select>
               </div>
 
               <div className="form-group">

@@ -85,3 +85,25 @@ async def clear_course_cache(course_id: int) -> None:
         # Graceful fallback: disable Redis permanently for this run if connection fails
         print(f"[Cache Utils] Disabling Redis caching due to connection failure: {e}")
         _redis_disabled = True
+
+
+async def clear_admin_courses_cache() -> None:
+    global _redis_disabled, _memory_cache
+    keys_to_clear = [key for key in _memory_cache if key.startswith("admin_courses:")]
+    for key in keys_to_clear:
+        _memory_cache.pop(key, None)
+
+    if _redis_disabled:
+        return
+    client = get_redis_client()
+    if client is None:
+        return
+    try:
+        keys = []
+        async for key in client.scan_iter(match="admin_courses:*"):
+            keys.append(key)
+        if keys:
+            await client.delete(*keys)
+    except Exception as e:
+        print(f"[Cache Utils] Disabling Redis caching due to connection failure: {e}")
+        _redis_disabled = True

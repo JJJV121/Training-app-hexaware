@@ -220,7 +220,12 @@ export default function DashBoard() {
     { page: 'progress', icon: 'star', label: 'Progress' },
     { page: 'notes', icon: 'file-text', label: 'Notes' },
     { page: 'profile', icon: 'user', label: 'Profile' }
-  ].filter((item) => !(isCourseDashboardView && ['leaderboard', 'badges'].includes(item.page)));
+  ].filter((item) => !(isCourseDashboardView && ['mentor-connect', 'community-connect', 'leaderboard', 'badges'].includes(item.page)))
+    .map((item) => (
+      item.page === 'course' && isCourseDashboardView
+        ? { ...item, label: 'Course' }
+        : item
+    ));
 
 
 

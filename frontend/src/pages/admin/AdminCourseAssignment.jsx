@@ -3,7 +3,6 @@ import Icon from '../../components/Icon';
 import batchService from '../../services/batchService';
 import adminUserService from '../../services/adminUserService';
 import adminCourseService from '../../services/adminCourseService';
-import trainerMockService from '../../services/trainerMockService';
 
 export default function AdminCourseAssignment() {
   const [toastMsg, setToastMsg] = useState(null);
@@ -12,7 +11,6 @@ export default function AdminCourseAssignment() {
   const [assignments, setAssignments] = useState([]);
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
-  const [trainers, setTrainers] = useState([]);
   const [trainees, setTrainees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,10 +21,6 @@ export default function AdminCourseAssignment() {
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedBatchId, setSelectedBatchId] = useState('');
   const [selectedTraineeId, setSelectedTraineeId] = useState('');
-  const [selectedTrainerId, setSelectedTrainerId] = useState('');
-  const [collegeName, setCollegeName] = useState('IIT Madras');
-
-  const collegesList = adminUserService.getColleges();
 
   useEffect(() => {
     loadData();
@@ -36,28 +30,25 @@ export default function AdminCourseAssignment() {
     setLoading(true);
     setError('');
     try {
-      const [batchesData, traineesData, coursesData, trainersData] = await Promise.all([
+      const [batchesData, traineesData, coursesData] = await Promise.all([
         batchService.getBatches(),
         adminUserService.getTrainees(),
-        adminCourseService.getCourses(),
-        adminUserService.getTrainers()
+        adminCourseService.getCourses()
       ]);
 
       setCourses(coursesData);
       setBatches(batchesData.batches || []);
       setTrainees(traineesData);
-      setTrainers(trainersData);
 
       // Default dropdown values
       if (coursesData.length > 0) setSelectedCourseId(coursesData[0].id);
       if (batchesData.batches?.length > 0) setSelectedBatchId(batchesData.batches[0].id);
       if (traineesData.length > 0) setSelectedTraineeId(traineesData[0].id);
-      if (trainersData.length > 0) setSelectedTrainerId(trainersData[0].id);
 
       // Compute active allocations
       const activeAllocations = [];
 
-      // 1. Batch allocations
+      // 1. Existing batch course assignments
       (batchesData.batches || []).forEach(b => {
         if (b.course_id) {
           activeAllocations.push({
@@ -66,7 +57,6 @@ export default function AdminCourseAssignment() {
             targetName: b.name,
             type: 'Batch',
             courseId: b.course_id,
-            trainerId: b.trainer_id,
             collegeName: b.college_name || 'Hexaware Academy'
           });
         }
@@ -81,7 +71,6 @@ export default function AdminCourseAssignment() {
             targetName: t.name || 'Unnamed Trainee',
             type: 'Trainee',
             courseId: t.course_id,
-            trainerId: null,
             collegeName: t.college_name || t.college || 'Hexaware Academy'
           });
         }
@@ -116,9 +105,7 @@ export default function AdminCourseAssignment() {
 
         const payload = {
           name: batch.name,
-          course_id: Number(selectedCourseId),
-          trainer_id: selectedTrainerId ? Number(selectedTrainerId) : null,
-          college_name: collegeName
+            course_id: Number(selectedCourseId)
         };
 
         await batchService.updateBatch(batch.id, payload);
@@ -130,8 +117,7 @@ export default function AdminCourseAssignment() {
         const payload = {
           name: student.name,
           email: student.email,
-          course_id: Number(selectedCourseId),
-          college_name: collegeName
+            course_id: Number(selectedCourseId)
         };
 
         await adminUserService.updateTrainee(student.id, payload);
@@ -154,8 +140,7 @@ export default function AdminCourseAssignment() {
           if (batch) {
             const payload = {
               name: batch.name,
-              course_id: null,
-              trainer_id: null
+              course_id: null
             };
             await batchService.updateBatch(batch.id, payload);
           }
@@ -179,27 +164,9 @@ export default function AdminCourseAssignment() {
     }
   };
 
-  const handleReassignTrainer = async (allocation, newTrainerId) => {
-    try {
-      if (allocation.type === 'Batch') {
-        await batchService.assignTrainerToBatch(allocation.targetId, newTrainerId);
-        triggerToast('Trainer reassigned successfully.');
-        loadData();
-      }
-    } catch (err) {
-      console.error('Failed to reassign trainer:', err);
-      alert(err.response?.data?.detail || 'Failed to reassign trainer.');
-    }
-  };
-
   const getCourseTitle = (courseId) => {
     const c = courses.find(course => course.id === courseId);
     return c ? c.title : 'Unassigned';
-  };
-
-  const getTrainerName = (trainerId) => {
-    const t = trainers.find(tr => tr.id === Number(trainerId));
-    return t ? t.name : 'Unassigned';
   };
 
   return (
@@ -247,7 +214,6 @@ export default function AdminCourseAssignment() {
                 <tr>
                   <th>Target & Type</th>
                   <th>Course Name</th>
-                  <th>Assigned Trainer</th>
                   <th>College Name</th>
                   <th>Actions</th>
                 </tr>
@@ -268,24 +234,6 @@ export default function AdminCourseAssignment() {
                         <span style={{ fontWeight: 600 }}>{getCourseTitle(a.courseId)}</span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          {a.type === 'Batch' ? (
-                            <select 
-                              style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontWeight: 600, fontSize: '12px', color: 'var(--text-dark)', cursor: 'pointer' }}
-                              value={a.trainerId || ''}
-                              onChange={(e) => handleReassignTrainer(a, e.target.value)}
-                            >
-                              <option value="">Unassigned</option>
-                              {trainers.map(t => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span style={{ fontSize: '12px', color: 'var(--text-light)', fontStyle: 'italic' }}>Course-bound</span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
                         <span style={{ fontWeight: 600, color: 'var(--primary-blue)' }}>🏛️ {a.collegeName || 'Hexaware Academy'}</span>
                       </td>
                       <td>
@@ -297,7 +245,7 @@ export default function AdminCourseAssignment() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-light)' }}>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-light)' }}>
                       No active course assignments.
                     </td>
                   </tr>
@@ -326,7 +274,7 @@ export default function AdminCourseAssignment() {
                     style={{ flex: 1, padding: '8px', fontSize: '12px' }}
                     onClick={() => setAssignType('Batch')}
                   >
-                    🏢 Batch Allocation
+                    🏢 Existing Batch
                   </button>
                   <button
                     type="button"
@@ -363,26 +311,6 @@ export default function AdminCourseAssignment() {
                   <select className="form-input" value={selectedTraineeId} onChange={(e) => setSelectedTraineeId(e.target.value)}>
                     {trainees.map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.college || 'Hexaware Academy'})</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label className="form-label">College Name</label>
-                <select className="form-input" value={collegeName} onChange={(e) => setCollegeName(e.target.value)}>
-                  {collegesList.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              {assignType === 'Batch' && (
-                <div className="form-group">
-                  <label className="form-label">Assign Lead Trainer</label>
-                  <select className="form-input" value={selectedTrainerId} onChange={(e) => setSelectedTrainerId(e.target.value)}>
-                    {trainers.map(t => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
                 </div>
