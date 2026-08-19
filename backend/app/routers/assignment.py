@@ -19,7 +19,9 @@ from app.schemas.assignment import (
     AssignmentResponse,
     AssignmentType,
     AssignmentUpdate,
-    
+    AssignmentQuestionResponse,
+    AssignmentAnswersSubmit,
+    AssignmentEvaluationResult,
 )
 from app.schemas.assignment_submission import AssignmentSubmissionResponse
 from app.services.assignment_service import (
@@ -28,6 +30,8 @@ from app.services.assignment_service import (
     get_all_assignments,
     get_assignment_by_id,
     update_assignment,
+    get_assignment_questions,
+    evaluate_assignment_answers,
 )
 from app.utils.file_upload import save_uploaded_file
 from app.services.assignment_submission_service import get_assignment_submissions
@@ -230,6 +234,41 @@ async def get_assignment_submissions_api(
         assignment_id,
     )
 
+
+# -------------------- Get 3 Dynamic Questions for Assignment --------------------
+
+@router.get(
+    "/{assignment_id}/questions",
+    response_model=list[AssignmentQuestionResponse],
+)
+async def get_assignment_questions_api(
+    assignment_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    return await get_assignment_questions(
+        db,
+        assignment_id,
+    )
+
+
+# -------------------- Submit Answers & Evaluate Assignment --------------------
+
+@router.post(
+    "/{assignment_id}/submit-answers",
+    response_model=AssignmentEvaluationResult,
+)
+async def submit_assignment_answers_api(
+    assignment_id: int,
+    payload: AssignmentAnswersSubmit,
+    db: AsyncSession = Depends(get_db),
+):
+    return await evaluate_assignment_answers(
+        db=db,
+        assignment_id=assignment_id,
+        user_id=payload.user_id,
+        answers=payload.answers,
+    )
+
 # -------------------- Get Assignments by Course and Day --------------------
 from sqlalchemy import select
 from app.models.assignment import Assignment
@@ -257,6 +296,9 @@ async def get_course_day_assignments(
             detail="Course day not found under this course."
         )
 
+    if day and day.day_number in [1, 2]:
+        return []
+
     # Auto-process day content checking first
     from app.services.day_processor_service import process_course_day
     await process_course_day(db, course_id, day_id)
@@ -278,6 +320,8 @@ async def get_trainee_assignments(
     from app.models.course_day import CourseDay
     day = await db.get(CourseDay, course_day_id)
     if day:
+        if day.day_number in [1, 2]:
+            return []
         from app.services.day_processor_service import process_course_day
         await process_course_day(db, day.course_id, course_day_id)
 

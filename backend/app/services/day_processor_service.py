@@ -65,11 +65,18 @@ async def process_course_day(db: AsyncSession, course_id: int, day_id: int, comm
     # Analyze course plan requirements using title, description, and unit topics
     plan_text = (day.title + " " + (day.description or "") + " " + " ".join(unit_titles)).lower()
     
-    # Requirement detection logic
-    req_assignment = any(w in plan_text for w in ["practice", "exercise", "assignment", "lab", "coding", "implement", "tasks", "write queries"])
-    req_assessment = any(w in plan_text for w in ["assessment", "challenge", "quiz", "exam", "test"])
-    req_case_study = any(w in plan_text for w in ["case study", "scenario", "use case", "case-study"])
-    req_project = any(w in plan_text for w in ["project", "build a", "capstone", "mini-project"])
+    # Strict Training Plan assignment detection: Days 1 & 2 have no assignments specified.
+    # Assignments exist ONLY where the Training Plan specifies Assignment Q&A, Assessment, Case Study, or Project.
+    if day.day_number in [1, 2]:
+        req_assignment = False
+        req_assessment = False
+        req_case_study = False
+        req_project = False
+    else:
+        req_assignment = any(w in plan_text for w in ["assignment q&a", "assignment", "coding assignment"])
+        req_assessment = any(w in plan_text for w in ["assessment", "coding challenge assessment", "coding challenge"])
+        req_case_study = any(w in plan_text for w in ["case study", "case study q&a"])
+        req_project = any(w in plan_text for w in ["project development", "project review", "project case study"])
 
     # Load templates/suggestions for the day
     suggestions = get_templated_suggestions(course.title, day.title, day.description)

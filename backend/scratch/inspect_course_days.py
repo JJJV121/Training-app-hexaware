@@ -2,29 +2,32 @@ import asyncio
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import select
 from app.database.session import AsyncSessionLocal
-from app.models.course import Course
 from app.models.course_day import CourseDay
 from app.models.learning_unit import LearningUnit
+from app.models.assignment import Assignment
+from app.models.course import Course
+from sqlalchemy import select
 
-
-async def inspect_days():
+async def inspect():
     async with AsyncSessionLocal() as db:
-        res_c = await db.execute(select(Course))
-        courses = res_c.scalars().all()
-
+        courses = (await db.execute(select(Course))).scalars().all()
+        print(f"=== COURSES ({len(courses)}) ===")
         for c in courses:
-            print(f"\n==================== COURSE ID {c.id}: {c.title} ====================")
-            res_d = await db.execute(select(CourseDay).where(CourseDay.course_id == c.id).order_by(CourseDay.day_number))
-            days = res_d.scalars().all()
-            for d in days:
-                res_u = await db.execute(select(LearningUnit).where(LearningUnit.day_id == d.id))
-                units = res_u.scalars().all()
-                unit_titles = [u.title for u in units]
-                print(f" Day {d.day_number:<2} (ID {d.id}): {d.title:<35} | Units: {unit_titles[:3]}")
+            print(f"Course ID={c.id}, Title='{c.title}'")
+
+        days = (await db.execute(select(CourseDay).order_by(CourseDay.day_number))).scalars().all()
+        print(f"\n=== COURSE DAYS ({len(days)}) ===")
+        for d in days:
+            units = (await db.execute(select(LearningUnit).where(LearningUnit.day_id == d.id))).scalars().all()
+            assignments = (await db.execute(select(Assignment).where(Assignment.course_day_id == d.id))).scalars().all()
+            unit_titles = [u.title for u in units]
+            asg_titles = [f"{a.id}:{a.title} ({a.assignment_type.value if hasattr(a.assignment_type, 'value') else a.assignment_type})" for a in assignments]
+            print(f"Day {d.day_number} (ID={d.id}): {d.title}")
+            print(f"  Units ({len(units)}): {unit_titles}")
+            print(f"  Assignments ({len(assignments)}): {asg_titles}")
 
 if __name__ == "__main__":
-    asyncio.run(inspect_days())
+    asyncio.run(inspect())
