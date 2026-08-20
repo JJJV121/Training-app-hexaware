@@ -41,5 +41,14 @@ from app.models.gamification import (
     UserBadge,
     XPLog,
 )
-
-
+from app.models.assessment import (
+    Assessment,
+    AssessmentQuestion,
+    AssessmentOption,
+    AssessmentAttempt,
+    AssessmentAnswer,
+    ProctoringEvent,
+    AssessmentType,
+    QuestionType,
+    AttemptStatus,
+)

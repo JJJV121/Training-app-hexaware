@@ -10,6 +10,19 @@ export const assignmentService = {
     return response.data;
   },
 
+  async getAssignmentQuestions(assignmentId) {
+    const response = await apiClient.get(`/assignments/${assignmentId}/questions`);
+    return response.data;
+  },
+
+  async submitAssignmentAnswers(assignmentId, answers, userId) {
+    const response = await apiClient.post(`/assignments/${assignmentId}/submit-answers`, {
+      user_id: userId,
+      answers: answers
+    });
+    return response.data;
+  },
+
   async getMySubmissions() {
     const response = await apiClient.get('/assignments/trainee/my-submissions');
     return response.data;

@@ -166,7 +166,9 @@ app.include_router(messaging_router)
 from app.routers.gamification_router import router as gamification_router
 app.include_router(gamification_router)
 
-
+# Proctored Assessment Router
+from app.routers.proctored_assessment_router import router as proctored_assessment_router
+app.include_router(proctored_assessment_router)
 
 
 # --------------------------------------------------

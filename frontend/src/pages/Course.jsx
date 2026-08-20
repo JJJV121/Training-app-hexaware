@@ -4,6 +4,7 @@ import dashboardService from '../services/dashboardService';
 import Icon from '../components/Icon';
 import '../styles/Course.css';
 import Assignment from '../components/Assignment.jsx'
+import ProctoredTestView from './ProctoredTestView';
 import { qaService } from '../services/qaService';
 import { caseStudyService } from '../services/caseStudyService';
 
@@ -62,11 +63,9 @@ const isDayFullyCompleted = (dayId) => {
 
 const getActiveDayDbId = () => {
   if (!course || !course.modules) return null;
-  if (selectedLesson && selectedLesson.dayId) {
-    return selectedLesson.dayId;
-  }
-  const mod = course.modules.find(m => m.dayNumber === expandedDay) || course.modules.find(m => m.id === expandedDay);
-  return mod ? mod.id : null;
+  const activeDayNumber = selectedLesson?.dayId || expandedDay || currentUnlockedDay;
+  const mod = course.modules.find(m => Number(m.dayNumber) === Number(activeDayNumber)) || course.modules.find(m => Number(m.id) === Number(activeDayNumber));
+  return mod ? mod.id : activeDayNumber;
 };
 
 const activeDayDbId = getActiveDayDbId();
@@ -244,7 +243,9 @@ setCompletedLessons(prev => {
   // Launch Dynamic Video Player & Initialize Playlist
   const handleLaunchVideoPlayer = async (lesson, fallbackTab = 'Videos') => {
     setSelectedLesson(lesson);
-    setActiveHorizontalTab(fallbackTab);
+    const titleLower = (lesson?.title || '').toLowerCase();
+    const isAssignmentUnit = titleLower.includes('assignment') || titleLower.includes('q&a');
+    setActiveHorizontalTab(isAssignmentUnit ? 'Assignment' : fallbackTab);
     setSubView('player');
     setUnitVideos([]); 
     setCurrentVideoUrl('');
@@ -346,8 +347,6 @@ const handleSeeking = (e) => {
   if (error) return <div className="course-viewport-centered-fallback"><h3 className="error-headline-text">{error}</h3></div>;
   if (!course) return null; 
 
-  const activeAssignmentDayId = selectedLesson?.dayId || expandedDay || currentUnlockedDay;
-
   if (subView === 'outline') {
     return (
       <div className="course-main-viewport">
@@ -419,7 +418,39 @@ const handleSeeking = (e) => {
                         </span>
                       </div>
                     </div>
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {!isLocked && (![1, 2, 16].includes(Number(module.id)) && ![1, 2, 16].includes(Number(module.dayNumber))) && (
+                        <button
+                          className="action-pill-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedDay(module.id);
+                            const firstLesson = module.lessons && module.lessons[0];
+                            if (firstLesson) {
+                              handleLaunchVideoPlayer(firstLesson, 'Assignment');
+                            } else {
+                              setSubView('player');
+                              setActiveHorizontalTab('Assignment');
+                            }
+                          }}
+                          style={{
+                            padding: '6px 14px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            backgroundColor: '#2563eb',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Icon name="file-text" style={{ width: '14px', height: '14px' }} />
+                          <span>Assignment</span>
+                        </button>
+                      )}
                       {isLocked ? <Icon name="lock" style={{ color: 'var(--text-light)' }} /> : <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} style={{ color: 'var(--primary-blue)' }} />}
                     </div>
                   </div>
@@ -462,30 +493,56 @@ const handleSeeking = (e) => {
                                 </h4>
                                 <span className="lesson-row-duration">{lesson.duration}</span>
                                 <div className="lesson-row-action-row">
-                                  <button 
-                                    className="action-pill-btn variant-blue-play" 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (!isLessonLocked) handleLaunchVideoPlayer(lesson, 'Videos');
-                                    }}
-                                    disabled={isLessonLocked}
-                                    style={{ opacity: isLessonLocked ? 0.6 : 1 }}
-                                  >
-                                    <Icon name={isLessonLocked ? "lock" : "play"} style={{ fill: isLessonLocked ? 'transparent' : '#ffffff', marginRight: '4px' }} />
-                                    <span>Videos</span>
-                                  </button>
-                                  <button 
-                                    className="variant-secondary-notes" 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (!isLessonLocked) handleLaunchVideoPlayer(lesson, 'Notes');
-                                    }}
-                                    disabled={isLessonLocked}
-                                    style={{ opacity: isLessonLocked ? 0.6 : 1 }}
-                                  >
-                                    <Icon name="file-text" style={{ marginRight: '4px', width: '14px', height: '14px' }} />
-                                    <span>Notes</span>
-                                  </button>
+                                  {(() => {
+                                    const titleLower = (lesson.title || '').toLowerCase();
+                                    const isAssignmentUnit = titleLower.includes('assignment') || titleLower.includes('q&a');
+
+                                    if (isAssignmentUnit) {
+                                      return (
+                                        <button 
+                                          className="action-pill-btn variant-blue-play" 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isLessonLocked) handleLaunchVideoPlayer(lesson, 'Assignment');
+                                          }}
+                                          disabled={isLessonLocked}
+                                          style={{ opacity: isLessonLocked ? 0.6 : 1, backgroundColor: '#2563eb' }}
+                                        >
+                                          <Icon name="file-text" style={{ marginRight: '6px', width: '14px', height: '14px' }} />
+                                          <span>Assignment (3 Questions)</span>
+                                        </button>
+                                      );
+                                    }
+
+                                    return (
+                                      <>
+                                        <button 
+                                          className="action-pill-btn variant-blue-play" 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isLessonLocked) handleLaunchVideoPlayer(lesson, 'Videos');
+                                          }}
+                                          disabled={isLessonLocked}
+                                          style={{ opacity: isLessonLocked ? 0.6 : 1 }}
+                                        >
+                                          <Icon name={isLessonLocked ? "lock" : "play"} style={{ fill: isLessonLocked ? 'transparent' : '#ffffff', marginRight: '4px' }} />
+                                          <span>Videos</span>
+                                        </button>
+                                        <button 
+                                          className="variant-secondary-notes" 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isLessonLocked) handleLaunchVideoPlayer(lesson, 'Notes');
+                                          }}
+                                          disabled={isLessonLocked}
+                                          style={{ opacity: isLessonLocked ? 0.6 : 1 }}
+                                        >
+                                          <Icon name="file-text" style={{ marginRight: '4px', width: '14px', height: '14px' }} />
+                                          <span>Notes</span>
+                                        </button>
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               <div className="lesson-row-checkbox-right">
@@ -562,7 +619,7 @@ const handleSeeking = (e) => {
     <div className="course-main-viewport">
       <div className="video-workspace-banner">
         <button className="video-banner-back-btn" onClick={() => setSubView('outline')}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"></polyline></svg>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="15 18 9 12 15 6"></polyline></svg>
           Back to Course
         </button>
         <h2 className="video-banner-title">{course.title}</h2>
@@ -570,36 +627,32 @@ const handleSeeking = (e) => {
       </div>
 
       <div className="course-workspace-scroll-area">
-        <div className="video-media-frame-wrapper">
-          <div className="video-playback-screen-canvas">
-            {currentVideoUrl ? (
-              <video
-              key={currentVideoUrl}
-              controls
-              className="dashboard-active-video-element"
-              autoPlay
-              onEnded={handleVideoComplete}
-              onTimeUpdate={handleTimeUpdate}
-              onSeeking={handleSeeking}
-              controlsList="nodownload"
-              disablePictureInPicture
-              style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
-              >
-                <source src={currentVideoUrl} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-            ) : (
-              <div style={{ color: '#94a3b8', display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                <p>No video streaming paths found.</p>
-              </div>
-            )}
+        {unitVideos.length > 0 && activeHorizontalTab !== 'Assignment' && (
+          <div className="video-media-frame-wrapper">
+            <div className="video-playback-screen-canvas">
+              {currentVideoUrl && (
+                <video
+                key={currentVideoUrl}
+                controls
+                className="dashboard-active-video-element"
+                autoPlay
+                onEnded={handleVideoComplete}
+                onTimeUpdate={handleTimeUpdate}
+                onSeeking={handleSeeking}
+                controlsList="nodownload"
+                disablePictureInPicture
+                style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
+                >
+                  <source src={currentVideoUrl} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              )}
+            </div>
           </div>
-
-          
-        </div>
+        )}
 
         <div className="video-content-horizontal-nav-row">
-          {['Videos', 'Notes', 'Assignment', 'Quiz', 'Case Studies'].map((tabName) => (
+          {['Videos', 'Notes', 'Assignment', 'Proctored Assessment', 'Quiz', 'Case Studies'].map((tabName) => (
             <button key={tabName} onClick={() => setActiveHorizontalTab(tabName)} className={`video-horizontal-nav-item ${activeHorizontalTab === tabName ? 'active-nav-pill' : ''}`}>{tabName}</button>
           ))}
         </div>
@@ -619,6 +672,13 @@ const handleSeeking = (e) => {
               courseDayId={activeDayDbId}
               userId={userId}
               isUnlocked={expandedDay <= currentUnlockedDay}
+              onBackToCourse={() => setSubView('outline')}
+            />
+          )}
+          {activeHorizontalTab === 'Proctored Assessment' && (
+            <ProctoredTestView
+              courseDayId={activeDayDbId}
+              onBack={() => setSubView('outline')}
             />
           )}
           {activeHorizontalTab === 'Quiz' && (
