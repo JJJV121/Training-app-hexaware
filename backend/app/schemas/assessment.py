@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
 
 
 # ----------------------------------------------------
@@ -14,15 +15,27 @@ class OptionTraineeView(BaseModel):
 
 
 # ----------------------------------------------------
-# Trainee-Safe Question Schema (NO correct answer or explanation)
+# Trainee-Safe Question Schema (NO solution / expected answer key leakage)
 # ----------------------------------------------------
 class QuestionTraineeView(BaseModel):
     question_id: int
     question_number: int
     question_text: str
-    question_type: str  # "mcq", "msq", "true_false", "text"
+    question_type: str  # "mcq", "msq", "true_false", "text", "coding"
     points: int = 1
-    options: list[OptionTraineeView] = []
+    options: List[OptionTraineeView] = []
+
+    # Coding problem trainee fields
+    title: Optional[str] = None
+    input_format: Optional[str] = None
+    output_format: Optional[str] = None
+    constraints: Optional[str] = None
+    sample_input: Optional[str] = None
+    sample_output: Optional[str] = None
+    difficulty: Optional[str] = "Medium"
+    allowed_language: Optional[str] = "python"
+    starter_code: Optional[str] = None
+    test_cases: Optional[List[Dict[str, Any]]] = []  # Non-hidden sample test cases only
 
     class Config:
         from_attributes = True
@@ -33,15 +46,15 @@ class QuestionTraineeView(BaseModel):
 # ----------------------------------------------------
 class ProctoredAssessmentTraineeResponse(BaseModel):
     assessment_id: int
-    attempt_id: int | None = None
-    test_name: str  # course_day_topic e.g. Python_Day_03_Functions
+    attempt_id: Optional[int] = None
+    test_name: str  # course_day_topic e.g. Python_Day_03_Palindromes
     course: str
     day: int
     topic: str
     duration_minutes: int
     total_marks: int
     passing_marks: int
-    questions: list[QuestionTraineeView]
+    questions: List[QuestionTraineeView]
 
 
 # ----------------------------------------------------
@@ -62,9 +75,9 @@ class AttemptResponse(BaseModel):
     status: str  # "in_progress", "submitted", "expired"
     started_at: datetime
     expires_at: datetime
-    submitted_at: datetime | None = None
+    submitted_at: Optional[datetime] = None
     current_question: int = 0
-    saved_answers: dict = {}  # { question_id: { selected_option_ids: [...], answer_text: "..." } }
+    saved_answers: Dict[Any, Any] = {}  # { question_id: { selected_option_ids: [...], answer_text: "...", code: "...", language: "..." } }
     remaining_seconds: int
 
 
@@ -72,9 +85,29 @@ class AttemptResponse(BaseModel):
 # Auto-Save Answer Payload
 # ----------------------------------------------------
 class SaveAnswerRequest(BaseModel):
-    selected_option_ids: list[int] | None = None
-    answer_text: str | None = None
-    current_question_index: int | None = None
+    selected_option_ids: Optional[List[int]] = None
+    answer_text: Optional[str] = None
+    code: Optional[str] = None
+    language: Optional[str] = None
+    current_question_index: Optional[int] = None
+
+
+# ----------------------------------------------------
+# Run Code Payload & Response
+# ----------------------------------------------------
+class RunCodeRequest(BaseModel):
+    question_id: int
+    language: str
+    code: str
+
+
+class RunCodeResponse(BaseModel):
+    status: str  # "passed", "wrong_answer", "compilation_error", "runtime_error", "time_limit_exceeded"
+    passed_tests: int
+    total_tests: int
+    output: str
+    execution_time: float = 0.0
+    test_results: Optional[List[Dict[str, Any]]] = []
 
 
 # ----------------------------------------------------
@@ -82,8 +115,23 @@ class SaveAnswerRequest(BaseModel):
 # ----------------------------------------------------
 class ProctoringEventRequest(BaseModel):
     event_type: str  # "TAB_SWITCH", "VISIBILITY_CHANGE", "FULLSCREEN_EXIT", "CAMERA_DISABLED"
-    timestamp: str | None = None
-    metadata: dict | None = None
+    timestamp: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+# ----------------------------------------------------
+# Submission Request Payload
+# ----------------------------------------------------
+class SubmitAnswerItem(BaseModel):
+    question_id: int
+    language: Optional[str] = None
+    code: Optional[str] = None
+    selected_option_ids: Optional[List[int]] = None
+    answer_text: Optional[str] = None
+
+
+class SubmitAttemptRequest(BaseModel):
+    answers: Optional[List[SubmitAnswerItem]] = None
 
 
 # ----------------------------------------------------

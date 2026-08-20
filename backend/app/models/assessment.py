@@ -101,6 +101,18 @@ class AssessmentQuestion(Base):
     points: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Coding question attributes
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    input_format: Mapped[str | None] = mapped_column(Text, nullable=True)
+    output_format: Mapped[str | None] = mapped_column(Text, nullable=True)
+    constraints: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sample_input: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sample_output: Mapped[str | None] = mapped_column(Text, nullable=True)
+    difficulty: Mapped[str | None] = mapped_column(String(50), default="Medium", nullable=True)
+    allowed_language: Mapped[str | None] = mapped_column(String(100), default="python", nullable=True)
+    starter_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    test_cases: Mapped[list | dict | None] = mapped_column(JSON, nullable=True)
+
     assessment: Mapped["Assessment"] = relationship("Assessment", back_populates="questions")
     options: Mapped[list["AssessmentOption"]] = relationship(
         "AssessmentOption",
@@ -176,6 +188,15 @@ class AssessmentAnswer(Base):
     )
     selected_option_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
     answer_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Coding answer attributes
+    language: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    execution_time: Mapped[float | None] = mapped_column(Float, nullable=True)
+    passed_test_cases: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_test_cases: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     score_obtained: Mapped[float | None] = mapped_column(Float, nullable=True)
     answered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

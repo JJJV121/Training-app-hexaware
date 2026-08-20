@@ -18,27 +18,126 @@ from app.models.assessment import (
     QuestionType,
     AttemptStatus,
 )
-from app.services.mcq_generator_service import generate_25_mcqs_for_day
+from app.services.code_execution_service import execute_code_against_testcases
+from app.database.seed_data.training_plan_questions import TRAINING_PLAN_QUESTIONS
 
 
 def sanitize_name(name: str) -> str:
-    """Format string cleanly for test_name e.g. Python_Day_03_Functions"""
+    """Format string cleanly for test_name e.g. Python_Day_3_Palindromes"""
     if not name:
-        return ""
+        return "Assessment"
     cleaned = name.strip().replace(" ", "_")
+    # Clean special characters
+    cleaned = "".join([c if (c.isalnum() or c == "_") else "" for c in cleaned])
     return cleaned
+
+
+def get_default_coding_questions_for_day(day_number: int, topic_title: str) -> list[dict]:
+    """Generates standard coding questions with problem statement, constraints, sample inputs, starter code & test cases."""
+    # Check if pre-configured in training plan seed data
+    if day_number in TRAINING_PLAN_QUESTIONS:
+        seed_questions = TRAINING_PLAN_QUESTIONS[day_number]
+        formatted = []
+        for q in seed_questions:
+            formatted.append({
+                "title": q.get("title", f"{topic_title} Challenge"),
+                "question_text": q.get("problem_statement", ""),
+                "input_format": q.get("input_format", "Standard Input"),
+                "output_format": q.get("output_format", "Standard Output"),
+                "constraints": q.get("constraints", "1 <= N <= 1000"),
+                "sample_input": q.get("sample_input", "10"),
+                "sample_output": q.get("sample_output", "55"),
+                "explanation": q.get("explanation", ""),
+                "allowed_language": q.get("language", "python"),
+                "starter_code": q.get("starter_code", "def solution():\n    # Write your code here\n    pass"),
+                "test_cases": q.get("test_cases", []),
+                "points": 33
+            })
+        return formatted
+
+    # Default Coding Question Set (Python / DSA / General Coding)
+    return [
+        {
+            "title": f"{topic_title} - Palindrome & String Processing",
+            "question_text": (
+                "In the magical kingdom of Numaria, two friends Lara and Kian are practicing for the annual Numbers Festival.\n"
+                "They count numbers from 1 up to a given number N and say special words based on the divisibility of those numbers:\n\n"
+                "• If the number is divisible by 3 only, they say 'Fizz'.\n"
+                "• If the number is divisible by 5 only, they say 'Buzz'.\n"
+                "• If divisible by both 3 and 5, they say 'FizzBuzz'.\n\n"
+                "However, if the number is prime (e.g. 2, 3, 5, 7), they say the number itself, regardless of the divisibility rule.\n"
+                "Your task is to help them list out what they should say for all numbers from 1 to N."
+            ),
+            "input_format": "The first line contains an integer N, representing the count of numbers to be processed.",
+            "output_format": "Print all required words/numbers from 1 to N, separated by a comma and a space (', ').",
+            "constraints": "1 <= N <= 1600\nChecking for primes should be efficient.",
+            "sample_input": "10",
+            "sample_output": "1, 2, 3, 4, 5, Fizz, 7, 8, Fizz, Buzz",
+            "explanation": "2, 3, 5, 7 are primes -> printed as is. 6 and 9 are multiples of 3 only -> 'Fizz'. 10 is divisible by 5 only -> 'Buzz'.",
+            "allowed_language": "python",
+            "starter_code": "def solution(n):\n    # Write your Python code here\n    pass\n\nif __name__ == '__main__':\n    n = int(input().strip())\n    print(solution(n))",
+            "test_cases": [
+                {"id": 1, "input": "10", "expected_output": "1, 2, 3, 4, 5, Fizz, 7, 8, Fizz, Buzz", "is_hidden": False},
+                {"id": 2, "input": "5", "expected_output": "1, 2, 3, 4, 5", "is_hidden": False},
+                {"id": 3, "input": "15", "expected_output": "1, 2, 3, 4, 5, Fizz, 7, 8, Fizz, Buzz, 11, Fizz, 13, 14, FizzBuzz", "is_hidden": True},
+                {"id": 4, "input": "1", "expected_output": "1", "is_hidden": True},
+                {"id": 5, "input": "20", "expected_output": "1, 2, 3, 4, 5, Fizz, 7, 8, Fizz, Buzz, 11, Fizz, 13, 14, FizzBuzz, 16, 17, Fizz, 19, Buzz", "is_hidden": True}
+            ],
+            "points": 35
+        },
+        {
+            "title": f"{topic_title} - Two Sum & Target Search",
+            "question_text": (
+                "Given an array of integers nums and an integer target, find two numbers such that they add up to target.\n"
+                "Return the 0-based indices of the two numbers in ascending order."
+            ),
+            "input_format": "First line contains array nums separated by spaces. Second line contains target.",
+            "output_format": "Print the two indices separated by space.",
+            "constraints": "2 <= nums.length <= 10^4\n-10^9 <= target <= 10^9",
+            "sample_input": "2 7 11 15\n9",
+            "sample_output": "0 1",
+            "explanation": "nums[0] + nums[1] = 2 + 7 = 9. Thus output is 0 1.",
+            "allowed_language": "python",
+            "starter_code": "def two_sum(nums, target):\n    # Write code here\n    pass",
+            "test_cases": [
+                {"id": 1, "input": "2 7 11 15\n9", "expected_output": "0 1", "is_hidden": False},
+                {"id": 2, "input": "3 2 4\n6", "expected_output": "1 2", "is_hidden": False},
+                {"id": 3, "input": "3 3\n6", "expected_output": "0 1", "is_hidden": True},
+                {"id": 4, "input": "-1 -2 -3 -4 -5\n-8", "expected_output": "2 4", "is_hidden": True}
+            ],
+            "points": 35
+        },
+        {
+            "title": f"{topic_title} - Valid Parentheses Validation",
+            "question_text": (
+                "Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.\n"
+                "An input string is valid if open brackets are closed by the same type of brackets in the correct order."
+            ),
+            "input_format": "A single string s containing parentheses.",
+            "output_format": "Print True if valid, False otherwise.",
+            "constraints": "1 <= s.length <= 10^4",
+            "sample_input": "()[]{}",
+            "sample_output": "True",
+            "explanation": "All opened brackets are closed in proper order.",
+            "allowed_language": "python",
+            "starter_code": "def isValid(s):\n    # Write your code here\n    pass",
+            "test_cases": [
+                {"id": 1, "input": "()[]{}", "expected_output": "True", "is_hidden": False},
+                {"id": 2, "input": "(]", "expected_output": "False", "is_hidden": False},
+                {"id": 3, "input": "{[]}", "expected_output": "True", "is_hidden": True},
+                {"id": 4, "input": "([)]", "expected_output": "False", "is_hidden": True}
+            ],
+            "points": 30
+        }
+    ]
 
 
 async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> Assessment:
     """
-    Retrieves or generates a proctored assessment for a given course day.
-    Name format: course_day_topic e.g. Python_Day_03_Functions
+    Retrieves or generates a proctored coding assessment for a given course day.
+    Name format: course_day_topic e.g. Python_Day_3_Palindromes
     """
-    # Fetch course_day and parent course
-    day_stmt = (
-        select(CourseDay)
-        .where(CourseDay.id == course_day_id)
-    )
+    day_stmt = select(CourseDay).where(CourseDay.id == course_day_id)
     day_res = await db.execute(day_stmt)
     course_day = day_res.scalar_one_or_none()
 
@@ -50,7 +149,6 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
     course = course_res.scalar_one_or_none()
     course_name = course.title if course else "Course"
 
-    # Fetch first unit/topic title if available
     unit_stmt = (
         select(LearningUnit)
         .where(LearningUnit.day_id == course_day_id)
@@ -60,11 +158,10 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
     units = unit_res.scalars().all()
     topic_title = units[0].title if units else course_day.title
 
-    # Form dynamic test title in required format: course_day_topic
-    day_str = f"Day_{course_day.day_number:02d}"
-    test_title = f"{sanitize_name(course_name)}_{day_str}_{sanitize_name(topic_title)}"
+    # Required Title Format: course_day_topic e.g. Python_Day_3_Palindromes
+    day_num = course_day.day_number
+    test_title = f"{sanitize_name(course_name)}_Day_{day_num}_{sanitize_name(topic_title)}"
 
-    # Check for existing assessment
     stmt = (
         select(Assessment)
         .options(
@@ -79,108 +176,50 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
         assessment = Assessment(
             course_day_id=course_day_id,
             title=test_title,
-            description=f"Proctored skill assessment for {course_day.title}",
-            instructions="Maintain full screen. Complete all questions before submitting.",
+            description=f"Proctored coding skill assessment for {course_day.title}",
+            instructions="Maintain full screen. Write working code for all questions.",
             created_by=1,
-            assessment_type="MCQ",
-            duration_minutes=30,
+            assessment_type="CODING",
+            duration_minutes=60,
             total_marks=100,
             passing_marks=70,
         )
         db.add(assessment)
         await db.flush()
+    else:
+        # Update title if needed to enforce course_day_topic
+        if assessment.title != test_title:
+            assessment.title = test_title
+            await db.flush()
 
-    # Ensure questions exist
+    # Ensure coding questions exist
     q_check_stmt = select(AssessmentQuestion).where(AssessmentQuestion.assessment_id == assessment.id)
     q_check_res = await db.execute(q_check_stmt)
     existing_questions = q_check_res.scalars().all()
 
     if not existing_questions:
-        generated_mcqs = generate_25_mcqs_for_day(
-            course_title=course_name,
-            day_title=course_day.title,
-            day_description=course_day.description or ""
-        )
+        coding_q_list = get_default_coding_questions_for_day(course_day.day_number, topic_title)
 
-        # Build 20 questions covering MCQ, MSQ, True/False, Text
-        q_count = 0
-        for i, item in enumerate(generated_mcqs[:20], start=1):
-            q_count += 1
-            # Determine question type variation
-            if i % 7 == 0:
-                q_type = QuestionType.TEXT.value
-                question_obj = AssessmentQuestion(
-                    assessment_id=assessment.id,
-                    question_number=i,
-                    question_text=item["question"],
-                    question_type=q_type,
-                    points=5,
-                    explanation=item.get("explanation", "")
-                )
-                db.add(question_obj)
-            elif i % 5 == 0:
-                q_type = QuestionType.TRUE_FALSE.value
-                question_obj = AssessmentQuestion(
-                    assessment_id=assessment.id,
-                    question_number=i,
-                    question_text=f"True or False: {item['question']}",
-                    question_type=q_type,
-                    points=5,
-                    explanation=item.get("explanation", "")
-                )
-                db.add(question_obj)
-                await db.flush()
-
-                # Add True and False options
-                tf_options = [
-                    AssessmentOption(question_id=question_obj.id, option_text="True", is_correct=(item.get("correct_index", 0) % 2 == 0)),
-                    AssessmentOption(question_id=question_obj.id, option_text="False", is_correct=(item.get("correct_index", 0) % 2 != 0))
-                ]
-                db.add_all(tf_options)
-            elif i % 4 == 0:
-                q_type = QuestionType.MSQ.value
-                question_obj = AssessmentQuestion(
-                    assessment_id=assessment.id,
-                    question_number=i,
-                    question_text=f"{item['question']} (Select all correct options)",
-                    question_type=q_type,
-                    points=5,
-                    explanation=item.get("explanation", "")
-                )
-                db.add(question_obj)
-                await db.flush()
-
-                correct_idx = item.get("correct_index", 0)
-                for opt_idx, opt_text in enumerate(item.get("options", [])):
-                    # Make two options correct for MSQ
-                    is_corr = (opt_idx == correct_idx) or (opt_idx == (correct_idx + 1) % len(item.get("options", [1])))
-                    opt_obj = AssessmentOption(
-                        question_id=question_obj.id,
-                        option_text=opt_text,
-                        is_correct=is_corr
-                    )
-                    db.add(opt_obj)
-            else:
-                q_type = QuestionType.MCQ.value
-                question_obj = AssessmentQuestion(
-                    assessment_id=assessment.id,
-                    question_number=i,
-                    question_text=item["question"],
-                    question_type=q_type,
-                    points=5,
-                    explanation=item.get("explanation", "")
-                )
-                db.add(question_obj)
-                await db.flush()
-
-                correct_idx = item.get("correct_index", 0)
-                for opt_idx, opt_text in enumerate(item.get("options", [])):
-                    opt_obj = AssessmentOption(
-                        question_id=question_obj.id,
-                        option_text=opt_text,
-                        is_correct=(opt_idx == correct_idx)
-                    )
-                    db.add(opt_obj)
+        for i, q_data in enumerate(coding_q_list, start=1):
+            question_obj = AssessmentQuestion(
+                assessment_id=assessment.id,
+                question_number=i,
+                question_text=q_data["question_text"],
+                question_type="coding",
+                points=q_data.get("points", 33),
+                title=q_data["title"],
+                input_format=q_data.get("input_format", ""),
+                output_format=q_data.get("output_format", ""),
+                constraints=q_data.get("constraints", ""),
+                sample_input=q_data.get("sample_input", ""),
+                sample_output=q_data.get("sample_output", ""),
+                difficulty="Medium",
+                allowed_language=q_data.get("allowed_language", "python"),
+                starter_code=q_data.get("starter_code", "def solution():\n    pass"),
+                test_cases=q_data.get("test_cases", []),
+                explanation=q_data.get("explanation", "")
+            )
+            db.add(question_obj)
 
         await db.commit()
 
@@ -196,7 +235,7 @@ async def get_proctored_assessment_trainee_view(
 ) -> dict:
     """
     Returns trainee-safe assessment details.
-    STRIPS ALL correct answers, answer keys, explanations, and solution details.
+    STRIPS ALL correct solution answers and hidden test case outputs.
     """
     stmt = (
         select(Assessment)
@@ -211,7 +250,6 @@ async def get_proctored_assessment_trainee_view(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")
 
-    # Get course, day, topic info
     course_name = "Course"
     day_number = 1
     topic_name = "Topic"
@@ -231,19 +269,43 @@ async def get_proctored_assessment_trainee_view(
 
     test_name = assessment.title
 
-    # Build trainee-safe questions (NO is_correct, NO explanation)
+    # Build trainee-safe questions (no solution leak, non-hidden test cases only)
     questions_list = []
     for q in assessment.questions:
         options_list = [
             {"id": opt.id, "text": opt.option_text}
             for opt in q.options
         ]
+
+        # Strip expected output for hidden test cases
+        trainee_test_cases = []
+        raw_test_cases = q.test_cases or []
+        for tc in raw_test_cases:
+            if isinstance(tc, dict):
+                is_hidden = tc.get("is_hidden", False)
+                trainee_test_cases.append({
+                    "id": tc.get("id"),
+                    "input": tc.get("input") or tc.get("input_data"),
+                    "expected_output": tc.get("expected_output") if not is_hidden else None,
+                    "is_hidden": is_hidden
+                })
+
         questions_list.append({
             "question_id": q.id,
             "question_number": q.question_number,
             "question_text": q.question_text,
-            "question_type": q.question_type,
+            "question_type": q.question_type or "coding",
             "points": q.points,
+            "title": q.title or f"Question {q.question_number}",
+            "input_format": q.input_format or "",
+            "output_format": q.output_format or "",
+            "constraints": q.constraints or "",
+            "sample_input": q.sample_input or "",
+            "sample_output": q.sample_output or "",
+            "difficulty": q.difficulty or "Medium",
+            "allowed_language": q.allowed_language or "python",
+            "starter_code": q.starter_code or "def solution():\n    # Write your code here\n    pass",
+            "test_cases": trainee_test_cases,
             "options": options_list
         })
 
@@ -282,7 +344,6 @@ async def create_or_get_active_attempt(
     Creates or retrieves active assessment attempt for trainee.
     Enforces server-side timer calculations and state restoration on page refresh.
     """
-    # 1. Fetch Assessment
     stmt = select(Assessment).where(Assessment.id == assessment_id)
     res = await db.execute(stmt)
     assessment = res.scalar_one_or_none()
@@ -290,7 +351,6 @@ async def create_or_get_active_attempt(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")
 
-    # 2. Check existing active attempt
     att_stmt = (
         select(AssessmentAttempt)
         .options(selectinload(AssessmentAttempt.answers))
@@ -308,13 +368,11 @@ async def create_or_get_active_attempt(
     now = datetime.utcnow()
 
     if attempt:
-        # Check server-side expiration
         if now > attempt.expires_at:
             attempt.status = AttemptStatus.EXPIRED.value
             await db.commit()
             raise HTTPException(status_code=400, detail="Your assessment attempt has expired.")
     else:
-        # Check if already submitted
         sub_stmt = (
             select(AssessmentAttempt)
             .where(
@@ -328,9 +386,9 @@ async def create_or_get_active_attempt(
         sub_res = await db.execute(sub_stmt)
         sub_attempt = sub_res.scalar_one_or_none()
         if sub_attempt:
-            raise HTTPException(status_code=400, detail="This assessment has already been submitted.")
+            # Re-fetch results for completed attempt
+            return await submit_attempt(db, sub_attempt.id, user_id)
 
-        # Create new attempt
         expires_at = now + timedelta(minutes=assessment.duration_minutes)
         attempt = AssessmentAttempt(
             user_id=user_id,
@@ -345,22 +403,22 @@ async def create_or_get_active_attempt(
         await db.commit()
         await db.refresh(attempt)
 
-        # Reload with answers
         att_res = await db.execute(att_stmt)
         attempt = att_res.scalar_one_or_none()
 
-    # Retrieve saved answers
+    # Retrieve saved answers (MCQ & Coding)
     saved_answers = {}
     if attempt and attempt.answers:
         for ans in attempt.answers:
             saved_answers[ans.question_id] = {
                 "selected_option_ids": ans.selected_option_ids or [],
-                "answer_text": ans.answer_text or ""
+                "answer_text": ans.answer_text or "",
+                "code": ans.code or "",
+                "language": ans.language or "python",
+                "status": ans.status or "Attempted"
             }
 
     remaining_sec = max(0, int((attempt.expires_at - now).total_seconds()))
-
-    # Build test details
     trainee_view = await get_proctored_assessment_trainee_view(db, assessment_id, user_id)
 
     return {
@@ -388,10 +446,12 @@ async def save_answer(
     user_id: int,
     selected_option_ids: list[int] | None = None,
     answer_text: str | None = None,
+    code: str | None = None,
+    language: str | None = None,
     current_question_index: int | None = None
 ):
     """
-    Dynamically auto-saves candidate answers for an active test attempt.
+    Dynamically auto-saves candidate answers (MCQ or Coding) for an active attempt.
     """
     stmt = (
         select(AssessmentAttempt)
@@ -416,11 +476,9 @@ async def save_answer(
         await db.commit()
         raise HTTPException(status_code=400, detail="Assessment time has expired.")
 
-    # Update current question index if provided
     if current_question_index is not None:
         attempt.current_question = current_question_index
 
-    # Find or create answer
     ans_stmt = (
         select(AssessmentAnswer)
         .where(
@@ -439,6 +497,9 @@ async def save_answer(
             question_id=question_id,
             selected_option_ids=selected_option_ids or [],
             answer_text=answer_text or "",
+            code=code or "",
+            language=language or "python",
+            status="Attempted" if (code or selected_option_ids or answer_text) else "Not Attempted",
             answered_at=datetime.utcnow()
         )
         db.add(answer)
@@ -447,6 +508,11 @@ async def save_answer(
             answer.selected_option_ids = selected_option_ids
         if answer_text is not None:
             answer.answer_text = answer_text
+        if code is not None:
+            answer.code = code
+        if language is not None:
+            answer.language = language
+        answer.status = "Attempted" if (answer.code or answer.selected_option_ids or answer.answer_text) else "Not Attempted"
         answer.answered_at = datetime.utcnow()
 
     await db.commit()
@@ -461,9 +527,6 @@ async def record_proctoring_event(
     timestamp: str | None = None,
     metadata_json: dict | None = None
 ):
-    """
-    Logs proctoring events (TAB_SWITCH, VISIBILITY_CHANGE, FULLSCREEN_EXIT, etc.).
-    """
     stmt = (
         select(AssessmentAttempt)
         .where(
@@ -492,8 +555,9 @@ async def record_proctoring_event(
 
 async def submit_attempt(db: AsyncSession, attempt_id: int, user_id: int) -> dict:
     """
-    Submits and server-side evaluates test attempt.
-    Locks attempt against further answer updates. Frontend NEVER calculates official score.
+    Submits and evaluates all questions server-side.
+    Executes code against hidden & sample test cases.
+    Locks attempt against further answer updates.
     """
     stmt = (
         select(AssessmentAttempt)
@@ -517,9 +581,8 @@ async def submit_attempt(db: AsyncSession, attempt_id: int, user_id: int) -> dic
         raise HTTPException(status_code=404, detail="Assessment attempt not found.")
 
     if attempt.status == AttemptStatus.SUBMITTED.value:
-        # Return existing submission result
         trainee_view = await get_proctored_assessment_trainee_view(db, attempt.assessment_id, user_id)
-        answered_cnt = len([a for a in attempt.answers if (a.selected_option_ids or a.answer_text)])
+        answered_cnt = len([a for a in attempt.answers if (a.selected_option_ids or a.answer_text or a.code)])
         total_q = len(attempt.assessment.questions)
         return {
             "attempt_id": attempt.id,
@@ -538,48 +601,65 @@ async def submit_attempt(db: AsyncSession, attempt_id: int, user_id: int) -> dic
             "submitted_at": attempt.submitted_at or datetime.utcnow()
         }
 
-    # Evaluate answers server-side against database `is_correct` flags
+    # Evaluate answers server-side
     answers_map = {ans.question_id: ans for ans in attempt.answers}
     total_score = 0.0
     total_possible_marks = 0.0
     answered_count = 0
 
     for question in attempt.assessment.questions:
-        q_points = question.points
+        q_points = float(question.points)
         total_possible_marks += q_points
         user_ans = answers_map.get(question.id)
 
         if not user_ans:
             continue
 
-        sel_opts = set(user_ans.selected_option_ids or [])
-        ans_txt = (user_ans.answer_text or "").strip()
+        if question.question_type == "coding":
+            user_code = (user_ans.code or "").strip()
+            lang = user_ans.language or question.allowed_language or "python"
+            if user_code:
+                answered_count += 1
+                test_cases = question.test_cases or []
+                eval_res = await execute_code_against_testcases(user_code, lang, test_cases)
 
-        if sel_opts or ans_txt:
-            answered_count += 1
+                passed_cases = eval_res.get("passed_tests", 0)
+                total_cases = eval_res.get("total_tests", 1)
 
-        correct_opts = {opt.id for opt in question.options if opt.is_correct}
-        is_q_correct = False
+                q_score = (passed_cases / total_cases * q_points) if total_cases > 0 else 0.0
+                is_q_correct = (passed_cases == total_cases and total_cases > 0)
 
-        if question.question_type == QuestionType.MCQ.value or question.question_type == QuestionType.TRUE_FALSE.value:
+                user_ans.is_correct = is_q_correct
+                user_ans.score_obtained = round(q_score, 2)
+                user_ans.status = eval_res.get("status", "completed")
+                user_ans.execution_time = eval_res.get("execution_time", 0.0)
+                user_ans.passed_test_cases = passed_cases
+                user_ans.total_test_cases = total_cases
+                total_score += q_score
+        else:
+            # MCQ / MSQ / Text questions logic
+            sel_opts = set(user_ans.selected_option_ids or [])
+            ans_txt = (user_ans.answer_text or "").strip()
+            if sel_opts or ans_txt:
+                answered_count += 1
+            correct_opts = {opt.id for opt in question.options if opt.is_correct}
+            is_q_correct = False
             if sel_opts and correct_opts and sel_opts == correct_opts:
                 is_q_correct = True
-        elif question.question_type == QuestionType.MSQ.value:
-            if sel_opts and correct_opts and sel_opts == correct_opts:
-                is_q_correct = True
-        elif question.question_type == QuestionType.TEXT.value:
-            if len(ans_txt) > 3:  # Valid text answer submitted
+            elif question.question_type == QuestionType.TEXT.value and len(ans_txt) > 3:
                 is_q_correct = True
 
-        user_ans.is_correct = is_q_correct
-        user_ans.score_obtained = float(q_points) if is_q_correct else 0.0
+            user_ans.is_correct = is_q_correct
+            q_score = q_points if is_q_correct else 0.0
+            user_ans.score_obtained = q_score
+            if is_q_correct:
+                total_score += q_score
 
-        if is_q_correct:
-            total_score += q_points
-
-    percentage = round((total_score / total_possible_marks * 100), 2) if total_possible_marks > 0 else 0.0
-    passing_percentage = (attempt.assessment.passing_marks / attempt.assessment.total_marks * 100) if attempt.assessment.total_marks > 0 else 70.0
-    is_passed = percentage >= passing_percentage
+    total_possible_marks = max(total_possible_marks, 1.0)
+    total_score = round(total_score, 2)
+    percentage = round((total_score / total_possible_marks * 100), 2)
+    passing_perc = (attempt.assessment.passing_marks / attempt.assessment.total_marks * 100) if attempt.assessment.total_marks > 0 else 70.0
+    is_passed = percentage >= passing_perc
 
     # Lock attempt
     now = datetime.utcnow()
@@ -608,5 +688,6 @@ async def submit_attempt(db: AsyncSession, attempt_id: int, user_id: int) -> dic
         "unanswered_count": total_q - answered_count,
         "passed": is_passed,
         "status": attempt.status,
+        "remaining_seconds": 0,
         "submitted_at": now
     }

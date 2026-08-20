@@ -296,9 +296,6 @@ async def get_course_day_assignments(
             detail="Course day not found under this course."
         )
 
-    if day and day.day_number in [1, 2]:
-        return []
-
     # Auto-process day content checking first
     from app.services.day_processor_service import process_course_day
     await process_course_day(db, course_id, day_id)
@@ -320,8 +317,6 @@ async def get_trainee_assignments(
     from app.models.course_day import CourseDay
     day = await db.get(CourseDay, course_day_id)
     if day:
-        if day.day_number in [1, 2]:
-            return []
         from app.services.day_processor_service import process_course_day
         await process_course_day(db, day.course_id, course_day_id)
 
