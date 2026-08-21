@@ -6,7 +6,7 @@
 @import "./styles/schedule.css";
 
 @import "./styles/StudyNotes.css";
-@import "./styles/loginscreen.css";
+@import "./styles/LoginScreen.css";
 @import "tailwindcss";
 /* Add your custom background animations here */
 @keyframes floatSlow {

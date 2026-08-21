@@ -57,11 +57,11 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #002060 0%, #2563eb 100%);
+  background: linear-gradient(90deg, var(--primary-blue) 0%, #7c3aed 100%);
 }
 
 .trainer-profile-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 32, 96, 0.15);
+  box-shadow: 0 4px 12px rgba(53, 99, 233, 0.15);
   transform: translateY(-1px);
 }
 
@@ -73,7 +73,7 @@
 .trainer-label-tag {
   font-size: 10px;
   font-weight: 800;
-  color: #002060;
+  color: var(--primary-blue);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
@@ -126,10 +126,10 @@
 }
 
 .trainer-nav-item.active {
-  background: linear-gradient(135deg, #002060 0%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--primary-blue) 0%, #254dd0 100%);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 32, 96, 0.2);
+  box-shadow: 0 4px 14px rgba(53, 99, 233, 0.3);
 }
 
 /* Main Viewport Content */

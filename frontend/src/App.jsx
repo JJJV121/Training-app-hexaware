@@ -201,8 +201,22 @@ function AppRoutes() {
         <Route path="/dashboard/:courseId" element={<ProtectedRoute><DashBoard /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
         <Route path="/badges" element={<ProtectedRoute><Badges /></ProtectedRoute>} />
-        <Route path="/trainer-dashboard/*" element={<ProtectedRoute><TrainerDashboard /></ProtectedRoute>} />
-        <Route path="/trainer-dashboard" element={<ProtectedRoute><TrainerDashboard /></ProtectedRoute>} />
+        <Route 
+          path="/trainer-dashboard/*" 
+          element={
+            // <ProtectedRoute>
+            <TrainerDashboard />
+            // </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/trainer-dashboard" 
+          element={
+            // <ProtectedRoute>
+            <TrainerDashboard />
+            // </ProtectedRoute>
+          } 
+        />
 
         {/* Admin route */}
         <Route path="/admin/*" element={<AdminApp />} />
