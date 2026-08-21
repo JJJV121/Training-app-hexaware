@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
 import { assignmentService } from '../services/assignmentService';
 import Icon from './Icon';
-import ProctoredTestView from '../pages/ProctoredTestView';
 
 export default function Assignment({ courseDayId, userId, isUnlocked = true, onBackToCourse }) {
   const [assignments, setAssignments] = useState([]);
@@ -11,7 +11,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   const [error, setError] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
 
-  // Proctored Test States
+  // Coding practice state
   const [activeTestAssignment, setActiveTestAssignment] = useState(null);
   const [testPhase, setTestPhase] = useState('intro'); // 'intro' | 'testing' | 'result'
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
@@ -19,22 +19,15 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   const [runResultsMap, setRunResultsMap] = useState({}); // questionIdx -> test cases run result
   const [isEvaluating, setIsEvaluating] = useState(false);
 
-  // Proctoring, Fullscreen & Timer States
-  const [tabSwitchCount, setTabSwitchCount] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showProctorWarning, setShowProctorWarning] = useState(false);
-  const [proctorWarningMsg, setProctorWarningMsg] = useState('');
-  const [timeLeftSeconds, setTimeLeftSeconds] = useState(1800); // 30 minutes
   const [showEndModal, setShowEndModal] = useState(false);
   const [finalEvaluation, setFinalEvaluation] = useState(null);
 
   // MCQ selection state for Type 1 Assignment Q&A
   const [mcqAnswersMap, setMcqAnswersMap] = useState({});
-  const [showProctoredTest, setShowProctoredTest] = useState(false);
-
-  if (showProctoredTest) {
-    return <ProctoredTestView courseDayId={courseDayId} onBack={() => setShowProctoredTest(false)} />;
-  }
+  const [selectedFiles, setSelectedFiles] = useState({});
+  const [githubUrls, setGithubUrls] = useState({});
+  const [attachmentUrls, setAttachmentUrls] = useState({});
+  const [submittingAssignmentId, setSubmittingAssignmentId] = useState(null);
 
   useEffect(() => {
     if (!courseDayId || !isUnlocked) {
@@ -70,27 +63,6 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
         }
         setQuestionsMap(questionsTemp);
 
-        // Check persistent test session state in localStorage for page refresh persistence
-        for (const task of currentAssignments) {
-          const sessionKey = `test_session_${task.id}`;
-          const savedSessionRaw = localStorage.getItem(sessionKey);
-          if (savedSessionRaw) {
-            try {
-              const saved = JSON.parse(savedSessionRaw);
-              const nowSec = Math.floor(Date.now() / 1000);
-              if (saved.expiresAtSec > nowSec && saved.phase === 'testing') {
-                setActiveTestAssignment(task);
-                setTestPhase('testing');
-                setCodeAnswersMap(saved.codeAnswersMap || {});
-                setTimeLeftSeconds(saved.expiresAtSec - nowSec);
-                setTabSwitchCount(saved.tabSwitchCount || 0);
-              }
-            } catch (e) {
-              console.error("Error parsing saved test session:", e);
-            }
-          }
-        }
-
       } catch (err) {
         if (err.response && err.response.status === 403) {
           setIsLocked(true);
@@ -105,121 +77,20 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     loadModuleData();
   }, [courseDayId, isUnlocked]);
 
-  // Fullscreen Change & Proctoring Listeners
-  useEffect(() => {
-    if (testPhase !== 'testing') return;
-
-    const handleFullscreenChange = () => {
-      const currentlyFS = !!document.fullscreenElement;
-      setIsFullscreen(currentlyFS);
-      if (!currentlyFS) {
-        setTabSwitchCount(prev => prev + 1);
-        setProctorWarningMsg("⚠️ FULLSCREEN EXIT DETECTED: You must maintain fullscreen mode during the proctored assessment.");
-        setShowProctorWarning(true);
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setTabSwitchCount(prev => prev + 1);
-        setProctorWarningMsg("⚠️ TAB SWITCH DETECTED: Do not switch browser tabs during the proctored test.");
-        setShowProctorWarning(true);
-      }
-    };
-
-    const handleBlur = () => {
-      setProctorWarningMsg("⚠️ WINDOW BLUR DETECTED: Keep focus on the test screen.");
-      setShowProctorWarning(true);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    window.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      window.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, [testPhase]);
-
-  // Timer & Session Persistence Effect
-  useEffect(() => {
-    if (testPhase !== 'testing' || !activeTestAssignment) return;
-
-    const sessionKey = `test_session_${activeTestAssignment.id}`;
-
-    const timer = setInterval(() => {
-      setTimeLeftSeconds(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          localStorage.removeItem(sessionKey);
-          handleAutoSubmitOnExpire();
-          return 0;
-        }
-
-        // Save session state to localStorage for refresh recovery
-        const nowSec = Math.floor(Date.now() / 1000);
-        const expiresAtSec = nowSec + prev - 1;
-        localStorage.setItem(sessionKey, JSON.stringify({
-          phase: 'testing',
-          expiresAtSec,
-          codeAnswersMap,
-          tabSwitchCount
-        }));
-
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [testPhase, activeTestAssignment, codeAnswersMap, tabSwitchCount]);
-
-  const requestFullscreen = async () => {
-    try {
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen();
-        setIsFullscreen(true);
-      }
-    } catch (fsErr) {
-      console.warn("Browser fullscreen request blocked or not supported:", fsErr);
-    }
-  };
-
-  const handleStartTest = async (task) => {
-    await requestFullscreen();
+  const handleStartTest = (task) => {
     setActiveTestAssignment(task);
     setTestPhase('testing');
     setActiveQuestionIdx(0);
-    setTimeLeftSeconds(1800); // 30 minutes
-    setTabSwitchCount(0);
-    setShowProctorWarning(false);
 
     const questions = questionsMap[task.id] || [];
     const initialCodes = {};
     questions.forEach((q, idx) => {
-      let code = q.starter_code || q.reference_solution;
-      if (!code || code.trim() === '') {
-        if (q.language === 'mysql') {
-          code = `-- Write your MySQL query solution here\nSELECT e.name, e.salary, d.dept_name\nFROM employees e\nJOIN departments d ON e.dept_id = d.id;`;
-        } else {
-          code = `public class Solution {\n    public static void main(String[] args) {\n        System.out.println("Solution executed successfully");\n    }\n}`;
-        }
-      }
-      initialCodes[idx] = code;
+      initialCodes[idx] = q.starter_code || '';
     });
     setCodeAnswersMap(initialCodes);
-
-    const nowSec = Math.floor(Date.now() / 1000);
-    localStorage.setItem(`test_session_${task.id}`, JSON.stringify({
-      phase: 'testing',
-      expiresAtSec: nowSec + 1800,
-      codeAnswersMap: initialCodes,
-      tabSwitchCount: 0
-    }));
   };
 
-  const handleRunCode = (qIdx) => {
+  const handleRunCode = async (qIdx) => {
     const questions = questionsMap[activeTestAssignment.id] || [];
     const q = questions[qIdx];
     if (!q) return;
@@ -228,42 +99,17 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     const testCases = q.test_cases || [];
     const tcCount = testCases.length || 10;
     
-    // Evaluate solution against test cases
-    let passedCount = 0;
-    if (currentCode.trim().length > 20 && (currentCode.includes('return') || currentCode.includes('SELECT') || currentCode.includes('UPDATE') || currentCode.includes('class'))) {
-      passedCount = tcCount;
-    } else if (currentCode.trim().length > 8) {
-      passedCount = max(1, Math.floor(tcCount * 0.7));
-    } else {
-      passedCount = Math.floor(tcCount * 0.3);
+    try {
+      const result = await assignmentService.runAssignmentCode(activeTestAssignment.id, q.id, currentCode, q.language || q.allowed_language || 'java');
+      setRunResultsMap(prev => ({ ...prev, [qIdx]: result }));
+    } catch (err) {
+      setRunResultsMap(prev => ({ ...prev, [qIdx]: { status: 'ERROR', output: err.response?.data?.detail || 'Code execution failed.' } }));
     }
-
-    setRunResultsMap(prev => ({
-      ...prev,
-      [qIdx]: {
-        passed: passedCount,
-        total: tcCount,
-        status: passedCount === tcCount ? 'ACCEPTED' : 'PARTIAL EVALUATION'
-      }
-    }));
   };
 
   const handleConfirmEndTest = async () => {
     setShowEndModal(false);
     setIsEvaluating(true);
-
-    if (activeTestAssignment) {
-      localStorage.removeItem(`test_session_${activeTestAssignment.id}`);
-    }
-
-    if (document.fullscreenElement) {
-      try {
-        await document.exitFullscreen();
-        setIsFullscreen(false);
-      } catch (e) {
-        console.warn("Exit fullscreen failed:", e);
-      }
-    }
 
     try {
       const questions = questionsMap[activeTestAssignment.id] || [];
@@ -293,16 +139,6 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     }
   };
 
-  const handleAutoSubmitOnExpire = () => {
-    alert("TIME EXPIRED! Auto-submitting proctored test...");
-    handleConfirmEndTest();
-  };
-
-  const formatTimer = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const handleSelectMcq = (assignmentId, questionId, optionIdx) => {
     setMcqAnswersMap(prev => ({
@@ -335,6 +171,47 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     }
   };
 
+  const getAssignmentType = (task) => String(task.assignment_type || '').toUpperCase();
+
+  const handleViewAttachment = async (task) => {
+    if (attachmentUrls[task.id]) return;
+
+    try {
+      const blob = await assignmentService.downloadAssignment(task.id);
+      const url = URL.createObjectURL(blob);
+      setAttachmentUrls(prev => ({ ...prev, [task.id]: url }));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Unable to load the assignment PDF.');
+    }
+  };
+
+  const handleSubmitDocumentAssignment = async (task) => {
+    const assignmentType = getAssignmentType(task);
+    const file = selectedFiles[task.id];
+    const githubUrl = (githubUrls[task.id] || '').trim();
+
+    if (assignmentType === 'NON_CODING' && !file) {
+      setError('Select your solution PDF before submitting.');
+      return;
+    }
+    if ((assignmentType === 'CASE_STUDY' || assignmentType === 'PROJECT') && !githubUrl) {
+      setError('Enter the GitHub repository URL before submitting.');
+      return;
+    }
+
+    try {
+      setSubmittingAssignmentId(task.id);
+      setError(null);
+      await assignmentService.submitAssignmentSubmission(task.id, file, githubUrl);
+      const updatedSubmissions = await assignmentService.getMySubmissions();
+      setSubmissions(updatedSubmissions || []);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Unable to submit this assignment.');
+    } finally {
+      setSubmittingAssignmentId(null);
+    }
+  };
+
   if (loading) return <div style={styles.stateBox}>Loading assignment module...</div>;
   if (!courseDayId) return <div style={styles.stateBox}>Select a Day Plan to view assignments.</div>;
 
@@ -348,7 +225,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   }
 
   if (error) return <div style={{ ...styles.stateBox, color: '#ef4444' }}>{error}</div>;
-  if (assignments.length === 0) return null; // Hide completely for non-assignment days
+  if (assignments.length === 0) return <div style={styles.stateBox}>No assignments are scheduled for this day.</div>;
 
   // ==========================================
   // PHASE 3: RESULT PAGE
@@ -360,7 +237,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
         <div style={{ ...styles.resultHeader, backgroundColor: isPassed ? '#15803d' : '#b91c1c' }}>
           <div style={{ fontSize: '48px', marginBottom: '8px' }}>{isPassed ? '🎉' : '⚠️'}</div>
           <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '800' }}>
-            {isPassed ? 'PROCTORED TEST PASSED!' : 'REVISION RECOMMENDED'}
+            {isPassed ? 'TEST COMPLETED' : 'REVISION RECOMMENDED'}
           </h2>
           <p style={{ opacity: 0.9, marginTop: '4px' }}>
             {finalEvaluation.feedback}
@@ -423,7 +300,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   }
 
   // ==========================================
-  // PHASE 2: PROCTORED TEST INTERFACE
+  // PHASE 2: CODING ASSIGNMENT PRACTICE INTERFACE
   // ==========================================
   if (testPhase === 'testing' && activeTestAssignment) {
     const questions = questionsMap[activeTestAssignment.id] || [];
@@ -451,39 +328,20 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
 
 
     return (
-      <div style={styles.proctoredViewport}>
-        {/* PROCTORING TOP BANNER */}
-        <div style={styles.proctoredHeader}>
+      <div style={styles.practiceViewport}>
+        <div style={styles.practiceHeader}>
           <div>
-            <span style={styles.proctoredTag}>PROCTORED ASSESSMENT</span>
+            <span style={styles.practiceTag}>CODING ASSIGNMENT PRACTICE</span>
             <h3 style={{ margin: '4px 0 0 0', color: '#ffffff', fontSize: '16px' }}>{activeTestAssignment.title}</h3>
           </div>
-
-          <div style={styles.timerBadge}>
-            ⏱️ Time Remaining: <strong style={{ fontSize: '16px', marginLeft: '6px' }}>{formatTimer(timeLeftSeconds)}</strong>
-          </div>
-
-          {!isFullscreen && (
-            <button onClick={requestFullscreen} style={styles.reEnterFsBtn}>
-              ⛶ Re-enter Fullscreen
-            </button>
-          )}
 
           <button
             onClick={() => setShowEndModal(true)}
             style={styles.endTestHeaderBtn}
           >
-            END TEST
+            END PRACTICE
           </button>
         </div>
-
-        {/* TAB SWITCH / FULLSCREEN WARNING BAR */}
-        {showProctorWarning && (
-          <div style={styles.proctorAlertBar}>
-            <div>{proctorWarningMsg || `⚠️ PROCTORING WARNING: Violation events detected (${tabSwitchCount} times).`}</div>
-            <button onClick={() => setShowProctorWarning(false)} style={styles.dismissAlertBtn}>Dismiss</button>
-          </div>
-        )}
 
         {/* QUESTION NAVIGATION TABS */}
         <div style={styles.questionTabsRow}>
@@ -594,7 +452,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
           <div style={styles.editorCard}>
             <div style={styles.editorHeader}>
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>
-                Code Editor ({currentQ.language || 'java'})
+                Code Editor ({currentQ.language || currentQ.allowed_language || 'java'})
               </span>
               <button
                 onClick={() => handleRunCode(activeQuestionIdx)}
@@ -604,11 +462,13 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
               </button>
             </div>
 
-            <textarea
+            <Editor
+              height="420px"
+              language={(currentQ.language || currentQ.allowed_language || 'java').toLowerCase()}
+              theme="vs-dark"
               value={codeAnswersMap[activeQuestionIdx] || ''}
-              onChange={(e) => setCodeAnswersMap({ ...codeAnswersMap, [activeQuestionIdx]: e.target.value })}
-              style={styles.codeTextarea}
-              placeholder="// Write your solution code here..."
+              onChange={(value) => setCodeAnswersMap({ ...codeAnswersMap, [activeQuestionIdx]: value || '' })}
+              options={{ minimap: { enabled: false }, automaticLayout: true, fontSize: 14, wordWrap: 'on' }}
             />
 
             {runRes && (
@@ -617,7 +477,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
                 backgroundColor: runRes.passed === runRes.total ? '#f0fdf4' : '#eff6ff',
                 borderColor: runRes.passed === runRes.total ? '#86efac' : '#bfdbfe'
               }}>
-                <strong>Test Evaluation Result:</strong> {runRes.passed} / {runRes.total} Test Cases Passed ({runRes.status}).
+                <strong>Test Evaluation Result:</strong> {runRes.passed_tests ?? runRes.passed ?? 0} / {runRes.total_tests ?? runRes.total ?? testCases.length} Test Cases ({runRes.status}). {runRes.output || ''}
               </div>
             )}
           </div>
@@ -628,8 +488,8 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
           <div style={styles.modalOverlay}>
             <div style={styles.modalContent}>
               <h3 style={{ margin: '0 0 12px 0', color: '#1e293b' }}>Confirm End Test</h3>
-              <p style={{ margin: '0 0 16px 0', color: '#64748b', fontSize: '14px' }}>
-                Are you sure you want to end the proctored test?
+                <p style={{ margin: '0 0 16px 0', color: '#64748b', fontSize: '14px' }}>
+                Submit your current practice answers and view the marks obtained.
               </p>
               <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '6px', marginBottom: '20px', fontSize: '13px', color: '#334155' }}>
                 <strong>Questions Attempted:</strong> {completedCount} / {questions.length} Questions
@@ -637,7 +497,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                 <button onClick={() => setShowEndModal(false)} style={styles.modalCancelBtn}>CANCEL</button>
                 <button onClick={handleConfirmEndTest} style={styles.modalConfirmBtn} disabled={isEvaluating}>
-                  {isEvaluating ? "Evaluating..." : "END TEST"}
+                  {isEvaluating ? "Evaluating..." : "VIEW MARKS"}
                 </button>
               </div>
             </div>
@@ -652,7 +512,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   // ==========================================
   return (
     <div className="assignment-panel" style={styles.container}>
-      {/* PROCTORED EXAM BANNER */}
+      {/* ASSIGNMENT HEADER */}
       <div style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
         color: '#ffffff',
@@ -667,53 +527,37 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
       }}>
         <div>
           <span style={{ background: '#3563e9', color: '#ffffff', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Official Proctored Exam
+            Day Assignment
           </span>
           <h3 style={{ margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800', color: '#ffffff' }}>
-            Proctored Skill Assessment
+            Complete the assignments listed for this training day.
           </h3>
           <p style={{ margin: 0, color: '#94a3b8', fontSize: '14px' }}>
-            Timed assessment evaluating your day & topic mastery. Proctoring environment & question-by-question flow.
+            Use the submission method specified by each assignment type.
           </p>
         </div>
-        <button
-          onClick={() => setShowProctoredTest(true)}
-          style={{
-            padding: '14px 28px',
-            background: '#3563e9',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '10px',
-            fontWeight: '700',
-            fontSize: '15px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(53,99,233,0.4)',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Start Test
-        </button>
       </div>
 
       {assignments.map(task => {
         const record = submissions.find(s => s.assignment_id === task.id);
         const questions = questionsMap[task.id] || [];
-        const isCoding = (task.assignment_type === 'CODING') || task.title.toLowerCase().includes('challenge') || task.title.toLowerCase().includes('assessment');
+        const assignmentType = getAssignmentType(task);
+        const isCoding = assignmentType === 'CODING';
+        const isDocumentAssignment = ['NON_CODING', 'CASE_STUDY', 'PROJECT'].includes(assignmentType);
 
         return (
           <div key={task.id} style={styles.introCard}>
             <div style={styles.introTopBar}>
               <h3 style={styles.introTitle}>{task.title}</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <button onClick={() => alert(`Instructions:\n1. This is a proctored assessment.\n2. You must complete 3 questions.\n3. Each question has 10 test cases (30 total).\n4. Minimum 75% score required to pass.`)} style={styles.instructionsLinkBtn}>
+                <button onClick={() => alert(task.instructions || 'Practice this assignment and submit your completed code when ready.')} style={styles.instructionsLinkBtn}>
                   View Instructions
                 </button>
-                <button
-                  onClick={() => setShowProctoredTest(true)}
-                  style={styles.takeTestPrimaryBtn}
-                >
-                  Start Test
-                </button>
+                {isCoding && (
+                  <button onClick={() => handleStartTest(task)} style={styles.takeTestPrimaryBtn}>
+                    Start Test
+                  </button>
+                )}
               </div>
             </div>
 
@@ -782,33 +626,24 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
               </tbody>
             </table>
 
-            {!isCoding && (
+            {isDocumentAssignment && (
               <div style={{ marginTop: '24px' }}>
-                <h4 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Assignment Q&A Questions:</h4>
-                {questions.map((q, qIdx) => (
-                  <div key={q.id || qIdx} style={styles.mcqQuestionCard}>
-                    <p style={{ fontWeight: '600', margin: '0 0 10px 0' }}>Q{qIdx + 1}. {q.question}</p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {q.options?.map((opt, optIdx) => (
-                        <label key={optIdx} style={styles.mcqOptionLabel}>
-                          <input
-                            type="radio"
-                            name={`mcq_${task.id}_${q.id}`}
-                            checked={(mcqAnswersMap[task.id] || {})[q.id] === optIdx}
-                            onChange={() => handleSelectMcq(task.id, q.id, optIdx)}
-                          />
-                          <span style={{ marginLeft: '8px' }}>{opt}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-
-                <button
-                  onClick={() => handleSubmitMcq(task.id)}
-                  style={styles.takeTestPrimaryBtn}
-                >
-                  Submit Assignment Answers
+                <h4 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>
+                  {assignmentType === 'NON_CODING' ? 'Question PDF and solution upload' : assignmentType === 'CASE_STUDY' ? 'Case study PDF and GitHub submission' : 'Project requirement PDF and GitHub submission'}
+                </h4>
+                {task.attachment_path && (
+                  <>
+                    <button type="button" onClick={() => handleViewAttachment(task)} style={styles.instructionsLinkBtn}>View Question PDF</button>
+                    {attachmentUrls[task.id] && <iframe title={`${task.title} question PDF`} src={attachmentUrls[task.id]} style={styles.pdfFrame} />}
+                  </>
+                )}
+                {assignmentType === 'NON_CODING' ? (
+                  <input type="file" accept="application/pdf" onChange={(e) => setSelectedFiles(prev => ({ ...prev, [task.id]: e.target.files?.[0] || null }))} />
+                ) : (
+                  <input type="url" value={githubUrls[task.id] || ''} onChange={(e) => setGithubUrls(prev => ({ ...prev, [task.id]: e.target.value }))} placeholder="https://github.com/your-name/repository" style={styles.githubInput} />
+                )}
+                <button onClick={() => handleSubmitDocumentAssignment(task)} style={styles.takeTestPrimaryBtn} disabled={submittingAssignmentId === task.id}>
+                  {submittingAssignmentId === task.id ? 'Submitting...' : 'Submit Assignment'}
                 </button>
               </div>
             )}
@@ -913,7 +748,7 @@ const styles = {
     color: '#334155',
     borderBottom: '1px solid #e2e8f0'
   },
-  proctoredViewport: {
+  practiceViewport: {
     position: 'fixed',
     top: 0,
     left: 0,
@@ -928,7 +763,7 @@ const styles = {
     boxSizing: 'border-box',
     color: '#ffffff'
   },
-  proctoredHeader: {
+  practiceHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -937,7 +772,7 @@ const styles = {
     borderRadius: '8px',
     marginBottom: '16px'
   },
-  proctoredTag: {
+  practiceTag: {
     backgroundColor: '#dc2626',
     color: '#ffffff',
     fontSize: '10px',
@@ -1222,6 +1057,24 @@ const styles = {
     borderRadius: '6px',
     padding: '10px 14px',
     cursor: 'pointer'
+  },
+  githubInput: {
+    display: 'block',
+    width: '100%',
+    boxSizing: 'border-box',
+    margin: '12px 0',
+    padding: '10px 12px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px',
+    fontSize: '14px'
+  },
+  pdfFrame: {
+    display: 'block',
+    width: '100%',
+    height: '420px',
+    marginTop: '12px',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px'
   },
   stateBox: {
     padding: '40px',

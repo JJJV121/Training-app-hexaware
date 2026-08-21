@@ -4,12 +4,13 @@ import dashboardService from '../services/dashboardService';
 import Icon from '../components/Icon';
 import '../styles/Course.css';
 import Assignment from '../components/Assignment.jsx'
-import ProctoredTestView from './ProctoredTestView';
 import { qaService } from '../services/qaService';
 import { caseStudyService } from '../services/caseStudyService';
+import { proctoredTestService } from '../services/proctoredTestService';
+import ProctoredTestView from './ProctoredTestView';
 
 // 🌟 Prop Injection: Accept courseId dynamically from DashBoard parent component shell
-export default function Course({ courseId }) {
+export default function Course({ courseId, onLockChange }) {
   // Fallback sanity guard: Ensure we have a default ID if undefined or null
   const activeCourseId = courseId || 1;
 
@@ -652,7 +653,7 @@ const handleSeeking = (e) => {
         )}
 
         <div className="video-content-horizontal-nav-row">
-          {['Videos', 'Notes', 'Assignment', 'Proctored Assessment', 'Quiz', 'Case Studies'].map((tabName) => (
+          {['Videos', 'Notes', 'Assignment', 'Quiz', 'Assessment', 'Case Studies'].map((tabName) => (
             <button key={tabName} onClick={() => setActiveHorizontalTab(tabName)} className={`video-horizontal-nav-item ${activeHorizontalTab === tabName ? 'active-nav-pill' : ''}`}>{tabName}</button>
           ))}
         </div>
@@ -675,16 +676,16 @@ const handleSeeking = (e) => {
               onBackToCourse={() => setSubView('outline')}
             />
           )}
-          {activeHorizontalTab === 'Proctored Assessment' && (
-            <ProctoredTestView
-              courseDayId={activeDayDbId}
-              onBack={() => setSubView('outline')}
-            />
-          )}
           {activeHorizontalTab === 'Quiz' && (
             <QnASection 
               courseId={activeCourseId} 
               dayId={activeDayDbId} 
+            />
+          )}
+          {activeHorizontalTab === 'Assessment' && (
+            <AssessmentTab
+              courseDayId={activeDayDbId}
+              onLockChange={onLockChange}
             />
           )}
           {activeHorizontalTab === 'Case Studies' && (
@@ -804,7 +805,7 @@ function NotesSection({ learningUnitId }) {
   );
 }
 
-function QnASection({ courseId, dayId }) {
+export function QnASection({ courseId, dayId }) {
   const [mcqs, setMcqs] = useState([]);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -1231,6 +1232,109 @@ function AssignmentSection() {
       <span style={{ fontSize: '11px', textTransform: 'uppercase', padding: '4px 8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', color: 'var(--text-medium)', fontWeight: 'bold' }}>
         Coming Soon
       </span>
+    </div>
+  );
+}
+
+function AssessmentTab({ courseDayId, onLockChange }) {
+  const [assessments, setAssessments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState(null);
+
+  useEffect(() => {
+    if (!courseDayId) return;
+    let mounted = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const list = await proctoredTestService.getAssessmentsByDay(courseDayId);
+        if (mounted) setAssessments(list || []);
+      } catch (err) {
+        if (mounted) setError(err.response?.data?.detail || 'Unable to load assessments.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [courseDayId]);
+
+  if (selectedAssessmentId) {
+    return (
+      <ProctoredTestView
+        assessmentId={selectedAssessmentId}
+        onBack={() => {
+          setSelectedAssessmentId(null);
+          onLockChange?.(false);
+        }}
+      />
+    );
+  }
+
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-medium)' }}>Loading assessments...</div>;
+  if (error) return <div style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>{error}</div>;
+
+  return (
+    <div style={{ padding: '24px', backgroundColor: 'var(--bg-sidebar)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', color: 'var(--text-dark)' }}>
+        <Icon name="clipboard" style={{ width: '20px', height: '20px' }} />
+        <h3 style={{ margin: 0, fontSize: '18px' }}>Assessments</h3>
+      </div>
+      <p style={{ color: 'var(--text-medium)', marginTop: 0, marginBottom: '20px', fontSize: '14px' }}>
+        Assessments scheduled for this training day.
+      </p>
+      {assessments.length === 0 ? (
+        <div style={{ textAlign: 'center', color: 'var(--text-light)', padding: '32px', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+          <Icon name="clipboard" style={{ width: '32px', height: '32px', marginBottom: '12px', opacity: 0.4 }} />
+          <p style={{ margin: 0 }}>No assessments scheduled for this day.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {assessments.map((assessment) => (
+            <div
+              key={assessment.assessment_id}
+              style={{
+                padding: '22px',
+                background: 'var(--bg-main)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '12px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '16px'
+              }}
+            >
+              <div>
+                <h3 style={{ margin: '0 0 8px', color: 'var(--text-dark)', fontSize: '16px' }}>{assessment.title}</h3>
+                <span style={{ color: 'var(--text-medium)', fontSize: '13px' }}>
+                  {assessment.assessment_type} • {assessment.duration_minutes} min • {assessment.total_marks} marks
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAssessmentId(assessment.assessment_id);
+                  onLockChange?.(true);
+                }}
+                style={{
+                  padding: '10px 18px',
+                  border: 0,
+                  borderRadius: '8px',
+                  background: '#2563eb',
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Start Assessment
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

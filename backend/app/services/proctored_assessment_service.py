@@ -144,6 +144,10 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
     if not course_day:
         raise HTTPException(status_code=404, detail="Course day not found.")
 
+    assessment_plan = {1: "MCQ", 2: "MCQ", 6: "CODING", 13: "MCQ", 14: "CODING", 16: "MCQ"}
+    if course_day.day_number not in assessment_plan:
+        raise HTTPException(status_code=404, detail="No assessment is scheduled for this day.")
+
     course_stmt = select(Course).where(Course.id == course_day.course_id)
     course_res = await db.execute(course_stmt)
     course = course_res.scalar_one_or_none()
@@ -179,7 +183,7 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
             description=f"Proctored coding skill assessment for {course_day.title}",
             instructions="Maintain full screen. Write working code for all questions.",
             created_by=1,
-            assessment_type="CODING",
+            assessment_type=assessment_plan[course_day.day_number],
             duration_minutes=60,
             total_marks=100,
             passing_marks=70,
@@ -187,6 +191,9 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
         db.add(assessment)
         await db.flush()
     else:
+        if assessment.assessment_type != assessment_plan[course_day.day_number]:
+            assessment.assessment_type = assessment_plan[course_day.day_number]
+            await db.flush()
         # Update title if needed to enforce course_day_topic
         if assessment.title != test_title:
             assessment.title = test_title
@@ -198,28 +205,49 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
     existing_questions = q_check_res.scalars().all()
 
     if not existing_questions:
-        coding_q_list = get_default_coding_questions_for_day(course_day.day_number, topic_title)
+        if assessment.assessment_type == "MCQ":
+            from app.services.mcq_generator_service import generate_25_mcqs_for_day
+            mcq_list = generate_25_mcqs_for_day(course_name, course_day.title, course_day.description or "")[:10]
+            for i, q_data in enumerate(mcq_list, start=1):
+                question_obj = AssessmentQuestion(
+                    assessment_id=assessment.id,
+                    question_number=i,
+                    question_text=q_data["question"],
+                    question_type="mcq",
+                    points=1,
+                    difficulty=q_data.get("difficulty", "Medium"),
+                    explanation=q_data.get("explanation", "")
+                )
+                db.add(question_obj)
+                await db.flush()
+                for option_index, option_text in enumerate(q_data.get("options", [])):
+                    db.add(AssessmentOption(
+                        question_id=question_obj.id,
+                        option_text=option_text,
+                        is_correct=option_index == q_data.get("correct_index")
+                    ))
+        else:
+            coding_q_list = get_default_coding_questions_for_day(course_day.day_number, topic_title)
 
-        for i, q_data in enumerate(coding_q_list, start=1):
-            question_obj = AssessmentQuestion(
-                assessment_id=assessment.id,
-                question_number=i,
-                question_text=q_data["question_text"],
-                question_type="coding",
-                points=q_data.get("points", 33),
-                title=q_data["title"],
-                input_format=q_data.get("input_format", ""),
-                output_format=q_data.get("output_format", ""),
-                constraints=q_data.get("constraints", ""),
-                sample_input=q_data.get("sample_input", ""),
-                sample_output=q_data.get("sample_output", ""),
-                difficulty="Medium",
-                allowed_language=q_data.get("allowed_language", "python"),
-                starter_code=q_data.get("starter_code", "def solution():\n    pass"),
-                test_cases=q_data.get("test_cases", []),
-                explanation=q_data.get("explanation", "")
-            )
-            db.add(question_obj)
+            for i, q_data in enumerate(coding_q_list, start=1):
+                db.add(AssessmentQuestion(
+                    assessment_id=assessment.id,
+                    question_number=i,
+                    question_text=q_data["question_text"],
+                    question_type="coding",
+                    points=q_data.get("points", 33),
+                    title=q_data["title"],
+                    input_format=q_data.get("input_format", ""),
+                    output_format=q_data.get("output_format", ""),
+                    constraints=q_data.get("constraints", ""),
+                    sample_input=q_data.get("sample_input", ""),
+                    sample_output=q_data.get("sample_output", ""),
+                    difficulty="Medium",
+                    allowed_language=q_data.get("allowed_language", "python"),
+                    starter_code=q_data.get("starter_code", "def solution():\n    pass"),
+                    test_cases=q_data.get("test_cases", []),
+                    explanation=q_data.get("explanation", "")
+                ))
 
         await db.commit()
 
@@ -228,6 +256,71 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
         assessment = res.scalar_one_or_none()
 
     return assessment
+
+
+async def get_assessments_by_day(db: AsyncSession, course_day_id: int) -> list[dict]:
+    day = await db.get(CourseDay, course_day_id)
+    if not day:
+        raise HTTPException(status_code=404, detail="Course day not found.")
+
+    scheduled_days = {1, 2, 6, 13, 14, 16}
+    if day.day_number not in scheduled_days:
+        return []
+
+    await get_or_create_day_assessment(db, course_day_id)
+    stmt = select(Assessment).where(Assessment.course_day_id == course_day_id).order_by(Assessment.id)
+    result = await db.execute(stmt)
+    assessments = result.scalars().all()
+
+    if day.day_number == 6 and not any(item.assessment_type == "MCQ" for item in assessments):
+        course = await db.get(Course, day.course_id)
+        course_name = course.title if course else "Course"
+        mcq_assessment = Assessment(
+            course_day_id=course_day_id,
+            title=f"{sanitize_name(course_name)}_Day_6_MySQL_MCQ",
+            description="MySQL, Agile, and Problem Solving MCQ assessment.",
+            instructions="Answer all multiple-choice questions before the assessment timer expires.",
+            created_by=1,
+            assessment_type="MCQ",
+            duration_minutes=30,
+            total_marks=100,
+            passing_marks=70,
+        )
+        db.add(mcq_assessment)
+        await db.flush()
+        from app.services.mcq_generator_service import generate_25_mcqs_for_day
+        mcq_list = generate_25_mcqs_for_day(course_name, day.title, day.description or "")[:10]
+        for index, q_data in enumerate(mcq_list, start=1):
+            question = AssessmentQuestion(
+                assessment_id=mcq_assessment.id,
+                question_number=index,
+                question_text=q_data["question"],
+                question_type="mcq",
+                points=1,
+                difficulty=q_data.get("difficulty", "Medium"),
+                explanation=q_data.get("explanation", ""),
+            )
+            db.add(question)
+            await db.flush()
+            for option_index, option_text in enumerate(q_data.get("options", [])):
+                db.add(AssessmentOption(
+                    question_id=question.id,
+                    option_text=option_text,
+                    is_correct=option_index == q_data.get("correct_index"),
+                ))
+        await db.commit()
+        result = await db.execute(stmt)
+        assessments = result.scalars().all()
+
+    return [{
+        "assessment_id": item.id,
+        "title": item.title,
+        "assessment_type": item.assessment_type,
+        "day": day.day_number,
+        "duration_minutes": item.duration_minutes,
+        "total_marks": item.total_marks,
+        "passing_marks": item.passing_marks,
+    } for item in assessments]
 
 
 async def get_proctored_assessment_trainee_view(
@@ -325,6 +418,7 @@ async def get_proctored_assessment_trainee_view(
 
     return {
         "assessment_id": assessment.id,
+        "assessment_type": assessment.assessment_type,
         "attempt_id": active_attempt.id if active_attempt else None,
         "test_name": test_name,
         "course": course_name,

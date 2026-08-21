@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.assessment import AssessmentQuestion
 from app.schemas.assessment import (
     ProctoredAssessmentTraineeResponse,
+    AssessmentSummaryResponse,
     CreateAttemptRequest,
     AttemptResponse,
     SaveAnswerRequest,
@@ -19,6 +20,7 @@ from app.schemas.assessment import (
 )
 from app.services.proctored_assessment_service import (
     get_or_create_day_assessment,
+    get_assessments_by_day,
     get_proctored_assessment_trainee_view,
     create_or_get_active_attempt,
     save_answer,
@@ -28,6 +30,15 @@ from app.services.proctored_assessment_service import (
 from app.services.code_execution_service import execute_code_against_testcases
 
 router = APIRouter(tags=["Proctored Assessment"])
+
+
+@router.get("/assessments/by-day/{course_day_id}", response_model=list[AssessmentSummaryResponse])
+async def list_assessments_by_day(
+    course_day_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_optional_user),
+):
+    return await get_assessments_by_day(db, course_day_id)
 
 
 @router.get("/assessments/by-day/{course_day_id}/proctored", response_model=ProctoredAssessmentTraineeResponse)

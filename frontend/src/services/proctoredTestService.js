@@ -1,6 +1,11 @@
 import apiClient from './apiClient';
 
 export const proctoredTestService = {
+  async getAssessmentsByDay(courseDayId) {
+    const res = await apiClient.get(`/assessments/by-day/${courseDayId}`);
+    return res.data;
+  },
+
   /**
    * Fetch dynamic proctored assessment for a course day.
    * Returns test details formatted as course_day_topic without answer key leakage.
@@ -37,11 +42,13 @@ export const proctoredTestService = {
   /**
    * Auto-save answer dynamically during navigation or option selection.
    */
-  async saveAnswer(attemptId, questionId, selectedOptionIds = null, answerText = null, currentQuestionIndex = null) {
+  async saveAnswer(attemptId, questionId, selectedOptionIds = null, answerText = null, currentQuestionIndex = null, code = null, language = null) {
     const res = await apiClient.put(`/assessment-attempts/${attemptId}/answers/${questionId}`, {
       selected_option_ids: selectedOptionIds,
       answer_text: answerText,
       current_question_index: currentQuestionIndex,
+      code,
+      language,
     });
     return res.data;
   },

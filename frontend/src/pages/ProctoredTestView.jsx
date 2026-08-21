@@ -207,6 +207,19 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
     });
   };
 
+  const handleCodeChange = (qId, code) => {
+    setAnswers((prev) => {
+      const existing = prev[qId] || { selected_option_ids: [], answer_text: '', code: '' };
+      const updated = { ...prev, [qId]: { ...existing, code } };
+
+      if (attempt) {
+        proctoredTestService.saveAnswer(attempt.attempt_id, qId, existing.selected_option_ids, existing.answer_text, currentIdx, code, currentQLanguage);
+      }
+
+      return updated;
+    });
+  };
+
   // Navigation handlers
   const handleNextQuestion = () => {
     if (!testData) return;
@@ -286,7 +299,7 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
     let count = 0;
     testData.questions.forEach((q) => {
       const ans = answers[q.question_id];
-      if (ans && ((ans.selected_option_ids && ans.selected_option_ids.length > 0) || (ans.answer_text && ans.answer_text.trim().length > 0))) {
+      if (ans && ((ans.selected_option_ids && ans.selected_option_ids.length > 0) || (ans.answer_text && ans.answer_text.trim().length > 0) || (ans.code && ans.code.trim().length > 0))) {
         count++;
       }
     });
@@ -316,7 +329,33 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
     );
   }
 
-  if (!testData) return null;
+  if (!testData) {
+    return (
+      <div style={{ maxWidth: '600px', margin: '40px auto', padding: '32px', textAlign: 'center', color: '#64748b' }}>
+        <h3>Assessment data is unavailable.</h3>
+        <button onClick={onBack}>Back to Course</button>
+      </div>
+    );
+  }
+
+  if (!Array.isArray(testData.questions) || testData.questions.length === 0) {
+    return (
+      <div style={{ maxWidth: '600px', margin: '40px auto', padding: '32px', textAlign: 'center', color: '#64748b' }}>
+        <h3>No questions are available for this assessment.</h3>
+        <button onClick={onBack}>Back to Course</button>
+      </div>
+    );
+  }
+
+  const assessmentType = String(testData.assessment_type || '').toUpperCase();
+  if (!['MCQ', 'CODING'].includes(assessmentType)) {
+    return (
+      <div style={{ maxWidth: '600px', margin: '40px auto', padding: '32px', textAlign: 'center', color: '#64748b' }}>
+        <h3>Unsupported assessment type.</h3>
+        <button onClick={onBack}>Back to Course</button>
+      </div>
+    );
+  }
 
   const currentQ = testData.questions[currentIdx];
 
@@ -441,7 +480,8 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
   }
 
   // RENDER: Testing Screen
-  const currAns = answers[currentQ.question_id] || { selected_option_ids: [], answer_text: '' };
+  const currAns = answers[currentQ.question_id] || { selected_option_ids: [], answer_text: '', code: currentQ.starter_code || '' };
+  const currentQLanguage = currentQ.allowed_language || 'python';
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px' }}>
@@ -458,7 +498,7 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h2 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-primary, #0f172a)', margin: 0 }}>{testData.test_name}</h2>
-            <span style={{ padding: '3px 10px', background: '#dcfce7', color: '#166534', fontSize: '12px', fontWeight: '700', borderRadius: '12px' }}>PROCTORED</span>
+            <span style={{ padding: '3px 10px', background: '#dcfce7', color: '#166534', fontSize: '12px', fontWeight: '700', borderRadius: '12px' }}>{assessmentType} ASSESSMENT</span>
           </div>
           <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
             Course: <strong>{testData.course}</strong> &nbsp;|&nbsp; Day: <strong>Day {testData.day}</strong> &nbsp;|&nbsp; Topic: <strong>{testData.topic}</strong>
@@ -500,6 +540,21 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
 
             {/* Question Choices / Inputs */}
             <div style={{ marginTop: '16px' }}>
+              {currentQ.question_type === 'coding' && (
+                <div>
+                  {currentQ.input_format && <p><strong>Input:</strong> {currentQ.input_format}</p>}
+                  {currentQ.output_format && <p><strong>Output:</strong> {currentQ.output_format}</p>}
+                  {currentQ.constraints && <p><strong>Constraints:</strong> {currentQ.constraints}</p>}
+                  <textarea
+                    rows={16}
+                    value={currAns.code ?? currentQ.starter_code ?? ''}
+                    onChange={(e) => handleCodeChange(currentQ.question_id, e.target.value)}
+                    spellCheck="false"
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '16px', borderRadius: '10px', background: '#0f172a', color: '#e2e8f0', border: '1px solid #334155', fontFamily: 'monospace', fontSize: '14px' }}
+                  />
+                </div>
+              )}
+
               {(currentQ.question_type === 'mcq' || currentQ.question_type === 'true_false') && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {currentQ.options.map((opt) => {
@@ -657,7 +712,7 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
             {testData.questions.map((q, idx) => {
               const isCurrent = idx === currentIdx;
               const ans = answers[q.question_id];
-              const isAnswered = ans && ((ans.selected_option_ids && ans.selected_option_ids.length > 0) || (ans.answer_text && ans.answer_text.trim().length > 0));
+              const isAnswered = ans && ((ans.selected_option_ids && ans.selected_option_ids.length > 0) || (ans.answer_text && ans.answer_text.trim().length > 0) || (ans.code && ans.code.trim().length > 0));
 
               let bg = '#f1f5f9';
               let border = '1px solid #cbd5e1';

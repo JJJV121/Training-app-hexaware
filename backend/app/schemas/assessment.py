@@ -46,6 +46,7 @@ class QuestionTraineeView(BaseModel):
 # ----------------------------------------------------
 class ProctoredAssessmentTraineeResponse(BaseModel):
     assessment_id: int
+    assessment_type: str
     attempt_id: Optional[int] = None
     test_name: str  # course_day_topic e.g. Python_Day_03_Palindromes
     course: str
@@ -55,6 +56,16 @@ class ProctoredAssessmentTraineeResponse(BaseModel):
     total_marks: int
     passing_marks: int
     questions: List[QuestionTraineeView]
+
+
+class AssessmentSummaryResponse(BaseModel):
+    assessment_id: int
+    title: str
+    assessment_type: str
+    day: int
+    duration_minutes: int
+    total_marks: int
+    passing_marks: int
 
 
 # ----------------------------------------------------

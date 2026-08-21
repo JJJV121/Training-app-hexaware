@@ -15,6 +15,15 @@ export const assignmentService = {
     return response.data;
   },
 
+  async runAssignmentCode(assignmentId, questionId, code, language) {
+    const response = await apiClient.post(`/assignments/${assignmentId}/run-code`, {
+      question_id: questionId,
+      code,
+      language
+    });
+    return response.data;
+  },
+
   async submitAssignmentAnswers(assignmentId, answers, userId) {
     const response = await apiClient.post(`/assignments/${assignmentId}/submit-answers`, {
       user_id: userId,
@@ -41,6 +50,18 @@ export const assignmentService = {
     formData.append('user_id', userId);
 
     const response = await apiClient.post(`/assignments/trainee/assignments/${assignmentId}/submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
+  async submitAssignmentSubmission(assignmentId, file, githubUrl = '') {
+    const formData = new FormData();
+    formData.append('assignment_id', assignmentId);
+    if (file) formData.append('file', file);
+    if (githubUrl) formData.append('github_url', githubUrl);
+
+    const response = await apiClient.post('/assignment-submissions/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data;

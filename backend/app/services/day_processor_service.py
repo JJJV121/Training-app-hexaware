@@ -71,20 +71,41 @@ async def process_course_day(db: AsyncSession, course_id: int, day_id: int, comm
     assignment_title = f"{clean_course_title}_Day_{day.day_number}_{clean_topic_title}"
 
     if not all_assignments:
-        asg_type = AssignmentType.CODING if any(w in (course.title + " " + day.title).lower() for w in ["python", "java", "sql", "c", "cpp", "coding", "dsa", "data"]) else AssignmentType.CODING
+        assignment_plan = {
+            3: [(AssignmentType.CODING, "MySQL Coding Assignment")],
+            4: [(AssignmentType.CODING, "MySQL Coding Assignment")],
+            5: [(AssignmentType.CODING, "MySQL Coding Assignment")],
+            6: [
+                (AssignmentType.CODING, "MySQL Coding Assignment"),
+                (AssignmentType.CASE_STUDY, "MySQL Case Study"),
+            ],
+            7: [(AssignmentType.CODING, "Java Coding Assignment")],
+            8: [(AssignmentType.CODING, "Java Coding Assignment")],
+            9: [(AssignmentType.CODING, "Java Coding Assignment")],
+            10: [(AssignmentType.CODING, "Java Coding Assignment")],
+            11: [(AssignmentType.CODING, "Java Coding Assignment")],
+            12: [
+                (AssignmentType.CODING, "Java Coding Assignment"),
+                (AssignmentType.CASE_STUDY, "Java Case Study"),
+            ],
+            13: [(AssignmentType.CODING, "JUnit Coding Assignment")],
+            14: [(AssignmentType.PROJECT, "Project Development - Java + MySQL + JUnit")],
+            15: [(AssignmentType.NON_CODING, "Git Non-Coding Assignment")],
+            16: [(AssignmentType.NON_CODING, "Cloud Non-Coding Assignment")],
+        }
 
-        new_asg = Assignment(
-            course_day_id=day_id,
-            title=assignment_title,
-            description=f"Coding assignment evaluating key concepts of {topic_title} covered in Day {day.day_number}.",
-            assignment_type=asg_type,
-            instructions=f"Complete all coding challenges for {topic_title}.",
-            total_marks=100,
-            passing_marks=70,
-            due_date=datetime.utcnow() + timedelta(days=7),
-            created_by=1
-        )
-        db.add(new_asg)
+        for asg_type, asg_title in assignment_plan.get(day.day_number, []):
+            db.add(Assignment(
+                course_day_id=day_id,
+                title=asg_title,
+                description=f"{asg_title} for {topic_title} covered in Day {day.day_number}.",
+                assignment_type=asg_type,
+                instructions=f"Complete the {asg_title.lower()} for {topic_title}.",
+                total_marks=100,
+                passing_marks=70,
+                due_date=datetime.utcnow() + timedelta(days=7),
+                created_by=1
+            ))
     else:
         # Update existing assignment title to enforce standard topic title format
         first_asg = all_assignments[0]

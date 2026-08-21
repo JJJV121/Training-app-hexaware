@@ -1,4 +1,5 @@
 from datetime import datetime
+from pydantic import BaseModel
 from fastapi import status
 
 from fastapi import (
@@ -35,6 +36,13 @@ from app.services.assignment_service import (
 )
 from app.utils.file_upload import save_uploaded_file
 from app.services.assignment_submission_service import get_assignment_submissions
+from app.services.code_execution_service import execute_code_against_testcases
+
+
+class AssignmentRunCodeRequest(BaseModel):
+    question_id: int
+    code: str
+    language: str
 
 router = APIRouter(
     prefix="/assignments",
@@ -248,6 +256,24 @@ async def get_assignment_questions_api(
     return await get_assignment_questions(
         db,
         assignment_id,
+    )
+
+
+@router.post("/{assignment_id}/run-code")
+async def run_assignment_code_api(
+    assignment_id: int,
+    payload: AssignmentRunCodeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    questions = await get_assignment_questions(db, assignment_id)
+    question = next((item for item in questions if int(item.get("id")) == payload.question_id), None)
+    if not question:
+        raise HTTPException(status_code=404, detail="Assignment question not found")
+
+    return await execute_code_against_testcases(
+        code=payload.code,
+        language=payload.language,
+        test_cases=question.get("test_cases") or [],
     )
 
 

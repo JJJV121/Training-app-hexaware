@@ -9,7 +9,7 @@ import Placeholder from '../pages/Placeholder';
 import ProgressView from './ProgressView.jsx';
 import StudyNotes from './StudyNotes.jsx';
 import Profile from '../pages/Profile';
-import Assessment from './Assessment.jsx';
+
 import hexawareLogo from '../assets/HEXAWARE logo.png';
  
 import ThemeToggle from '../components/ThemeToggle';
@@ -179,15 +179,12 @@ export default function DashBoard() {
         if (isCourseLoading) {
           return <div style={{ padding: '40px', textAlign: 'center' }}><h3>Verifying active enrollment...</h3></div>;
         }
-        return <Course courseId={courseId} />;
+        return <Course courseId={courseId} onLockChange={setIsLocked} />;
       case 'schedule':
         return <Schedule />;
       case 'progress':
         return <ProgressView />;
-      case 'assessment-mcq':
-        return <Assessment assessmentType="MCQ" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
-      case 'assessment-coding':
-        return <Assessment assessmentType="Coding" onLockChange={setIsLocked} onFinished={() => { setIsLocked(false); window.location.hash = 'progress'; }} />;
+
       case 'notes':
         return <StudyNotes />;
       case 'mentor-connect':
@@ -212,13 +209,13 @@ export default function DashBoard() {
   const navItems = [
     { page: 'home', icon: 'home', label: 'Home' },
     { page: 'course', icon: 'book-open', label: 'My Courses' },
+    { page: 'schedule', icon: 'clock', label: 'Schedule' },
+    { page: 'progress', icon: 'star', label: 'Progress' },
+    { page: 'notes', icon: 'file-text', label: 'Notes' },
     { page: 'mentor-connect', icon: 'message-square', label: 'Mentor Connect' },
     { page: 'community-connect', icon: 'users', label: 'Community Connect' },
     { page: 'leaderboard', icon: 'award', label: 'Leaderboard' },
     { page: 'badges', icon: 'shield', label: 'Badges' },
-    { page: 'schedule', icon: 'clock', label: 'Schedule' },
-    { page: 'progress', icon: 'star', label: 'Progress' },
-    { page: 'notes', icon: 'file-text', label: 'Notes' },
     { page: 'profile', icon: 'user', label: 'Profile' }
   ].filter((item) => !(isCourseDashboardView && ['mentor-connect', 'community-connect', 'leaderboard', 'badges'].includes(item.page)))
     .map((item) => (

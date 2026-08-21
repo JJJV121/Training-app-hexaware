@@ -35,7 +35,7 @@ async def submit_assignment_api(
     assignment_id: int = Form(...),
     submission_text: str | None = Form(None),
     github_url: str | None = Form(None),
-    file: UploadFile = File(None),
+    file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
