@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Editor from '@monaco-editor/react';
 import { assignmentService } from '../services/assignmentService';
-import Icon from './Icon';
+import CodingWorkspace from './CodingWorkspace';
 
 export default function Assignment({ courseDayId, userId, isUnlocked = true, onBackToCourse }) {
   const [assignments, setAssignments] = useState([]);
@@ -16,8 +15,14 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   const [testPhase, setTestPhase] = useState('intro'); // 'intro' | 'testing' | 'result'
   const [activeQuestionIdx, setActiveQuestionIdx] = useState(0);
   const [codeAnswersMap, setCodeAnswersMap] = useState({}); // questionIdx -> user code
+  const [languageMap, setLanguageMap] = useState({});
   const [runResultsMap, setRunResultsMap] = useState({}); // questionIdx -> test cases run result
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [isSavingCode, setIsSavingCode] = useState(false);
+  const [isRunningCode, setIsRunningCode] = useState(false);
+  const [questionStatuses, setQuestionStatuses] = useState({});
+  const [bookmarked, setBookmarked] = useState({});
+  const [remainingSec, setRemainingSec] = useState(1800);
 
   const [showEndModal, setShowEndModal] = useState(false);
   const [finalEvaluation, setFinalEvaluation] = useState(null);
@@ -44,7 +49,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
 
         const [assignedList, submissionList] = await Promise.all([
           assignmentService.getAvailableAssignments(courseDayId),
-          assignmentService.getMySubmissions()
+          assignmentService.getMySubmissions().catch(() => [])
         ]);
 
         const currentAssignments = assignedList || [];
@@ -81,14 +86,48 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     setActiveTestAssignment(task);
     setTestPhase('testing');
     setActiveQuestionIdx(0);
+    setRemainingSec(1800);
+    setBookmarked({});
 
     const questions = questionsMap[task.id] || [];
+    const record = submissions.find(s => s.assignment_id === task.id);
+    let savedAnswers = {};
+    if (record?.submission_text) {
+      try {
+        savedAnswers = JSON.parse(record.submission_text)?.answers || {};
+      } catch {
+        savedAnswers = {};
+      }
+    }
+
     const initialCodes = {};
+    const initialLangs = {};
+    const statuses = {};
     questions.forEach((q, idx) => {
-      initialCodes[idx] = q.starter_code || '';
+      const saved = savedAnswers[String(q.id)] || savedAnswers[q.id];
+      initialLangs[idx] = saved?.language || q.language || q.allowed_language || 'java';
+      initialCodes[idx] = saved?.code || q.starter_code || '';
+      statuses[q.id] = saved?.code ? 'saved' : (idx === 0 ? 'skipped' : 'not_viewed');
     });
+    setLanguageMap(initialLangs);
     setCodeAnswersMap(initialCodes);
+    setQuestionStatuses(statuses);
   };
+
+  useEffect(() => {
+    if (testPhase !== 'testing') return undefined;
+    const interval = setInterval(() => {
+      setRemainingSec((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleConfirmEndTest();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [testPhase, activeTestAssignment]);
 
   const handleRunCode = async (qIdx) => {
     const questions = questionsMap[activeTestAssignment.id] || [];
@@ -96,14 +135,15 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     if (!q) return;
 
     const currentCode = codeAnswersMap[qIdx] || '';
-    const testCases = q.test_cases || [];
-    const tcCount = testCases.length || 10;
-    
+    const language = languageMap[qIdx] || q.language || q.allowed_language || 'java';
     try {
-      const result = await assignmentService.runAssignmentCode(activeTestAssignment.id, q.id, currentCode, q.language || q.allowed_language || 'java');
+      setIsRunningCode(true);
+      const result = await assignmentService.runAssignmentCode(activeTestAssignment.id, q.id, currentCode, language);
       setRunResultsMap(prev => ({ ...prev, [qIdx]: result }));
     } catch (err) {
       setRunResultsMap(prev => ({ ...prev, [qIdx]: { status: 'ERROR', output: err.response?.data?.detail || 'Code execution failed.' } }));
+    } finally {
+      setIsRunningCode(false);
     }
   };
 
@@ -117,7 +157,8 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
 
       questions.forEach((q, idx) => {
         answersPayload[String(q.id)] = {
-          code: codeAnswersMap[idx] || q.starter_code || ''
+          code: codeAnswersMap[idx] || q.starter_code || '',
+          language: languageMap[idx] || q.language || q.allowed_language || 'java'
         };
       });
 
@@ -130,7 +171,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
       setFinalEvaluation(result);
       setTestPhase('result');
 
-      const updatedSubmissions = await assignmentService.getMySubmissions();
+      const updatedSubmissions = await assignmentService.getMySubmissions().catch(() => []);
       setSubmissions(updatedSubmissions || []);
     } catch (err) {
       alert("Error evaluating test submission. Please check connection.");
@@ -139,6 +180,26 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     }
   };
 
+  const handleSaveCurrentCode = async () => {
+    if (!activeTestAssignment) return;
+    const questions = questionsMap[activeTestAssignment.id] || [];
+    const q = questions[activeQuestionIdx];
+    if (!q) return;
+    try {
+      setIsSavingCode(true);
+      await assignmentService.saveAssignmentCode(
+        activeTestAssignment.id,
+        q.id,
+        codeAnswersMap[activeQuestionIdx] || '',
+        languageMap[activeQuestionIdx] || q.language || 'java'
+      );
+      setQuestionStatuses((prev) => ({ ...prev, [q.id]: 'saved' }));
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Unable to save code to the server.');
+    } finally {
+      setIsSavingCode(false);
+    }
+  };
 
   const handleSelectMcq = (assignmentId, questionId, optionIdx) => {
     setMcqAnswersMap(prev => ({
@@ -162,7 +223,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
       setFinalEvaluation(result);
       setTestPhase('result');
 
-      const updatedSubmissions = await assignmentService.getMySubmissions();
+      const updatedSubmissions = await assignmentService.getMySubmissions().catch(() => []);
       setSubmissions(updatedSubmissions || []);
     } catch (err) {
       alert("Error submitting assignment.");
@@ -203,7 +264,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
       setSubmittingAssignmentId(task.id);
       setError(null);
       await assignmentService.submitAssignmentSubmission(task.id, file, githubUrl);
-      const updatedSubmissions = await assignmentService.getMySubmissions();
+      const updatedSubmissions = await assignmentService.getMySubmissions().catch(() => []);
       setSubmissions(updatedSubmissions || []);
     } catch (err) {
       setError(err.response?.data?.detail || 'Unable to submit this assignment.');
@@ -304,206 +365,75 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   // ==========================================
   if (testPhase === 'testing' && activeTestAssignment) {
     const questions = questionsMap[activeTestAssignment.id] || [];
+    const workspaceQuestions = questions.map((q) => {
+      const lang = q.language || q.allowed_language || 'java';
+      return {
+        id: q.id,
+        title: q.title,
+        problemStatement: q.problem_statement || q.question,
+        inputFormat: q.input_format,
+        outputFormat: q.output_format,
+        constraints: q.constraints,
+        sampleInput: q.sample_input,
+        sampleOutput: q.sample_output,
+        marks: Math.round((activeTestAssignment.total_marks || 100) / Math.max(questions.length, 1)),
+        languages: [{ id: lang, name: lang.toUpperCase() }],
+      };
+    });
     const currentQ = questions[activeQuestionIdx] || {};
-    const testCases = currentQ.test_cases || [];
-    const runRes = runResultsMap[activeQuestionIdx];
-    const completedCount = Object.keys(codeAnswersMap).filter(k => codeAnswersMap[k] && codeAnswersMap[k].trim().length > 10).length;
-
-    console.log("ASSIGNMENT QUESTIONS:", {
-      assignmentId: activeTestAssignment.id,
-      questionCount: questions.length,
-      questions
-    });
-    console.log("CURRENT QUESTION:", {
-      id: currentQ.id,
-      title: currentQ.title,
-      problemStatement: currentQ.problem_statement,
-      inputFormat: currentQ.input_format,
-      outputFormat: currentQ.output_format,
-      constraints: currentQ.constraints,
-      sampleInput: currentQ.sample_input,
-      sampleOutput: currentQ.sample_output,
-      testCaseCount: currentQ.test_cases?.length
-    });
-
+    let userName = 'Trainee';
+    try {
+      userName = JSON.parse(localStorage.getItem('user') || '{}').name || 'Trainee';
+    } catch {
+      userName = 'Trainee';
+    }
 
     return (
-      <div style={styles.practiceViewport}>
-        <div style={styles.practiceHeader}>
-          <div>
-            <span style={styles.practiceTag}>CODING ASSIGNMENT PRACTICE</span>
-            <h3 style={{ margin: '4px 0 0 0', color: '#ffffff', fontSize: '16px' }}>{activeTestAssignment.title}</h3>
-          </div>
-
-          <button
-            onClick={() => setShowEndModal(true)}
-            style={styles.endTestHeaderBtn}
-          >
-            END PRACTICE
-          </button>
-        </div>
-
-        {/* QUESTION NAVIGATION TABS */}
-        <div style={styles.questionTabsRow}>
-          {questions.map((q, idx) => {
-            const hasCode = codeAnswersMap[idx] && codeAnswersMap[idx].trim().length > 10;
-            return (
-              <button
-                key={idx}
-                onClick={() => setActiveQuestionIdx(idx)}
-                style={{
-                  ...styles.qTabBtn,
-                  ...(activeQuestionIdx === idx ? styles.qTabActive : {})
-                }}
-              >
-                Question {idx + 1} {hasCode ? '✓' : ''}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* CODING TEST WORKSPACE */}
-        <div style={styles.testWorkspaceGrid}>
-          {/* LEFT: PROBLEM STATEMENT & 10 TEST CASES */}
-          <div style={{ ...styles.problemCard, maxHeight: '600px', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h4 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>
-                Question {activeQuestionIdx + 1}: {currentQ.title || `Coding Challenge #${activeQuestionIdx + 1}`}
-              </h4>
-              <span style={styles.langPill}>Language: {currentQ.language?.toUpperCase() || 'JAVA'}</span>
-            </div>
-
-            {currentQ.problem_statement && (
-              <div style={{ marginBottom: '12px' }}>
-                <strong style={{ fontSize: '13px', color: '#1e293b' }}>Problem Statement</strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: '13px', lineHeight: '1.6', color: '#334155' }}>
-                  {currentQ.problem_statement}
-                </p>
-              </div>
-            )}
-
-            {currentQ.input_format && (
-              <div style={styles.formatBox}>
-                <strong>Input Format:</strong>
-                <div style={{ marginTop: '2px', fontFamily: 'monospace', fontSize: '12px' }}>{currentQ.input_format}</div>
-              </div>
-            )}
-
-            {currentQ.output_format && (
-              <div style={styles.formatBox}>
-                <strong>Output Format:</strong>
-                <div style={{ marginTop: '2px', fontFamily: 'monospace', fontSize: '12px' }}>{currentQ.output_format}</div>
-              </div>
-            )}
-
-            {currentQ.constraints && currentQ.constraints.trim() !== '' && (
-              <div style={styles.constraintsBox}>
-                <strong>Constraints:</strong>
-                <div style={{ marginTop: '2px', fontFamily: 'monospace', fontSize: '12px' }}>{currentQ.constraints}</div>
-              </div>
-            )}
-
-            {currentQ.sample_input && (
-              <div style={{ ...styles.formatBox, backgroundColor: '#f1f5f9' }}>
-                <strong>Sample Input:</strong>
-                <pre style={{ margin: '4px 0 0 0', fontFamily: 'monospace', fontSize: '12px', whiteSpace: 'pre-wrap', color: '#0f172a' }}>
-                  {currentQ.sample_input}
-                </pre>
-              </div>
-            )}
-
-            {currentQ.sample_output && (
-              <div style={{ ...styles.formatBox, backgroundColor: '#f1f5f9' }}>
-                <strong>Sample Output:</strong>
-                <pre style={{ margin: '4px 0 0 0', fontFamily: 'monospace', fontSize: '12px', whiteSpace: 'pre-wrap', color: '#0f172a' }}>
-                  {currentQ.sample_output}
-                </pre>
-              </div>
-            )}
-
-            {currentQ.explanation && (
-              <div style={{ ...styles.formatBox, backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }}>
-                <strong>Explanation:</strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#1e40af' }}>
-                  {currentQ.explanation}
-                </p>
-              </div>
-            )}
-
-            <h5 style={{ margin: '16px 0 8px 0', fontSize: '13px', color: '#334155', fontWeight: '700' }}>
-              10 Evaluation Test Cases:
-            </h5>
-            <div style={styles.testCasesList}>
-              {testCases.map((tc, tcIdx) => (
-                <div key={tc.id || tcIdx} style={styles.testCaseRow}>
-                  <span>
-                    Test Case #{tc.id || tcIdx + 1}{' '}
-                    {tc.is_hidden ? '(Hidden Evaluation Case)' : `(Input: ${tc.input || 'Sample Input'})`}
-                  </span>
-                  <span style={{ fontSize: '11px', color: tc.is_hidden ? '#64748b' : '#2563eb', fontWeight: '600' }}>
-                    {tc.is_hidden ? '🔒 Hidden' : '👁️ Visible / Sample'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* RIGHT: MONACO/CODE EDITOR & RUN ENGINE */}
-          <div style={styles.editorCard}>
-            <div style={styles.editorHeader}>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8' }}>
-                Code Editor ({currentQ.language || currentQ.allowed_language || 'java'})
-              </span>
-              <button
-                onClick={() => handleRunCode(activeQuestionIdx)}
-                style={styles.runCodeBtn}
-              >
-                ▶ Run Code
-              </button>
-            </div>
-
-            <Editor
-              height="420px"
-              language={(currentQ.language || currentQ.allowed_language || 'java').toLowerCase()}
-              theme="vs-dark"
-              value={codeAnswersMap[activeQuestionIdx] || ''}
-              onChange={(value) => setCodeAnswersMap({ ...codeAnswersMap, [activeQuestionIdx]: value || '' })}
-              options={{ minimap: { enabled: false }, automaticLayout: true, fontSize: 14, wordWrap: 'on' }}
-            />
-
-            {runRes && (
-              <div style={{
-                ...styles.runResultBox,
-                backgroundColor: runRes.passed === runRes.total ? '#f0fdf4' : '#eff6ff',
-                borderColor: runRes.passed === runRes.total ? '#86efac' : '#bfdbfe'
-              }}>
-                <strong>Test Evaluation Result:</strong> {runRes.passed_tests ?? runRes.passed ?? 0} / {runRes.total_tests ?? runRes.total ?? testCases.length} Test Cases ({runRes.status}). {runRes.output || ''}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* CONFIRMATION END TEST MODAL */}
-        {showEndModal && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.modalContent}>
-              <h3 style={{ margin: '0 0 12px 0', color: '#1e293b' }}>Confirm End Test</h3>
-                <p style={{ margin: '0 0 16px 0', color: '#64748b', fontSize: '14px' }}>
-                Submit your current practice answers and view the marks obtained.
-              </p>
-              <div style={{ backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '6px', marginBottom: '20px', fontSize: '13px', color: '#334155' }}>
-                <strong>Questions Attempted:</strong> {completedCount} / {questions.length} Questions
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button onClick={() => setShowEndModal(false)} style={styles.modalCancelBtn}>CANCEL</button>
-                <button onClick={handleConfirmEndTest} style={styles.modalConfirmBtn} disabled={isEvaluating}>
-                  {isEvaluating ? "Evaluating..." : "VIEW MARKS"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <CodingWorkspace
+        title={activeTestAssignment.title}
+        sectionLabel={`Section 1/1 | Coding (${questions.length})`}
+        userName={userName}
+        userRoll={String(userId || '')}
+        remainingSeconds={remainingSec}
+        questions={workspaceQuestions}
+        currentIndex={activeQuestionIdx}
+        onSelectQuestion={(idx) => {
+          const prevQ = questions[activeQuestionIdx];
+          if (prevQ && questionStatuses[prevQ.id] === 'not_viewed') {
+            setQuestionStatuses((prev) => ({ ...prev, [prevQ.id]: 'skipped' }));
+          }
+          setActiveQuestionIdx(idx);
+          const nextQ = questions[idx];
+          if (nextQ && questionStatuses[nextQ.id] === 'not_viewed') {
+            setQuestionStatuses((prev) => ({ ...prev, [nextQ.id]: 'skipped' }));
+          }
+        }}
+        code={codeAnswersMap[activeQuestionIdx] || ''}
+        language={languageMap[activeQuestionIdx] || currentQ.language || 'java'}
+        onCodeChange={(value) => {
+          setCodeAnswersMap({ ...codeAnswersMap, [activeQuestionIdx]: value });
+          if (currentQ.id) {
+            setQuestionStatuses((prev) => ({
+              ...prev,
+              [currentQ.id]: value.trim().length > 0 ? 'answered' : 'skipped',
+            }));
+          }
+        }}
+        onLanguageChange={(lang) => setLanguageMap({ ...languageMap, [activeQuestionIdx]: lang })}
+        onClear={() => setCodeAnswersMap({ ...codeAnswersMap, [activeQuestionIdx]: currentQ.starter_code || '' })}
+        onRun={() => handleRunCode(activeQuestionIdx)}
+        onSaveCode={handleSaveCurrentCode}
+        onSubmitTest={handleConfirmEndTest}
+        onNext={() => setActiveQuestionIdx((idx) => Math.min(idx + 1, questions.length - 1))}
+        runResult={runResultsMap[activeQuestionIdx]}
+        isRunning={isRunningCode}
+        isSaving={isSavingCode}
+        isSubmitting={isEvaluating}
+        statuses={questionStatuses}
+        bookmarked={bookmarked}
+        onToggleBookmark={(qId) => setBookmarked((prev) => ({ ...prev, [qId]: !prev[qId] }))}
+        watermark={`${userId || ''}04035`}
+      />
     );
   }
 

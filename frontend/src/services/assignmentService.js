@@ -24,6 +24,15 @@ export const assignmentService = {
     return response.data;
   },
 
+  async saveAssignmentCode(assignmentId, questionId, code, language) {
+    const response = await apiClient.post(`/assignments/${assignmentId}/save-code`, {
+      question_id: questionId,
+      code,
+      language
+    });
+    return response.data;
+  },
+
   async submitAssignmentAnswers(assignmentId, answers, userId) {
     const response = await apiClient.post(`/assignments/${assignmentId}/submit-answers`, {
       user_id: userId,

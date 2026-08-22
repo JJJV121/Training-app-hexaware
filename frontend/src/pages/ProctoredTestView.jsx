@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { proctoredTestService } from '../services/proctoredTestService';
 import Icon from '../components/Icon';
 import { useTheme } from '../context/ThemeContext';
+import CodingWorkspace from '../components/CodingWorkspace';
 import '../styles/assessment.css';
 
 export default function ProctoredTestView({ courseDayId, assessmentId: propAssessmentId, onBack }) {
@@ -21,6 +22,12 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [resultData, setResultData] = useState(null);
+  const [runResult, setRunResult] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [bookmarked, setBookmarked] = useState({});
+  const [questionStatuses, setQuestionStatuses] = useState({});
+  const [currentLanguage, setCurrentLanguage] = useState('python');
 
   // Proctoring States
   const [cameraActive, setCameraActive] = useState(true);
@@ -69,6 +76,8 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
         if (typeof attInfo.current_question === 'number') {
           setCurrentIdx(attInfo.current_question);
         }
+        const firstLang = testInfo.questions?.[0]?.allowed_language || 'python';
+        setCurrentLanguage(firstLang);
 
         if (attInfo.status === 'submitted') {
           // Attempt already submitted -> get results
@@ -207,17 +216,61 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
     });
   };
 
-  const handleCodeChange = (qId, code) => {
+  const handleCodeChange = (qId, code, language) => {
     setAnswers((prev) => {
       const existing = prev[qId] || { selected_option_ids: [], answer_text: '', code: '' };
-      const updated = { ...prev, [qId]: { ...existing, code } };
+      const lang = language || existing.language || currentLanguage;
+      const updated = { ...prev, [qId]: { ...existing, code, language: lang } };
 
       if (attempt) {
-        proctoredTestService.saveAnswer(attempt.attempt_id, qId, existing.selected_option_ids, existing.answer_text, currentIdx, code, currentQLanguage);
+        proctoredTestService.saveAnswer(attempt.attempt_id, qId, existing.selected_option_ids, existing.answer_text, currentIdx, code, lang);
       }
 
       return updated;
     });
+    setQuestionStatuses((prev) => ({ ...prev, [qId]: code?.trim() ? 'answered' : 'skipped' }));
+  };
+
+  const handleSaveCurrentCode = async () => {
+    if (!attempt || !testData) return;
+    const q = testData.questions[currentIdx];
+    const ans = answers[q.question_id] || {};
+    try {
+      setIsSaving(true);
+      await proctoredTestService.saveAnswer(
+        attempt.attempt_id,
+        q.question_id,
+        ans.selected_option_ids,
+        ans.answer_text,
+        currentIdx,
+        ans.code || '',
+        ans.language || currentLanguage
+      );
+      setQuestionStatuses((prev) => ({ ...prev, [q.question_id]: 'saved' }));
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Unable to save code.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRunAssessmentCode = async () => {
+    if (!testData) return;
+    const q = testData.questions[currentIdx];
+    const ans = answers[q.question_id] || {};
+    try {
+      setIsRunning(true);
+      const result = await proctoredTestService.runCode(
+        q.question_id,
+        ans.code || q.starter_code || '',
+        ans.language || q.allowed_language || currentLanguage
+      );
+      setRunResult(result);
+    } catch (err) {
+      setRunResult({ status: 'ERROR', output: err.response?.data?.detail || 'Code execution failed.', passed_tests: 0, total_tests: 0 });
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   // Navigation handlers
@@ -358,6 +411,72 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
   }
 
   const currentQ = testData.questions[currentIdx];
+
+  if (phase === 'testing' && assessmentType === 'CODING') {
+    let userName = 'Trainee';
+    try {
+      userName = JSON.parse(localStorage.getItem('user') || '{}').name || 'Trainee';
+    } catch {
+      userName = 'Trainee';
+    }
+    const workspaceQuestions = testData.questions.map((q) => {
+      const lang = q.allowed_language || 'python';
+      return {
+        id: q.question_id,
+        title: q.title,
+        problemStatement: q.question_text,
+        inputFormat: q.input_format,
+        outputFormat: q.output_format,
+        constraints: q.constraints,
+        sampleInput: q.sample_input,
+        sampleOutput: q.sample_output,
+        marks: q.points,
+        languages: [{ id: lang, name: String(lang).toUpperCase() }],
+      };
+    });
+    const codingAns = answers[currentQ.question_id] || {};
+    const lang = codingAns.language || currentQ.allowed_language || currentLanguage;
+
+    return (
+      <CodingWorkspace
+        title={testData.test_name}
+        sectionLabel={`Section 1/1 | Coding (${testData.questions.length})`}
+        userName={userName}
+        userRoll={String(localStorage.getItem('logged_in_user_id') || '')}
+        remainingSeconds={remainingSec}
+        questions={workspaceQuestions}
+        currentIndex={currentIdx}
+        onSelectQuestion={(idx) => {
+          handleQuestionJump(idx);
+          setRunResult(null);
+          const nextQ = testData.questions[idx];
+          if (nextQ && !questionStatuses[nextQ.question_id]) {
+            setQuestionStatuses((prev) => ({ ...prev, [nextQ.question_id]: 'skipped' }));
+          }
+        }}
+        code={codingAns.code ?? currentQ.starter_code ?? ''}
+        language={lang}
+        onCodeChange={(value) => handleCodeChange(currentQ.question_id, value, lang)}
+        onLanguageChange={(nextLang) => {
+          setCurrentLanguage(nextLang);
+          handleCodeChange(currentQ.question_id, codingAns.code ?? currentQ.starter_code ?? '', nextLang);
+        }}
+        onClear={() => handleCodeChange(currentQ.question_id, currentQ.starter_code || '', lang)}
+        onRun={handleRunAssessmentCode}
+        onSaveCode={handleSaveCurrentCode}
+        onSubmitTest={handleConfirmSubmit}
+        onNext={handleNextQuestion}
+        runResult={runResult}
+        isRunning={isRunning}
+        isSaving={isSaving}
+        isSubmitting={isSubmitting}
+        statuses={questionStatuses}
+        bookmarked={bookmarked}
+        onToggleBookmark={(qId) => setBookmarked((prev) => ({ ...prev, [qId]: !prev[qId] }))}
+        watermark={`${localStorage.getItem('logged_in_user_id') || ''}04035`}
+      />
+    );
+  }
 
   // RENDER: Setup Screen
   if (phase === 'setup') {

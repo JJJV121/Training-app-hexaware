@@ -145,8 +145,7 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
         raise HTTPException(status_code=404, detail="Course day not found.")
 
     assessment_plan = {1: "MCQ", 2: "MCQ", 6: "CODING", 13: "MCQ", 14: "CODING", 16: "MCQ"}
-    if course_day.day_number not in assessment_plan:
-        raise HTTPException(status_code=404, detail="No assessment is scheduled for this day.")
+    planned_type = assessment_plan.get(course_day.day_number, "CODING")
 
     course_stmt = select(Course).where(Course.id == course_day.course_id)
     course_res = await db.execute(course_stmt)
@@ -183,7 +182,7 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
             description=f"Proctored coding skill assessment for {course_day.title}",
             instructions="Maintain full screen. Write working code for all questions.",
             created_by=1,
-            assessment_type=assessment_plan[course_day.day_number],
+            assessment_type=planned_type,
             duration_minutes=60,
             total_marks=100,
             passing_marks=70,
@@ -191,8 +190,8 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
         db.add(assessment)
         await db.flush()
     else:
-        if assessment.assessment_type != assessment_plan[course_day.day_number]:
-            assessment.assessment_type = assessment_plan[course_day.day_number]
+        if assessment.assessment_type != planned_type:
+            assessment.assessment_type = planned_type
             await db.flush()
         # Update title if needed to enforce course_day_topic
         if assessment.title != test_title:
@@ -262,10 +261,6 @@ async def get_assessments_by_day(db: AsyncSession, course_day_id: int) -> list[d
     day = await db.get(CourseDay, course_day_id)
     if not day:
         raise HTTPException(status_code=404, detail="Course day not found.")
-
-    scheduled_days = {1, 2, 6, 13, 14, 16}
-    if day.day_number not in scheduled_days:
-        return []
 
     await get_or_create_day_assessment(db, course_day_id)
     stmt = select(Assessment).where(Assessment.course_day_id == course_day_id).order_by(Assessment.id)

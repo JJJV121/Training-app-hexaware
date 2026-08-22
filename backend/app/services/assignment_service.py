@@ -101,7 +101,7 @@ async def delete_assignment(
 
 from datetime import datetime
 
-def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_id: int, day_id: int = None) -> list[dict]:
+def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_id: int, day_id: int = None, sanitize_hidden: bool = True) -> list[dict]:
     from app.database.seed_data.training_plan_questions import TRAINING_PLAN_QUESTIONS
     raw_questions = None
     if day_id and day_id in TRAINING_PLAN_QUESTIONS:
@@ -212,7 +212,7 @@ def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_
                 "test_cases": test_cases
             })
 
-    # Deep copy and sanitize hidden test cases for API output security
+    # Deep copy and optionally sanitize hidden test cases for API output security
     sanitized = []
     for q in raw_questions:
         q_copy = dict(q)
@@ -220,7 +220,7 @@ def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_
             clean_tcs = []
             for tc in q_copy["test_cases"]:
                 tc_item = dict(tc)
-                if tc_item.get("is_hidden"):
+                if sanitize_hidden and tc_item.get("is_hidden"):
                     tc_item["expected_output"] = None
                     tc_item["input"] = "Hidden Evaluation Case"
                 clean_tcs.append(tc_item)
@@ -230,7 +230,7 @@ def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_
     return sanitized
 
 
-async def get_assignment_questions(db: AsyncSession, assignment_id: int):
+async def get_assignment_questions(db: AsyncSession, assignment_id: int, sanitize_hidden: bool = True):
     assignment = await get_assignment_by_id(db, assignment_id)
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
@@ -253,7 +253,13 @@ async def get_assignment_questions(db: AsyncSession, assignment_id: int):
     is_coding = (assignment.assignment_type == AssignmentType.CODING) or ("challenge" in assignment.title.lower()) or ("assessment" in assignment.title.lower())
 
     if is_coding:
-        return generate_coding_questions_for_day(day_title, day_desc, assignment_id, day.day_number if day else None)
+        return generate_coding_questions_for_day(
+            day_title,
+            day_desc,
+            assignment_id,
+            day.day_number if day else None,
+            sanitize_hidden=sanitize_hidden,
+        )
 
     from app.services.mcq_generator_service import generate_25_mcqs_for_day
     all_mcqs = generate_25_mcqs_for_day(course_title, day_title, day_desc)
@@ -292,7 +298,7 @@ async def evaluate_assignment_answers(
     if not assignment:
         raise HTTPException(status_code=404, detail="Assignment not found")
 
-    questions = await get_assignment_questions(db, assignment_id)
+    questions = await get_assignment_questions(db, assignment_id, sanitize_hidden=False)
 
     total_questions = len(questions)
     if total_questions == 0:
@@ -302,6 +308,8 @@ async def evaluate_assignment_answers(
     is_coding = any(q.get("type") == "coding" or "test_cases" in q or "starter_code" in q for q in questions)
 
     if is_coding:
+        from app.services.code_execution_service import execute_code_against_testcases
+
         total_test_cases = 0
         passed_test_cases = 0
         details = []
@@ -309,21 +317,21 @@ async def evaluate_assignment_answers(
         for q in questions:
             q_id_str = str(q["id"])
             user_code = answers.get(q_id_str) or answers.get(q["id"]) or ""
+            language = q.get("language") or q.get("allowed_language") or "python"
             if isinstance(user_code, dict):
+                language = user_code.get("language") or language
                 user_code = user_code.get("code", "")
 
-            # Evaluate against the question's 10 test cases
             q_test_cases = q.get("test_cases", [])
             q_tc_count = len(q_test_cases)
             total_test_cases += q_tc_count
 
-            # Evaluate code quality heuristic: non-empty code passes test cases
-            if isinstance(user_code, str) and len(user_code.strip()) > 20 and ("return" in user_code or "SELECT" in user_code or "UPDATE" in user_code):
-                q_passed = q_tc_count  # passes all 10 test cases
-            elif isinstance(user_code, str) and len(user_code.strip()) > 5:
-                q_passed = max(1, int(q_tc_count * 0.7)) # passes 7 of 10 test cases
-            else:
-                q_passed = int(q_tc_count * 0.3) # passes 3 of 10 sample test cases
+            eval_result = await execute_code_against_testcases(
+                code=str(user_code or ""),
+                language=language,
+                test_cases=q_test_cases,
+            )
+            q_passed = int(eval_result.get("passed_tests") or 0)
 
             passed_test_cases += q_passed
 
@@ -332,8 +340,8 @@ async def evaluate_assignment_answers(
                 "question": q.get("title") or q.get("question"),
                 "passed_test_cases": q_passed,
                 "total_test_cases": q_tc_count,
-                "is_correct": q_passed == q_tc_count,
-                "explanation": f"Passed {q_passed} of {q_tc_count} test cases."
+                "is_correct": q_passed == q_tc_count and q_tc_count > 0,
+                "explanation": eval_result.get("output") or f"Passed {q_passed} of {q_tc_count} test cases."
             })
 
         marks = int(round((passed_test_cases / max(1, total_test_cases)) * assignment.total_marks))
@@ -421,4 +429,4 @@ async def evaluate_assignment_answers(
         "status": status_str,
         "feedback": feedback_str,
         "details": details
-    }
+    }

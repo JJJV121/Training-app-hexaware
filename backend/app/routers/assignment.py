@@ -13,7 +13,7 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.core.dependencies import get_current_user, get_current_trainer
+from app.core.dependencies import get_current_user, get_current_trainer, get_optional_user
 from app.models.user import User
 from app.schemas.assignment import (
     AssignmentCreate,
@@ -43,6 +43,12 @@ class AssignmentRunCodeRequest(BaseModel):
     question_id: int
     code: str
     language: str
+
+
+class AssignmentSaveCodeRequest(BaseModel):
+    question_id: int
+    code: str
+    language: str | None = None
 
 router = APIRouter(
     prefix="/assignments",
@@ -270,11 +276,71 @@ async def run_assignment_code_api(
     if not question:
         raise HTTPException(status_code=404, detail="Assignment question not found")
 
+    visible_cases = [
+        tc for tc in (question.get("test_cases") or [])
+        if not tc.get("is_hidden")
+    ]
     return await execute_code_against_testcases(
         code=payload.code,
         language=payload.language,
-        test_cases=question.get("test_cases") or [],
+        test_cases=visible_cases or (question.get("test_cases") or []),
     )
+
+
+@router.post("/{assignment_id}/save-code")
+async def save_assignment_code_api(
+    assignment_id: int,
+    payload: AssignmentSaveCodeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_optional_user),
+):
+    import json
+    from app.models.assignment_submission import AssignmentSubmission, SubmissionStatus
+
+    assignment = await get_assignment_by_id(db, assignment_id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    stmt = select(AssignmentSubmission).where(
+        AssignmentSubmission.assignment_id == assignment_id,
+        AssignmentSubmission.user_id == current_user.id,
+    )
+    existing = await db.scalar(stmt)
+    saved = {}
+    if existing and existing.submission_text:
+        try:
+            saved = json.loads(existing.submission_text) or {}
+        except Exception:
+            saved = {}
+
+    answers = saved.get("answers") if isinstance(saved, dict) else {}
+    if not isinstance(answers, dict):
+        answers = {}
+    answers[str(payload.question_id)] = {
+        "code": payload.code,
+        "language": payload.language,
+    }
+    payload_json = json.dumps({"answers": answers})
+
+    if existing:
+        existing.submission_text = payload_json
+        if existing.status == SubmissionStatus.PENDING:
+            existing.status = SubmissionStatus.SUBMITTED
+        await db.commit()
+        await db.refresh(existing)
+        return {"status": "saved", "question_id": payload.question_id, "submission_id": existing.id}
+
+    submission = AssignmentSubmission(
+        assignment_id=assignment_id,
+        user_id=current_user.id,
+        submission_text=payload_json,
+        status=SubmissionStatus.SUBMITTED,
+        submitted_at=datetime.utcnow(),
+    )
+    db.add(submission)
+    await db.commit()
+    await db.refresh(submission)
+    return {"status": "saved", "question_id": payload.question_id, "submission_id": submission.id}
 
 
 # -------------------- Submit Answers & Evaluate Assignment --------------------
@@ -354,7 +420,7 @@ async def get_trainee_assignments(
 @router.get("/trainee/my-submissions", response_model=list[AssignmentSubmissionResponse])
 async def get_trainee_my_submissions(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_optional_user),
 ):
     result = await db.execute(
         select(AssignmentSubmission).where(AssignmentSubmission.user_id == current_user.id)

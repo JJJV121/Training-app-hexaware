@@ -76,4 +76,13 @@ export const proctoredTestService = {
     const res = await apiClient.post(`/assessment-attempts/${attemptId}/submit`);
     return res.data;
   },
+
+  async runCode(questionId, code, language) {
+    const res = await apiClient.post('/assessments/run-code', {
+      question_id: questionId,
+      code,
+      language,
+    });
+    return res.data;
+  },
 };
