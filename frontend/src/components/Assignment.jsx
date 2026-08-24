@@ -22,10 +22,14 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   const [isRunningCode, setIsRunningCode] = useState(false);
   const [questionStatuses, setQuestionStatuses] = useState({});
   const [bookmarked, setBookmarked] = useState({});
-  const [remainingSec, setRemainingSec] = useState(1800);
+  const [remainingSec, setRemainingSec] = useState(null); // No timer for assignments
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
+  const [warningMsg, setWarningMsg] = useState('');
 
   const [showEndModal, setShowEndModal] = useState(false);
   const [finalEvaluation, setFinalEvaluation] = useState(null);
+  const isEndingTestRef = React.useRef(false);
 
   // MCQ selection state for Type 1 Assignment Q&A
   const [mcqAnswersMap, setMcqAnswersMap] = useState({});
@@ -83,11 +87,21 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   }, [courseDayId, isUnlocked]);
 
   const handleStartTest = (task) => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    }
     setActiveTestAssignment(task);
     setTestPhase('testing');
     setActiveQuestionIdx(0);
-    setRemainingSec(1800);
+    setRemainingSec(null);
     setBookmarked({});
+    setShowWarning(false);
+    setWarningMsg('');
 
     const questions = questionsMap[task.id] || [];
     const record = submissions.find(s => s.assignment_id === task.id);
@@ -114,20 +128,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     setQuestionStatuses(statuses);
   };
 
-  useEffect(() => {
-    if (testPhase !== 'testing') return undefined;
-    const interval = setInterval(() => {
-      setRemainingSec((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleConfirmEndTest();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [testPhase, activeTestAssignment]);
+  // Timer logic removed for assignments per requirements
 
   const handleRunCode = async (qIdx) => {
     const questions = questionsMap[activeTestAssignment.id] || [];
@@ -148,6 +149,8 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
   };
 
   const handleConfirmEndTest = async () => {
+    if (!activeTestAssignment || isEndingTestRef.current) return;
+    isEndingTestRef.current = true;
     setShowEndModal(false);
     setIsEvaluating(true);
 
@@ -177,8 +180,37 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
       alert("Error evaluating test submission. Please check connection.");
     } finally {
       setIsEvaluating(false);
+      isEndingTestRef.current = false;
     }
   };
+
+  useEffect(() => {
+    if (testPhase !== 'testing') return undefined;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && !isEndingTestRef.current) {
+        setWarningMsg("⚠️ TAB SWITCH DETECTED: You have been auto-submitted for switching tabs.");
+        setShowWarning(true);
+        void handleConfirmEndTest();
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      const isFS = !!document.fullscreenElement;
+      setIsFullscreen(isFS);
+      if (!isFS && !isEndingTestRef.current) {
+        setWarningMsg("⚠️ FULLSCREEN EXIT DETECTED: You must maintain full screen during the assignment.");
+        setShowWarning(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, [testPhase, activeTestAssignment]);
 
   const handleSaveCurrentCode = async () => {
     if (!activeTestAssignment) return;
@@ -295,6 +327,12 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     const isPassed = finalEvaluation.percentage >= 75.0;
     return (
       <div style={styles.resultContainer}>
+        {showWarning && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', padding: '12px 20px', borderRadius: '10px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#b91c1c', fontWeight: '600' }}>
+            <span>{warningMsg}</span>
+            <button onClick={() => setShowWarning(false)} style={{ background: 'transparent', border: 'none', color: '#b91c1c', cursor: 'pointer', fontWeight: '700' }}>✕</button>
+          </div>
+        )}
         <div style={{ ...styles.resultHeader, backgroundColor: isPassed ? '#15803d' : '#b91c1c' }}>
           <div style={{ fontSize: '48px', marginBottom: '8px' }}>{isPassed ? '🎉' : '⚠️'}</div>
           <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '800' }}>
@@ -389,7 +427,14 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
     }
 
     return (
-      <CodingWorkspace
+      <>
+        {showWarning && (
+          <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 999999, background: '#fef2f2', border: '1px solid #fca5a5', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', color: '#b91c1c', fontWeight: '700', display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <span>{warningMsg}</span>
+            <button onClick={() => setShowWarning(false)} style={{ background: 'transparent', border: 'none', color: '#b91c1c', cursor: 'pointer', fontWeight: '800' }}>✕</button>
+          </div>
+        )}
+        <CodingWorkspace
         title={activeTestAssignment.title}
         sectionLabel={`Section 1/1 | Coding (${questions.length})`}
         userName={userName}
@@ -434,6 +479,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
         onToggleBookmark={(qId) => setBookmarked((prev) => ({ ...prev, [qId]: !prev[qId] }))}
         watermark={`${userId || ''}04035`}
       />
+      </>
     );
   }
 

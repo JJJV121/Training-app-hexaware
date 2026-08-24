@@ -140,6 +140,7 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
         setWarningMsg("⚠️ TAB SWITCH DETECTED: Do not switch browser tabs during the test.");
         setShowWarning(true);
         proctoredTestService.logProctoringEvent(attempt.attempt_id, "TAB_SWITCH");
+        void handleAutoSubmit();
       }
     };
 
@@ -438,7 +439,14 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
     const lang = codingAns.language || currentQ.allowed_language || currentLanguage;
 
     return (
-      <CodingWorkspace
+      <>
+        {showWarning && (
+          <div style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 999999, background: '#fef2f2', border: '1px solid #fca5a5', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', color: '#b91c1c', fontWeight: '700', display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <span>{warningMsg}</span>
+            <button onClick={() => setShowWarning(false)} style={{ background: 'transparent', border: 'none', color: '#b91c1c', cursor: 'pointer', fontWeight: '800' }}>✕</button>
+          </div>
+        )}
+        <CodingWorkspace
         title={testData.test_name}
         sectionLabel={`Section 1/1 | Coding (${testData.questions.length})`}
         userName={userName}
@@ -475,6 +483,7 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
         onToggleBookmark={(qId) => setBookmarked((prev) => ({ ...prev, [qId]: !prev[qId] }))}
         watermark={`${localStorage.getItem('logged_in_user_id') || ''}04035`}
       />
+      </>
     );
   }
 
@@ -554,6 +563,12 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
   if (phase === 'result' && resultData) {
     return (
       <div style={{ maxWidth: '750px', margin: '32px auto', padding: '40px', background: 'var(--bg-card, #ffffff)', borderRadius: '20px', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', textCenter: 'center', border: '1px solid var(--border-color, #e2e8f0)' }}>
+        {showWarning && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', padding: '12px 20px', borderRadius: '10px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#b91c1c', fontWeight: '600' }}>
+            <span>{warningMsg}</span>
+            <button onClick={() => setShowWarning(false)} style={{ background: 'transparent', border: 'none', color: '#b91c1c', cursor: 'pointer', fontWeight: '700' }}>✕</button>
+          </div>
+        )}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '72px', height: '72px', borderRadius: '50%', background: resultData.passed ? '#dcfce7' : '#fee2e2', color: resultData.passed ? '#16a34a' : '#dc2626', fontSize: '36px', marginBottom: '16px' }}>
             {resultData.passed ? '✓' : '✕'}

@@ -464,6 +464,7 @@ async def create_or_get_active_attempt(
     else:
         sub_stmt = (
             select(AssessmentAttempt)
+            .options(selectinload(AssessmentAttempt.answers))
             .where(
                 and_(
                     AssessmentAttempt.assessment_id == assessment_id,
@@ -475,8 +476,33 @@ async def create_or_get_active_attempt(
         sub_res = await db.execute(sub_stmt)
         sub_attempt = sub_res.scalar_one_or_none()
         if sub_attempt:
-            # Re-fetch results for completed attempt
-            return await submit_attempt(db, sub_attempt.id, user_id)
+            # Already submitted — return AttemptResponse-compatible dict
+            trainee_view = await get_proctored_assessment_trainee_view(db, assessment_id, user_id)
+            saved_answers_sub = {}
+            for ans in (sub_attempt.answers or []):
+                saved_answers_sub[ans.question_id] = {
+                    "selected_option_ids": ans.selected_option_ids or [],
+                    "answer_text": ans.answer_text or "",
+                    "code": ans.code or "",
+                    "language": ans.language or "python",
+                    "status": ans.status or "Attempted"
+                }
+            return {
+                "attempt_id": sub_attempt.id,
+                "assessment_id": assessment_id,
+                "test_name": trainee_view["test_name"],
+                "course": trainee_view["course"],
+                "day": trainee_view["day"],
+                "topic": trainee_view["topic"],
+                "duration_minutes": assessment.duration_minutes,
+                "status": sub_attempt.status,
+                "started_at": sub_attempt.started_at,
+                "expires_at": sub_attempt.expires_at,
+                "submitted_at": sub_attempt.submitted_at,
+                "current_question": sub_attempt.current_question,
+                "saved_answers": saved_answers_sub,
+                "remaining_seconds": 0,
+            }
 
         expires_at = now + timedelta(minutes=assessment.duration_minutes)
         attempt = AssessmentAttempt(
@@ -492,8 +518,13 @@ async def create_or_get_active_attempt(
         await db.commit()
         await db.refresh(attempt)
 
-        att_res = await db.execute(att_stmt)
-        attempt = att_res.scalar_one_or_none()
+        # Reload attempt with answers relationship
+        att_res2 = await db.execute(
+            select(AssessmentAttempt)
+            .options(selectinload(AssessmentAttempt.answers))
+            .where(AssessmentAttempt.id == attempt.id)
+        )
+        attempt = att_res2.scalar_one_or_none()
 
     # Retrieve saved answers (MCQ & Coding)
     saved_answers = {}
