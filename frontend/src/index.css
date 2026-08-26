@@ -564,3 +564,16 @@
   border-color: var(--border-color);
 }
 
+/* The registration page uses inline colors for its course summary. Override
+   those colors in night mode so every visible text value stays readable. */
+.app-container.dark-theme .register-course-page h3,
+.app-container.dark-theme .register-course-page p,
+.app-container.dark-theme .register-course-page span {
+  color: #ffffff !important;
+}
+
+.app-container.dark-theme .register-course-page h1,
+.app-container.dark-theme .register-course-page h2 {
+  color: #0061fe !important;
+}
+

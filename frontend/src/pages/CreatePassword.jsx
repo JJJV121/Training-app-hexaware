@@ -13,6 +13,11 @@ export default function CreatePasswordScreen() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Consent states
+  const [showConsentModal, setShowConsentModal] = useState(true);
+  const [consentAgreed, setConsentAgreed] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -27,10 +32,22 @@ export default function CreatePasswordScreen() {
     }
   }, [token]);
 
+  const handleConsentSubmit = () => {
+    if (consentChecked) {
+      setConsentAgreed(true);
+      setShowConsentModal(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMessage('');
+
+    if (!consentAgreed) {
+      setError('You must agree to the consent form before proceeding.');
+      return;
+    }
 
     if (!token) {
       setError('Cannot submit: Activation token is missing.');
@@ -77,7 +94,149 @@ export default function CreatePasswordScreen() {
       50% { transform: translate(-15px, 15px) scale(0.95); }
       100% { transform: translate(0px, 0px) scale(1); }
     }
+    @keyframes consentFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes consentSlideUp {
+      from { opacity: 0; transform: translateY(40px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes consentShimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    @keyframes consentPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(53, 99, 233, 0.3); }
+      50% { box-shadow: 0 0 0 8px rgba(53, 99, 233, 0); }
+    }
   `;
+
+  // Consent Modal Styles
+  const consentOverlayStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backdropFilter: 'blur(8px)',
+    WebkitBackdropFilter: 'blur(8px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+    animation: 'consentFadeIn 0.3s ease-out',
+    padding: '24px',
+  };
+
+  const consentCardStyle = {
+    background: '#ffffff',
+    borderRadius: '24px',
+    padding: '40px',
+    maxWidth: '560px',
+    width: '100%',
+    boxShadow: '0 32px 80px rgba(0, 0, 0, 0.18), 0 8px 24px rgba(0, 0, 0, 0.08)',
+    animation: 'consentSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+    position: 'relative',
+    overflow: 'hidden',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+  };
+
+  const consentHeaderIconStyle = {
+    width: '56px',
+    height: '56px',
+    borderRadius: '16px',
+    background: 'linear-gradient(135deg, #3563e9, #254dd0)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '20px',
+    boxShadow: '0 8px 24px rgba(53, 99, 233, 0.3)',
+  };
+
+  const consentTitleStyle = {
+    fontSize: '22px',
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: '6px',
+    letterSpacing: '-0.3px',
+  };
+
+  const consentSubtitleStyle = {
+    fontSize: '14px',
+    color: '#6b7280',
+    marginBottom: '24px',
+    fontWeight: '400',
+  };
+
+  const consentBodyStyle = {
+    background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+    borderRadius: '16px',
+    padding: '24px',
+    marginBottom: '24px',
+    border: '1px solid #e5e7eb',
+  };
+
+  const consentTextStyle = {
+    fontSize: '14px',
+    color: '#374151',
+    lineHeight: '1.7',
+    margin: 0,
+  };
+
+  const consentBoldStyle = {
+    fontWeight: '600',
+    color: '#111827',
+  };
+
+  const consentCheckboxWrapperStyle = {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '14px',
+    padding: '16px 20px',
+    borderRadius: '14px',
+    border: consentChecked ? '2px solid #3563e9' : '2px solid #e5e7eb',
+    background: consentChecked ? 'rgba(53, 99, 233, 0.04)' : '#fafafa',
+    marginBottom: '24px',
+    cursor: 'pointer',
+    transition: 'all 0.25s ease',
+  };
+
+  const consentCheckboxStyle = {
+    width: '22px',
+    height: '22px',
+    borderRadius: '6px',
+    border: consentChecked ? 'none' : '2px solid #d1d5db',
+    background: consentChecked ? 'linear-gradient(135deg, #3563e9, #254dd0)' : '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: '2px',
+    transition: 'all 0.25s ease',
+    cursor: 'pointer',
+  };
+
+  const consentSubmitStyle = {
+    width: '100%',
+    padding: '16px',
+    borderRadius: '14px',
+    border: 'none',
+    fontSize: '15px',
+    fontWeight: '600',
+    letterSpacing: '0.3px',
+    cursor: consentChecked ? 'pointer' : 'not-allowed',
+    opacity: consentChecked ? 1 : 0.5,
+    background: consentChecked
+      ? 'linear-gradient(135deg, #3563e9, #254dd0)'
+      : '#e5e7eb',
+    color: consentChecked ? '#ffffff' : '#9ca3af',
+    transition: 'all 0.3s ease',
+    boxShadow: consentChecked ? '0 8px 24px rgba(53, 99, 233, 0.35)' : 'none',
+    animation: consentChecked ? 'consentPulse 2s ease-in-out infinite' : 'none',
+  };
 
   return (
     <div className="auth-page min-h-screen w-full bg-[#F4F7FC] font-sans"
@@ -91,6 +250,95 @@ export default function CreatePasswordScreen() {
       }}
     >
       <style dangerouslySetInnerHTML={{ __html: animationStyles }} />
+
+      {/* === CONSENT MODAL OVERLAY === */}
+      {showConsentModal && (
+        <div style={consentOverlayStyle} id="consent-modal-overlay">
+          <div style={consentCardStyle} id="consent-modal-card">
+            {/* Decorative top accent bar */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #3563e9, #6b8cff, #3563e9)',
+              backgroundSize: '200% auto',
+              animation: 'consentShimmer 3s linear infinite',
+            }} />
+
+            {/* Shield Icon */}
+            <div style={consentHeaderIconStyle}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="M9 12l2 2 4-4" />
+              </svg>
+            </div>
+
+            {/* Title */}
+            <h2 style={consentTitleStyle}>Consent for Personal Information</h2>
+            <p style={consentSubtitleStyle}>Maverick Learning — Data Privacy Consent</p>
+
+            {/* Body Content */}
+            <div style={consentBodyStyle}>
+              <p style={consentTextStyle}>
+                <span style={consentBoldStyle}>Maverick Learning</span> collects and uses your personal information, such as your{' '}
+                <span style={consentBoldStyle}>name, employee/trainee ID, email ID, contact number, training details, attendance, assessment results, learning progress, and feedback</span>{' '}
+                for training administration, communication, reporting, and improving learning programs.
+              </p>
+              <div style={{ height: '16px' }} />
+              <p style={consentTextStyle}>
+                Your information will be accessed only by authorized personnel and handled securely in accordance with applicable organizational policies.
+              </p>
+              <div style={{ height: '16px' }} />
+              <p style={{ ...consentTextStyle, fontSize: '13px', color: '#6b7280' }}>
+                By selecting <span style={consentBoldStyle}>"I Agree"</span>, you confirm that you have read and understood this consent and provide your consent for the collection and use of your personal information for the purposes mentioned above.
+              </p>
+            </div>
+
+            {/* Checkbox */}
+            <label
+              style={consentCheckboxWrapperStyle}
+              id="consent-agree-checkbox"
+            >
+              <input
+                type="checkbox"
+                checked={consentChecked}
+                onChange={(event) => setConsentChecked(event.target.checked)}
+                style={{ position: 'absolute', opacity: 0, width: '1px', height: '1px' }}
+                aria-label="I Agree to the consent for collection and use of my personal information"
+              />
+              <span style={consentCheckboxStyle} aria-hidden="true">
+                {consentChecked && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </span>
+              <span style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: consentChecked ? '#3563e9' : '#374151',
+                lineHeight: '1.5',
+                transition: 'color 0.25s ease',
+              }}>
+                I Agree — I have read and understood the consent for the collection and use of my personal information.
+              </span>
+            </label>
+
+            {/* Submit Button */}
+            <button
+              type="button"
+              style={consentSubmitStyle}
+              disabled={!consentChecked}
+              onClick={handleConsentSubmit}
+              id="consent-submit-btn"
+            >
+              {consentChecked ? 'Submit & Continue' : 'Please agree to continue'}
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* --- BACKGROUND LAYER --- */}
       <div style={{
@@ -140,7 +388,11 @@ export default function CreatePasswordScreen() {
               padding: '48px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '32px'
+              gap: '32px',
+              opacity: consentAgreed ? 1 : 0.4,
+              pointerEvents: consentAgreed ? 'auto' : 'none',
+              filter: consentAgreed ? 'none' : 'blur(2px)',
+              transition: 'opacity 0.5s ease, filter 0.5s ease',
             }}
           >
             
@@ -188,7 +440,7 @@ export default function CreatePasswordScreen() {
                     placeholder="Create strong password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    disabled={isLoading || !token}
+                    disabled={isLoading || !token || !consentAgreed}
                     className="w-full bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-[#E2E8F0] rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-[#3563e9] focus:ring-2 focus:ring-[#3563e9]/10 transition-all duration-200"
                     style={{
                       paddingTop: '16px',
@@ -237,7 +489,7 @@ export default function CreatePasswordScreen() {
                     placeholder="Re-enter password" 
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    disabled={isLoading || !token}
+                    disabled={isLoading || !token || !consentAgreed}
                     className="w-full bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border border-[#E2E8F0] rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-[#3563e9] focus:ring-2 focus:ring-[#3563e9]/10 transition-all duration-200"
                     style={{
                       paddingTop: '16px',
@@ -270,15 +522,15 @@ export default function CreatePasswordScreen() {
               {/* Action Button */}
               <button 
                 type="submit" 
-                disabled={isLoading || !token}
+                disabled={isLoading || !token || !consentAgreed}
                 className="w-full bg-gradient-to-r from-[#3563e9] to-[#254dd0] hover:from-[#254dd0] hover:to-[#1d4ed8] text-white text-base font-semibold shadow-lg shadow-blue-200 hover:shadow-blue-300 transition-all duration-200 tracking-wide"
                 style={{
                   paddingTop: '16px',
                   paddingBottom: '16px',
                   borderRadius: '12px',
                   border: 'none',
-                  cursor: (isLoading || !token) ? 'not-allowed' : 'pointer',
-                  opacity: (isLoading || !token) ? 0.6 : 1,
+                  cursor: (isLoading || !token || !consentAgreed) ? 'not-allowed' : 'pointer',
+                  opacity: (isLoading || !token || !consentAgreed) ? 0.6 : 1,
                   marginTop: '8px'
                 }}
               >
@@ -293,3 +545,4 @@ export default function CreatePasswordScreen() {
     </div>
   );
 }
+

@@ -36,7 +36,7 @@ export default function RegisterCourse() {
 
   return (
     // MAIN BACKGROUND CONTAINER
-    <div className="auth-page"
+    <div className="auth-page register-course-page"
       style={{
         position: 'relative',
         minHeight: '100vh',
