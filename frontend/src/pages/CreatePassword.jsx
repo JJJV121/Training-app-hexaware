@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import PasswordPolicyChecker from '../components/PasswordPolicyChecker';
+import { isPasswordValid } from '../utils/passwordPolicy';
 
 export default function CreatePasswordScreen() {
   const [password, setPassword] = useState('');
@@ -51,6 +53,11 @@ export default function CreatePasswordScreen() {
 
     if (!token) {
       setError('Cannot submit: Activation token is missing.');
+      return;
+    }
+
+    if (!isPasswordValid(password)) {
+      setError('Password does not comply with the password policy requirements.');
       return;
     }
 
@@ -519,18 +526,25 @@ export default function CreatePasswordScreen() {
                 </div>
               </div>
 
+              {/* Live Password Policy Requirement Checklist */}
+              <PasswordPolicyChecker
+                password={password}
+                confirmPassword={confirmPassword}
+                showConfirm={true}
+              />
+
               {/* Action Button */}
               <button 
                 type="submit" 
-                disabled={isLoading || !token || !consentAgreed}
+                disabled={isLoading || !token || !consentAgreed || !isPasswordValid(password) || password !== confirmPassword}
                 className="w-full bg-gradient-to-r from-[#3563e9] to-[#254dd0] hover:from-[#254dd0] hover:to-[#1d4ed8] text-white text-base font-semibold shadow-lg shadow-blue-200 hover:shadow-blue-300 transition-all duration-200 tracking-wide"
                 style={{
                   paddingTop: '16px',
                   paddingBottom: '16px',
                   borderRadius: '12px',
                   border: 'none',
-                  cursor: (isLoading || !token || !consentAgreed) ? 'not-allowed' : 'pointer',
-                  opacity: (isLoading || !token || !consentAgreed) ? 0.6 : 1,
+                  cursor: (isLoading || !token || !consentAgreed || !isPasswordValid(password) || password !== confirmPassword) ? 'not-allowed' : 'pointer',
+                  opacity: (isLoading || !token || !consentAgreed || !isPasswordValid(password) || password !== confirmPassword) ? 0.6 : 1,
                   marginTop: '8px'
                 }}
               >

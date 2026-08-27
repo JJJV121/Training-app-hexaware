@@ -47,6 +47,12 @@ class User(Base):
         nullable=True
     )
 
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=True
+    )
+
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=False

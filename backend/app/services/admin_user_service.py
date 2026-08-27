@@ -108,6 +108,11 @@ async def create_trainee(
     if existing_user:
         raise ValueError("User with this email already exists")
 
+    from app.core.password_validation import validate_password_syntax
+
+    if trainee_data.password:
+        validate_password_syntax(trainee_data.password)
+
     # Initial state is False (Inactive) per requirement
     user = User(
         employee_id=trainee_data.employee_id,
@@ -117,6 +122,7 @@ async def create_trainee(
         role="trainee",
         is_active=False,
         password_hash=hash_password(trainee_data.password) if trainee_data.password else None,
+        password_changed_at=datetime.utcnow() if trainee_data.password else None,
     )
 
     db.add(user)

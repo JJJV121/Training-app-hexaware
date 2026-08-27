@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext.jsx';
 import dashboardService from '../services/dashboardService.js';
 import Icon from '../components/Icon';
+import PasswordPolicyChecker from '../components/PasswordPolicyChecker.jsx';
+import { isPasswordValid } from '../utils/passwordPolicy.js';
 import '../styles/profile.css';
 
 export default function Profile() {
@@ -75,6 +77,11 @@ export default function Profile() {
     event.preventDefault();
     setSubmitStatus({ loading: true, success: null, error: null });
 
+    if (!isPasswordValid(passwordForm.newPassword)) {
+      setSubmitStatus({ loading: false, success: null, error: 'New password does not comply with the password policy requirements.' });
+      return;
+    }
+
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       setSubmitStatus({ loading: false, success: null, error: 'New passwords do not match.' });
       return;
@@ -100,7 +107,7 @@ export default function Profile() {
       setSubmitStatus({
         loading: false,
         success: null,
-        error: error.response?.data?.message || 'Failed to update password. Please check your current password.'
+        error: error.response?.data?.detail || error.response?.data?.message || 'Failed to update password. Please check your current password.'
       });
     }
   };
@@ -229,7 +236,18 @@ export default function Profile() {
                       </span>
                     </label>
                   ))}
-                  <button type="submit" className="profile-primary-button" disabled={submitStatus.loading}>{submitStatus.loading ? 'Updating password...' : 'Update password'}</button>
+                  <PasswordPolicyChecker
+                    password={passwordForm.newPassword}
+                    confirmPassword={passwordForm.confirmPassword}
+                    showConfirm={true}
+                  />
+                  <button
+                    type="submit"
+                    className="profile-primary-button"
+                    disabled={submitStatus.loading || !isPasswordValid(passwordForm.newPassword) || passwordForm.newPassword !== passwordForm.confirmPassword}
+                  >
+                    {submitStatus.loading ? 'Updating password...' : 'Update password'}
+                  </button>
                 </form></div>
               )}
 

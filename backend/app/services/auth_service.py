@@ -21,6 +21,11 @@ from app.services.email_service import (
     send_activation_email,
     send_reset_email,
 )
+from app.core.password_validation import (
+    validate_password_syntax,
+    validate_full_password_policy,
+    record_password_change,
+)
 
 
 def build_activation_link(token: str, email: str | None = None) -> str:
@@ -62,9 +67,12 @@ async def create_user(
     )
 
     if role in ["trainer", "admin"]:
+        if user_data.password:
+            validate_password_syntax(user_data.password)
         user.password_hash = hash_password(
             user_data.password
         )
+        user.password_changed_at = datetime.utcnow()
 
     db.add(user)
 
@@ -142,10 +150,21 @@ async def activate_account(
     if not user:
         raise ValueError("User not found")
 
+    # Validate full password policy including last 6 password history
+    await validate_full_password_policy(
+        db,
+        password,
+        user_id=user.id,
+        current_password_hash=user.password_hash,
+    )
+
     # Update user
+    old_hash = user.password_hash
     user.password_hash = hash_password(password)
     user.is_active = True
     activation_token.is_used = True
+
+    await record_password_change(db, user, old_hash)
 
     await db.commit()
 
@@ -177,6 +196,12 @@ async def login_user(
         user.password_hash,
     ):
         raise ValueError("Invalid credentials")
+
+    # Rule 5: Change password every 45 days
+    if user.password_changed_at:
+        days_since_change = (datetime.utcnow() - user.password_changed_at).days
+        if days_since_change > 45:
+            raise ValueError("Your password has expired (passwords must be changed every 45 days). Please reset or update your password.")
 
     token = create_access_token(
         data={"sub": str(user.id)}
@@ -300,12 +325,23 @@ async def reset_password(
     if not user:
         raise ValueError("User not found")
 
+    # Validate full password policy including last 6 password history
+    await validate_full_password_policy(
+        db,
+        new_password,
+        user_id=user.id,
+        current_password_hash=user.password_hash,
+    )
+
     # Update password
+    old_hash = user.password_hash
     user.password_hash = hash_password(
         new_password
     )
 
     reset_entry.is_used = True
+
+    await record_password_change(db, user, old_hash)
 
     await db.commit()
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import PasswordPolicyChecker from '../components/PasswordPolicyChecker';
+import { isPasswordValid } from '../utils/passwordPolicy';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -12,17 +14,6 @@ export default function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-
-  // Password requirements validation
-  const passwordRequirements = {
-    minLength: password.length >= 8,
-    hasUpperCase: /[A-Z]/.test(password),
-    hasLowerCase: /[a-z]/.test(password),
-    hasNumber: /[0-9]/.test(password),
-    hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
-  };
-
-  const allRequirementsMet = Object.values(passwordRequirements).every(req => req);
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -45,6 +36,11 @@ export default function ResetPassword() {
 
     if (!token) {
       setError('Cannot submit: Reset token is missing.');
+      return;
+    }
+
+    if (!isPasswordValid(password)) {
+      setError('Password does not comply with the password policy requirements.');
       return;
     }
 
@@ -226,207 +222,29 @@ export default function ResetPassword() {
                       </svg>
                     )}
                   </button>
+                </div>                  </button>
                 </div>
-
-                {/* Password Requirements Display */}
-                {password && (
-                  <div style={{
-                    backgroundColor: '#F8F9FA',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '12px',
-                    padding: '14px 12px',
-                    marginTop: '8px'
-                  }}>
-                    <p style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>
-                      Password Requirements:
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {/* Minimum Length */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '18px',
-                          height: '18px',
-                          borderRadius: '50%',
-                          backgroundColor: passwordRequirements.minLength ? '#DCFCE7' : '#F3E8E8',
-                          color: passwordRequirements.minLength ? '#16A34A' : '#DC2626'
-                        }}>
-                          {passwordRequirements.minLength ? '✓' : '✕'}
-                        </span>
-                        <span style={{ fontSize: '12px', color: passwordRequirements.minLength ? '#16A34A' : '#6B7280' }}>
-                          At least 8 characters
-                        </span>
-                      </div>
-
-                      {/* Uppercase Letter */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '18px',
-                          height: '18px',
-                          borderRadius: '50%',
-                          backgroundColor: passwordRequirements.hasUpperCase ? '#DCFCE7' : '#F3E8E8',
-                          color: passwordRequirements.hasUpperCase ? '#16A34A' : '#DC2626'
-                        }}>
-                          {passwordRequirements.hasUpperCase ? '✓' : '✕'}
-                        </span>
-                        <span style={{ fontSize: '12px', color: passwordRequirements.hasUpperCase ? '#16A34A' : '#6B7280' }}>
-                          One uppercase letter (A-Z)
-                        </span>
-                      </div>
-
-                      {/* Lowercase Letter */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '18px',
-                          height: '18px',
-                          borderRadius: '50%',
-                          backgroundColor: passwordRequirements.hasLowerCase ? '#DCFCE7' : '#F3E8E8',
-                          color: passwordRequirements.hasLowerCase ? '#16A34A' : '#DC2626'
-                        }}>
-                          {passwordRequirements.hasLowerCase ? '✓' : '✕'}
-                        </span>
-                        <span style={{ fontSize: '12px', color: passwordRequirements.hasLowerCase ? '#16A34A' : '#6B7280' }}>
-                          One lowercase letter (a-z)
-                        </span>
-                      </div>
-
-                      {/* Number */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '18px',
-                          height: '18px',
-                          borderRadius: '50%',
-                          backgroundColor: passwordRequirements.hasNumber ? '#DCFCE7' : '#F3E8E8',
-                          color: passwordRequirements.hasNumber ? '#16A34A' : '#DC2626'
-                        }}>
-                          {passwordRequirements.hasNumber ? '✓' : '✕'}
-                        </span>
-                        <span style={{ fontSize: '12px', color: passwordRequirements.hasNumber ? '#16A34A' : '#6B7280' }}>
-                          One number (0-9)
-                        </span>
-                      </div>
-
-                      {/* Special Character */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '18px',
-                          height: '18px',
-                          borderRadius: '50%',
-                          backgroundColor: passwordRequirements.hasSpecialChar ? '#DCFCE7' : '#F3E8E8',
-                          color: passwordRequirements.hasSpecialChar ? '#16A34A' : '#DC2626'
-                        }}>
-                          {passwordRequirements.hasSpecialChar ? '✓' : '✕'}
-                        </span>
-                        <span style={{ fontSize: '12px', color: passwordRequirements.hasSpecialChar ? '#16A34A' : '#6B7280' }}>
-                          One special character (!@#$%^&*)
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Field 2: Confirm Password Input */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <label htmlFor="confirmPassword" className="text-[11px] font-bold text-gray-400 tracking-widest uppercase">
-                  CONFIRM PASSWORD
-                </label>
-                
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
-                  <span style={{ position: 'absolute', left: '18px', display: 'flex', alignItems: 'center', color: '#9ca3af', pointerEvents: 'none' }}>
-                    <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0V10.5m-2.25 0h13.5m-13.5 0a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25h13.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25M6.75 10.5h10.5" />
-                    </svg>
-                  </span>
-                  
-                  <input 
-                    type={showConfirmPassword ? "text" : "password"} 
-                    id="confirmPassword" 
-                    placeholder="Re-enter password" 
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    disabled={isLoading || !token}
-                    className="w-full bg-[#F1F5F9] border border-transparent rounded-xl text-base text-gray-900 placeholder-gray-400 outline-none focus:bg-white focus:border-blue-400 transition-all"
-                    style={{
-                      paddingTop: '16px',
-                      paddingBottom: '16px',
-                      paddingLeft: '52px',
-                      paddingRight: '52px'
-                    }}
-                    required 
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={{ position: 'absolute', right: '18px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}
-                  >
-                    {showConfirmPassword ? (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-
-                {/* Password Match Indicator */}
-                {confirmPassword && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                    <span style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '16px',
-                      height: '16px',
-                      borderRadius: '50%',
-                      backgroundColor: password === confirmPassword ? '#DCFCE7' : '#FEE2E2',
-                      color: password === confirmPassword ? '#16A34A' : '#DC2626',
-                      fontSize: '12px'
-                    }}>
-                      {password === confirmPassword ? '✓' : '✕'}
-                    </span>
-                    <span style={{
-                      fontSize: '12px',
-                      color: password === confirmPassword ? '#16A34A' : '#DC2626',
-                      fontWeight: '500'
-                    }}>
-                      {password === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
-                    </span>
-                  </div>
-                )}
-              </div>
+              {/* Live Password Policy Requirements */}
+              <PasswordPolicyChecker
+                password={password}
+                confirmPassword={confirmPassword}
+                showConfirm={true}
+              />
 
               {/* Submit trigger button */}
               <button 
                 type="submit" 
-                disabled={isLoading || !token || !allRequirementsMet || password !== confirmPassword || !password}
+                disabled={isLoading || !token || !isPasswordValid(password) || password !== confirmPassword || !password}
                 className="w-full bg-[#0061FE] hover:bg-[#0052CC] text-white text-base font-semibold shadow-md shadow-blue-100 transition-all tracking-wide"
                 style={{
                   paddingTop: '16px',
                   paddingBottom: '16px',
                   borderRadius: '12px',
                   border: 'none',
-                  cursor: (isLoading || !token || !allRequirementsMet || password !== confirmPassword) ? 'not-allowed' : 'pointer',
-                  opacity: (isLoading || !token || !allRequirementsMet || password !== confirmPassword) ? 0.6 : 1,
+                  cursor: (isLoading || !token || !isPasswordValid(password) || password !== confirmPassword) ? 'not-allowed' : 'pointer',
+                  opacity: (isLoading || !token || !isPasswordValid(password) || password !== confirmPassword) ? 0.6 : 1,
                   marginTop: '8px'
                 }}
               >

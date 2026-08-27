@@ -4,6 +4,9 @@ from app.models.user import User
 from app.core.security import verify_password, hash_password
 
 
+from app.core.password_validation import validate_full_password_policy, record_password_change
+
+
 async def get_profile(
     db: AsyncSession,
     user_id: int
@@ -46,10 +49,20 @@ async def change_password(
     ):
         raise ValueError("Current password is incorrect")
 
-    # 3. Update password
-    user.password_hash = hash_password(new_password)
+    # 3. Validate new_password against full password policy (including last 6 passwords history check)
+    await validate_full_password_policy(
+        db,
+        new_password,
+        user_id=user.id,
+        current_password_hash=user.password_hash,
+    )
 
-    # 4. Commit changes
+    # 4. Update password & record history
+    old_hash = user.password_hash
+    user.password_hash = hash_password(new_password)
+    await record_password_change(db, user, old_hash)
+
+    # 5. Commit changes
     await db.commit()
 
     return {
