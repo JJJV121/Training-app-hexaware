@@ -3,6 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.core.dependencies import require_trainee, get_current_user
+from app.models.user import User
 from app.models.coding_submission import CodingSubmission
 
 from app.schemas.coding_submission_schema import (
@@ -30,15 +32,14 @@ router = APIRouter(
 )
 async def create_submission(
     payload: SubmissionCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee),
 ):
     try:
-        # Mock trainee until authentication is merged
-        trainee_id = 3
         submission = await run_submission(
             db=db,
             problem_id=payload.problem_id,
-            user_id=trainee_id,
+            user_id=current_user.id,
             source_code=payload.source_code,
             language_id=payload.language_id
         )
@@ -46,6 +47,8 @@ async def create_submission(
         return submission
 
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -60,12 +63,12 @@ async def create_submission(
     response_model=list[SubmissionResponse]
 )
 async def get_my_submissions(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee),
 ):
-    trainee_id = 3
     result = await db.execute(
         select(CodingSubmission).where(
-            CodingSubmission.user_id == trainee_id
+            CodingSubmission.user_id == current_user.id
         )
     )
 
@@ -81,7 +84,8 @@ async def get_my_submissions(
 )
 async def get_submission(
     submission_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee),
 ):
     submission = await db.scalar(
         select(CodingSubmission).where(
@@ -93,6 +97,13 @@ async def get_submission(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Submission not found"
+        )
+
+    # Ownership check: Trainee can only view their own submission
+    if submission.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. You can only view your own submission."
         )
 
     return submission
@@ -107,11 +118,12 @@ async def get_submission(
 )
 async def get_submissions_by_problem(
     problem_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(
-        select(CodingSubmission).where(
-            CodingSubmission.problem_id == problem_id
-        )
-    )
+    stmt = select(CodingSubmission).where(CodingSubmission.problem_id == problem_id)
+    if current_user.role and current_user.role.upper() == "TRAINEE":
+        stmt = stmt.where(CodingSubmission.user_id == current_user.id)
+
+    result = await db.execute(stmt)
     return result.scalars().all()

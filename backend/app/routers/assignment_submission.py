@@ -9,7 +9,7 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.core.dependencies import get_current_user, get_current_trainer
+from app.core.dependencies import require_trainer, require_trainee
 from app.models.user import User
 from app.schemas.assignment_submission import (
     AssignmentSubmissionResponse,
@@ -37,7 +37,7 @@ async def submit_assignment_api(
     github_url: str | None = Form(None),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_trainee),
 ):
     submission_path = None
 
@@ -63,7 +63,7 @@ async def evaluate_submission_api(
     submission_id: int,
     data: AssignmentEvaluation,
     db: AsyncSession = Depends(get_db),
-    current_trainer: User = Depends(get_current_trainer),
+    current_trainer: User = Depends(require_trainer),
 ):
     submission = await get_submission_by_id(
         db,
@@ -88,7 +88,7 @@ async def evaluate_submission_api(
             response_model=list[AssignmentSubmissionResponse])
 async def my_submissions(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_trainee),
 ):
     return await get_user_submissions(
         db,

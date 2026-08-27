@@ -3,6 +3,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.core.dependencies import get_current_user, require_admin
+from app.models.user import User
 from app.models.assignment import (
     Assignment,
     AssignmentType,
@@ -37,7 +39,8 @@ router = APIRouter(
 )
 async def create_problem(
     payload: CodingProblemCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(require_admin),
 ):
     assignment = await db.scalar(
         select(Assignment).where(
@@ -96,7 +99,8 @@ async def create_problem(
     response_model=list[CodingProblemResponse]
 )
 async def get_all_problems(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
         select(CodingProblem)
@@ -114,7 +118,8 @@ async def get_all_problems(
 )
 async def get_problem(
     problem_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(
@@ -141,7 +146,8 @@ async def get_problem(
 async def update_problem(
     problem_id: int,
     payload: CodingProblemUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(require_admin),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(
@@ -200,7 +206,8 @@ async def update_problem(
 )
 async def delete_problem(
     problem_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(require_admin),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(
@@ -229,7 +236,8 @@ async def delete_problem(
 async def add_testcase(
     problem_id: int,
     payload: TestCaseCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(require_admin),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(
@@ -264,7 +272,8 @@ async def add_testcase(
 )
 async def get_testcases(
     problem_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(require_admin),
 ):
     problem = await db.scalar(
         select(CodingProblem).where(

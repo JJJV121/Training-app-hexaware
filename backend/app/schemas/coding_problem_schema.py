@@ -28,17 +28,17 @@ class CodingProblemUpdate(BaseModel):
 
 class CodingProblemResponse(BaseModel):
     id: int
-    assignment_id: int
+    assignment_id: Optional[int] = None
     title: str
     description: str
-    language_id: int
-    marks: int
-    sample_input: Optional[str]
-    sample_output: Optional[str]
-    deadline: Optional[datetime]
-    created_by: int
-    created_at: datetime
-    updated_at: datetime
+    language_id: Optional[int] = None
+    marks: Optional[int] = 50
+    sample_input: Optional[str] = None
+    sample_output: Optional[str] = None
+    deadline: Optional[datetime] = None
+    created_by: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = {
         "from_attributes": True

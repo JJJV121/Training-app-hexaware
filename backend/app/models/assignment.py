@@ -39,9 +39,9 @@ class Assignment(Base):
     )
 
     assignment_type: Mapped[AssignmentType] = mapped_column(
-    Enum(AssignmentType, name="assignment_type"),
-    nullable=False
-)
+        Enum(AssignmentType, name="assignmenttype", values_callable=lambda x: [e.value for e in x]),
+        nullable=False
+    )
 
     instructions: Mapped[str] = mapped_column(
         Text,

@@ -60,7 +60,18 @@ async def get_optional_user(
     return user
 
 
-async def get_current_trainer(
+async def require_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    if not current_user.role or current_user.role.upper() != "ADMIN":
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Admin role required."
+        )
+    return current_user
+
+
+async def require_trainer(
     current_user: User = Depends(get_current_user)
 ) -> User:
     if not current_user.role or current_user.role.upper() != "TRAINER":
@@ -69,6 +80,22 @@ async def get_current_trainer(
             detail="Access denied. Trainer role required."
         )
     return current_user
+
+
+async def require_trainee(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    if not current_user.role or current_user.role.upper() != "TRAINEE":
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Trainee role required."
+        )
+    return current_user
+
+
+get_current_trainer = require_trainer
+get_current_admin = require_admin
+get_current_trainee = require_trainee
 
 
 async def get_current_trainer_or_admin(

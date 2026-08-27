@@ -13,7 +13,12 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
-from app.core.dependencies import get_current_user, get_current_trainer, get_optional_user
+from app.core.dependencies import (
+    get_current_user,
+    require_admin,
+    require_trainer,
+    require_trainee,
+)
 from app.models.user import User
 from app.schemas.assignment import (
     AssignmentCreate,
@@ -70,7 +75,7 @@ async def create_assignment_api(
     due_date: datetime = Form(...),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
-    current_trainer: User = Depends(get_current_trainer),
+    current_admin: User = Depends(require_admin),
 ):
     attachment_path = None
 
@@ -94,7 +99,7 @@ async def create_assignment_api(
     return await create_assignment(
         db=db,
         data=assignment_data,
-        created_by=current_trainer.id,
+        created_by=current_admin.id,
         attachment_path=attachment_path,
     )
 
@@ -104,6 +109,7 @@ async def create_assignment_api(
 @router.get("/", response_model=list[AssignmentResponse])
 async def get_assignments_api(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return await get_all_assignments(db)
 
@@ -122,6 +128,7 @@ async def update_assignment_api(
     passing_marks: int | None = Form(None),
     file: UploadFile | None = File(None),
     db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(require_admin),
 ):
     assignment = await get_assignment_by_id(
         db,
@@ -181,6 +188,7 @@ async def update_assignment_api(
 async def delete_assignment_api(
     assignment_id: int,
     db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(require_admin),
 ):
     assignment = await get_assignment_by_id(
         db,
@@ -210,6 +218,7 @@ async def delete_assignment_api(
 async def get_assignment_api(
     assignment_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     assignment = await get_assignment_by_id(
         db,
@@ -231,6 +240,7 @@ async def get_assignment_api(
 async def get_assignment_submissions_api(
     assignment_id: int,
     db: AsyncSession = Depends(get_db),
+    current_trainer: User = Depends(require_trainer),
 ):
     assignment = await get_assignment_by_id(
         db,
@@ -258,6 +268,7 @@ async def get_assignment_submissions_api(
 async def get_assignment_questions_api(
     assignment_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return await get_assignment_questions(
         db,
@@ -270,6 +281,7 @@ async def run_assignment_code_api(
     assignment_id: int,
     payload: AssignmentRunCodeRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     questions = await get_assignment_questions(db, assignment_id)
     question = next((item for item in questions if int(item.get("id")) == payload.question_id), None)
@@ -292,7 +304,7 @@ async def save_assignment_code_api(
     assignment_id: int,
     payload: AssignmentSaveCodeRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_optional_user),
+    current_user: User = Depends(require_trainee),
 ):
     import json
     from app.models.assignment_submission import AssignmentSubmission, SubmissionStatus
@@ -353,11 +365,12 @@ async def submit_assignment_answers_api(
     assignment_id: int,
     payload: AssignmentAnswersSubmit,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee),
 ):
     return await evaluate_assignment_answers(
         db=db,
         assignment_id=assignment_id,
-        user_id=payload.user_id,
+        user_id=current_user.id,
         answers=payload.answers,
     )
 
@@ -374,6 +387,7 @@ async def get_course_day_assignments(
     course_id: int,
     day_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     # Validate Course Day belongs to Course
     day = await db.scalar(
@@ -404,7 +418,8 @@ async def get_course_day_assignments(
 @router.get("/trainee/assignments", response_model=list[AssignmentResponse])
 async def get_trainee_assignments(
     course_day_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     from app.models.course_day import CourseDay
     day = await db.get(CourseDay, course_day_id)
@@ -420,7 +435,7 @@ async def get_trainee_assignments(
 @router.get("/trainee/my-submissions", response_model=list[AssignmentSubmissionResponse])
 async def get_trainee_my_submissions(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_optional_user),
+    current_user: User = Depends(require_trainee),
 ):
     result = await db.execute(
         select(AssignmentSubmission).where(AssignmentSubmission.user_id == current_user.id)
@@ -430,7 +445,8 @@ async def get_trainee_my_submissions(
 @router.get("/trainee/assignments/{assignment_id}/download")
 async def download_assignment_file(
     assignment_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     assignment = await db.get(Assignment, assignment_id)
     if not assignment or not assignment.attachment_path:
@@ -445,10 +461,11 @@ async def download_assignment_file(
 @router.post("/trainee/assignments/{assignment_id}/submit", response_model=AssignmentSubmissionResponse)
 async def submit_trainee_assignment(
     assignment_id: int,
-    user_id: int = Form(...),
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_trainee),
 ):
+    user_id = current_user.id
     submission_path = await save_uploaded_file(
         file=file,
         folder="submissions"
