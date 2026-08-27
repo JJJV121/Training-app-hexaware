@@ -653,7 +653,7 @@ const handleSeeking = (e) => {
         )}
 
         <div className="video-content-horizontal-nav-row">
-          {['Videos', 'Notes', 'Assignment', 'Quiz', 'Assessment', 'Case Studies'].map((tabName) => (
+          {['Videos', 'Notes', 'Assignment', 'Quiz', 'Assessment'].map((tabName) => (
             <button key={tabName} onClick={() => setActiveHorizontalTab(tabName)} className={`video-horizontal-nav-item ${activeHorizontalTab === tabName ? 'active-nav-pill' : ''}`}>{tabName}</button>
           ))}
         </div>
@@ -686,12 +686,6 @@ const handleSeeking = (e) => {
             <AssessmentTab
               courseDayId={activeDayDbId}
               onLockChange={onLockChange}
-            />
-          )}
-          {activeHorizontalTab === 'Case Studies' && (
-            <CaseStudiesSection 
-              courseId={activeCourseId} 
-              dayId={activeDayDbId} 
             />
           )}
         </div>

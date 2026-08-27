@@ -222,7 +222,6 @@ export default function ResetPassword() {
                       </svg>
                     )}
                   </button>
-                </div>                  </button>
                 </div>
               </div>
 

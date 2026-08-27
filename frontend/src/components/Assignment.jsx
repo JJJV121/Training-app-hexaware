@@ -76,7 +76,10 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
         if (err.response && err.response.status === 403) {
           setIsLocked(true);
         } else {
-          setError("Unable to process assignment pipeline. Check network connection.");
+          console.error("Assignment loading issue:", err);
+          if (assignments.length === 0) {
+            setError("No active assignments scheduled for this day.");
+          }
         }
       } finally {
         setLoading(false);
@@ -552,51 +555,33 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
               <thead>
                 <tr>
                   <th style={styles.th}>SNo</th>
-                  <th style={styles.th}>Name</th>
-                  <th style={styles.th}>Questions</th>
-                  <th style={styles.th}>Duration (Min)</th>
+                  <th style={styles.th}>Assignment / Problem Name</th>
+                  <th style={styles.th}>Type</th>
                   <th style={styles.th}>Marks</th>
                 </tr>
               </thead>
               <tbody>
-                {isCoding ? (
-                  <>
-                    <tr>
-                      <td style={styles.td}>1</td>
-                      <td style={styles.td}>{task.title} — Part 1</td>
-                      <td style={styles.td}>1</td>
-                      <td style={styles.td}>10</td>
-                      <td style={styles.td}>30</td>
+                {isCoding && questions.length > 0 ? (
+                  questions.map((q, idx) => (
+                    <tr key={q.id || idx}>
+                      <td style={styles.td}>{idx + 1}</td>
+                      <td style={styles.td}>{q.title}</td>
+                      <td style={styles.td}>CODING</td>
+                      <td style={styles.td}>{q.marks || Math.round((task.total_marks || 100) / questions.length)}</td>
                     </tr>
-                    <tr>
-                      <td style={styles.td}>2</td>
-                      <td style={styles.td}>{task.title} — Part 2</td>
-                      <td style={styles.td}>1</td>
-                      <td style={styles.td}>10</td>
-                      <td style={styles.td}>35</td>
-                    </tr>
-                    <tr>
-                      <td style={styles.td}>3</td>
-                      <td style={styles.td}>{task.title} — Part 3</td>
-                      <td style={styles.td}>1</td>
-                      <td style={styles.td}>10</td>
-                      <td style={styles.td}>35</td>
-                    </tr>
-                  </>
+                  ))
                 ) : (
                   <tr>
                     <td style={styles.td}>1</td>
-                    <td style={styles.td}>Knowledge Assessment Q&A</td>
-                    <td style={styles.td}>3</td>
-                    <td style={styles.td}>15</td>
+                    <td style={styles.td}>{task.title}</td>
+                    <td style={styles.td}>{assignmentType}</td>
                     <td style={styles.td}>{task.total_marks}</td>
                   </tr>
                 )}
                 <tr style={{ fontWeight: '700', backgroundColor: '#f8fafc' }}>
                   <td style={styles.td}></td>
                   <td style={styles.td}>Total</td>
-                  <td style={styles.td}>{questions.length || 3}</td>
-                  <td style={styles.td}>30</td>
+                  <td style={styles.td}>{isCoding ? `${questions.length} Coding Problems` : '1 Activity'}</td>
                   <td style={styles.td}>{task.total_marks}</td>
                 </tr>
               </tbody>

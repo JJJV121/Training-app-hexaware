@@ -159,7 +159,7 @@ def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_
                     "sample_input": "10.0",
                     "sample_output": "150.0",
                     "explanation": "10.0 * 15.0 = 150.0.",
-                    "starter": "public class Car extends Vehicle {\n    @Override\n    public double calculateFare(double distance) {\n        return distance * 15.0;\n    }\n}"
+                    "starter": "public class Car extends Vehicle {\n    @Override\n    public double calculateFare(double distance) {\n        // Write your solution here\n        return 0.0;\n    }\n}"
                 },
                 {
                     "title": "Java Collections: Student GPA Sorting",
@@ -170,7 +170,7 @@ def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_
                     "sample_input": "Students with GPA [3.2, 3.9, 3.5]",
                     "sample_output": "[3.9, 3.5, 3.2]",
                     "explanation": "Sorts student list by GPA descending.",
-                    "starter": "import java.util.*;\npublic class StudentSorter {\n    public static void sortStudents(List<Student> list) {\n        list.sort((a, b) -> Double.compare(b.getGpa(), a.getGpa()));\n    }\n}"
+                    "starter": "import java.util.*;\npublic class StudentSorter {\n    public static void sortStudents(List<Student> list) {\n        // Write your solution here\n    }\n}"
                 },
                 {
                     "title": "Java Stream API & Exception Validation",
@@ -181,7 +181,7 @@ def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_
                     "sample_input": "[\"cat\", \"elephant\", \"dog\", \"tiger\"]",
                     "sample_output": "[\"ELEPHANT\", \"TIGER\"]",
                     "explanation": "\"cat\" and \"dog\" removed due to length <= 3.",
-                    "starter": "import java.util.*;\nimport java.util.stream.*;\npublic class StreamValidator {\n    public static List<String> process(List<String> list) {\n        return list.stream()\n            .filter(s -> s != null && s.length() > 3)\n            .map(String::toUpperCase)\n            .collect(Collectors.toList());\n    }\n}"
+                    "starter": "import java.util.*;\nimport java.util.stream.*;\npublic class StreamValidator {\n    public static List<String> process(List<String> list) {\n        // Write your solution here\n        return new ArrayList<>();\n    }\n}"
                 }
             ]
 
@@ -230,6 +230,20 @@ def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_
     return sanitized
 
 
+def sanitize_starter_template(language: str, starter_code: str | None) -> str:
+    lang = (language or "python").lower()
+    if lang in ["java"]:
+        return "public class Solution {\n    // Write your solution here\n}"
+    elif lang in ["mysql", "sql"]:
+        return "-- Write your SQL query here\n"
+    elif lang in ["cpp", "c++"]:
+        return "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}"
+    elif lang in ["c"]:
+        return "#include <stdio.h>\n\nint main() {\n    // Write your solution here\n    return 0;\n}"
+    else:
+        return "# Write your solution here\ndef solution():\n    pass"
+
+
 async def get_assignment_questions(db: AsyncSession, assignment_id: int, sanitize_hidden: bool = True):
     assignment = await get_assignment_by_id(db, assignment_id)
     if not assignment:
@@ -253,13 +267,59 @@ async def get_assignment_questions(db: AsyncSession, assignment_id: int, sanitiz
     is_coding = (assignment.assignment_type == AssignmentType.CODING) or ("challenge" in assignment.title.lower()) or ("assessment" in assignment.title.lower())
 
     if is_coding:
-        return generate_coding_questions_for_day(
+        # 1. Query coding_problems linked directly to this assignment
+        from app.models.coding_problem import CodingProblem
+        from app.models.hidden_test_case import HiddenTestCase
+
+        prob_stmt = select(CodingProblem).where(CodingProblem.assignment_id == assignment_id).order_by(CodingProblem.id)
+        prob_res = await db.execute(prob_stmt)
+        db_problems = prob_res.scalars().all()
+
+        if db_problems:
+            result_questions = []
+            for prob in db_problems:
+                tc_stmt = select(HiddenTestCase).where(HiddenTestCase.problem_id == prob.id).order_by(HiddenTestCase.id)
+                tc_res = await db.execute(tc_stmt)
+                db_tcs = tc_res.scalars().all()
+
+                formatted_tcs = []
+                for tc in db_tcs:
+                    formatted_tcs.append({
+                        "id": tc.id,
+                        "input": "Hidden Evaluation Case" if (sanitize_hidden and tc.is_hidden) else (tc.input_data or ""),
+                        "expected_output": None if (sanitize_hidden and tc.is_hidden) else (tc.expected_output or ""),
+                        "is_hidden": tc.is_hidden
+                    })
+
+                lang = prob.language or "python"
+                result_questions.append({
+                    "id": prob.id,
+                    "type": "coding",
+                    "title": prob.title,
+                    "problem_statement": prob.description,
+                    "input_format": prob.sample_input or "Standard Input",
+                    "output_format": prob.sample_output or "Standard Output",
+                    "constraints": prob.constraints or "1 <= N <= 1000",
+                    "sample_input": prob.sample_input or "",
+                    "sample_output": prob.sample_output or "",
+                    "explanation": f"Solve {prob.title}",
+                    "language": lang,
+                    "starter_code": sanitize_starter_template(lang, prob.starter_code),
+                    "test_cases": formatted_tcs
+                })
+            return result_questions
+
+        # Fallback to generated coding questions with sanitized starter templates
+        generated = generate_coding_questions_for_day(
             day_title,
             day_desc,
             assignment_id,
             day.day_number if day else None,
             sanitize_hidden=sanitize_hidden,
         )
+        for g in generated:
+            g["starter_code"] = sanitize_starter_template(g.get("language", "python"), g.get("starter_code"))
+        return generated
 
     from app.services.mcq_generator_service import generate_25_mcqs_for_day
     all_mcqs = generate_25_mcqs_for_day(course_title, day_title, day_desc)
