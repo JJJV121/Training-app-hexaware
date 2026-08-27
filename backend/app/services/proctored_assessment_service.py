@@ -318,6 +318,19 @@ async def get_assessments_by_day(db: AsyncSession, course_day_id: int) -> list[d
     } for item in assessments]
 
 
+def detect_assessment_language(title: str = "", text: str = "", topic: str = "", existing: str = "") -> str:
+    text_combined = f"{title} {text} {topic}".lower()
+    sql_keywords = ["mysql", "sql", "queries", "query", "database", "dml", "joins", "join", "subquery", "subqueries", "employee", "employees", "salary", "department", "customer", "order", "purchase", "summary", "table", "select", "update", "delete", "insert", "where", "group by"]
+
+    if any(k in text_combined for k in sql_keywords):
+        return "mysql"
+
+    if (existing or "").lower() in ["mysql", "sql"] and not any(k in text_combined for k in ["java", "string", "array", "list", "sort", "oop", "vehicle", "stream", "class"]):
+        return "mysql"
+
+    return "java"
+
+
 async def get_proctored_assessment_trainee_view(
     db: AsyncSession, assessment_id: int, user_id: int
 ) -> dict:
@@ -378,6 +391,9 @@ async def get_proctored_assessment_trainee_view(
                     "is_hidden": is_hidden
                 })
 
+        lang = detect_assessment_language(q.title or "", q.question_text or "", test_name, q.allowed_language or "")
+        starter = "-- Write your SQL query here\n" if lang == "mysql" else "public class Solution {\n    // Write your solution here\n}"
+
         questions_list.append({
             "question_id": q.id,
             "question_number": q.question_number,
@@ -391,8 +407,9 @@ async def get_proctored_assessment_trainee_view(
             "sample_input": q.sample_input or "",
             "sample_output": q.sample_output or "",
             "difficulty": q.difficulty or "Medium",
-            "allowed_language": q.allowed_language or "python",
-            "starter_code": q.starter_code or "def solution():\n    # Write your code here\n    pass",
+            "allowed_language": lang,
+            "language": lang,
+            "starter_code": starter,
             "test_cases": trainee_test_cases,
             "options": options_list
         })

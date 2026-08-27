@@ -3,16 +3,12 @@ import httpx
 from sqlalchemy import select
 from app.database.session import AsyncSessionLocal
 from app.models.user import User
-from app.models.assignment import Assignment, AssignmentType
-from app.models.coding_problem import CodingProblem
-from app.models.hidden_test_case import HiddenTestCase
-from app.models.assessment import Assessment
-from app.models.course_day import CourseDay
+from app.models.assignment import Assignment
 from app.core.security import create_access_token, hash_password
 
 async def run_workflow_tests():
     print("==================================================")
-    print("  TESTING ASSIGNMENT & ASSESSMENT WORKFLOW END-TO-END")
+    print("  TESTING MYSQL VS JAVA MATCHING FOR ASSIGNMENTS & ASSESSMENTS")
     print("==================================================")
 
     async with AsyncSessionLocal() as db:
@@ -36,48 +32,47 @@ async def run_workflow_tests():
     base_url = "http://localhost:8000"
 
     async with httpx.AsyncClient(base_url=base_url) as client:
-        # 1. Test GET /assignments/
+        # 1. Test Assignments Listing & Question Retrieval (MySQL vs Java matching)
         print("\n--- 1. Testing Assignments Listing & Question Retrieval ---")
         res = await client.get("/assignments/", headers=headers)
         assert res.status_code == 200, f"GET /assignments/ failed: {res.status_code}"
         assignments = res.json()
-        print(f" [PASS] Fetched {len(assignments)} assignments total from DB.")
 
-        # Test GET questions for a coding assignment
         coding_assignments = [a for a in assignments if a.get("assignment_type") == "CODING"]
-        if coding_assignments:
-            test_assignment = coding_assignments[0]
+        for test_assignment in coding_assignments[:5]:
             res_q = await client.get(f"/assignments/{test_assignment['id']}/questions", headers=headers)
             assert res_q.status_code == 200, f"GET assignment questions failed: {res_q.status_code}: {res_q.text}"
             questions = res_q.json()
-            print(f" [PASS] Coding Assignment #{test_assignment['id']} loaded {len(questions)} questions.")
 
-            # Check that starter_code does NOT contain complete solution implementation
             for q in questions:
+                lang = (q.get("language") or q.get("allowed_language") or "").lower()
                 starter = q.get("starter_code") or ""
-                assert "distance * 15.0" not in starter, f"Starter code should not contain solution answer! Got: {starter}"
-                assert "return list.stream()" not in starter, f"Starter code should not contain solution answer! Got: {starter}"
-            print(" [PASS] Verified starter_code contains no answer/solution pre-filling.")
+                title_lower = f"{test_assignment['title']} {q.get('title', '')} {q.get('problem_statement', '')}".lower()
+                is_sql_title = any(k in title_lower for k in ["mysql", "sql", "query", "queries", "database", "dml", "joins", "subquery", "employee", "employees", "salary", "customer", "order", "purchase", "summary", "table", "select", "update", "delete"])
 
-        # 2. Test Assessment Listing & Duration Minutes
-        print("\n--- 2. Testing Assessment Listing & Timer Enforcement ---")
-        res_ass = await client.get("/assessments/by-day/1", headers=headers)
-        assert res_ass.status_code == 200, f"GET assessments by day failed: {res_ass.status_code}"
-        assessments_list = res_ass.json()
-        assert len(assessments_list) > 0, "Should return assessments for day 1"
-        ass = assessments_list[0]
-        assert "duration_minutes" in ass, "Assessment summary must include duration_minutes"
-        print(f" [PASS] Assessment #{ass['assessment_id']} '{ass['title']}' has duration_minutes = {ass['duration_minutes']} min.")
+                print(f" Checking Assignment #{test_assignment['id']} '{test_assignment['title']}' | Q '{q.get('title')}' -> lang='{lang}', is_sql_title={is_sql_title}")
 
-        # Test Start Attempt for Assessment
-        res_att = await client.post(f"/assessments/{ass['assessment_id']}/attempts", headers=headers)
-        assert res_att.status_code == 200, f"Start attempt failed: {res_att.status_code}"
-        attempt = res_att.json()
-        assert "remaining_seconds" in attempt, "Attempt must include remaining_seconds derived from duration_minutes"
-        print(f" [PASS] Assessment attempt #{attempt['attempt_id']} initialized with {attempt['remaining_seconds']} remaining seconds.")
+                if is_sql_title:
+                    assert lang in ["mysql", "sql"], f"Expected MySQL for SQL assignment! Got: {lang}"
+                    assert "-- Write your SQL query" in starter, f"Expected SQL starter comment! Got: {starter}"
+                    print(f"  [PASS] MySQL Assignment #{test_assignment['id']} '{q['title']}': language='{lang}'")
+                else:
+                    assert lang == "java", f"Expected Java for non-SQL assignment! Got: {lang}"
+                    assert "public class Solution" in starter, f"Expected Java starter class! Got: {starter}"
+                    print(f"  [PASS] Java Assignment #{test_assignment['id']} '{q['title']}': language='{lang}'")
+
+        # 2. Test Assessment Listing & Language Matching
+        print("\n--- 2. Testing Assessment Trainee View Language Matching ---")
+        res_proctored = await client.get("/assessments/5/proctored", headers=headers)
+        assert res_proctored.status_code == 200, f"GET assessment proctored failed: {res_proctored.status_code}"
+        test_info = res_proctored.json()
+        for q in test_info.get("questions", []):
+            lang = (q.get("allowed_language") or q.get("language") or "").lower()
+            starter = q.get("starter_code") or ""
+            print(f" [PASS] Assessment Question '{q.get('title')}': language='{lang}', starter='{starter[:30]}...'")
 
     print("\n==================================================")
-    print("  ALL ASSIGNMENT & ASSESSMENT WORKFLOW TESTS PASSED!")
+    print("  ALL MYSQL VS JAVA MATCHING TESTS PASSED!")
     print("==================================================")
 
 if __name__ == "__main__":

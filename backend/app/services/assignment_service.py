@@ -230,18 +230,29 @@ def generate_coding_questions_for_day(day_title: str, day_desc: str, assignment_
     return sanitized
 
 
+def detect_problem_language(prob_title: str = "", prob_desc: str = "", assignment_title: str = "", day_title: str = "", existing_lang: str = "") -> str:
+    text_combined = f"{prob_title} {prob_desc} {assignment_title} {day_title}".lower()
+    sql_keywords = ["mysql", "sql", "queries", "query", "database", "dml", "joins", "join", "subquery", "subqueries", "employee", "employees", "salary", "department", "customer", "order", "purchase", "summary", "table", "select", "update", "delete", "insert", "where", "group by"]
+
+    if any(k in text_combined for k in sql_keywords):
+        return "mysql"
+
+    if (existing_lang or "").lower() in ["mysql", "sql"] and not any(k in text_combined for k in ["java", "string", "array", "list", "sort", "oop", "vehicle", "stream", "class"]):
+        return "mysql"
+
+    return "java"
+
+
 def sanitize_starter_template(language: str, starter_code: str | None) -> str:
-    lang = (language or "python").lower()
-    if lang in ["java"]:
-        return "public class Solution {\n    // Write your solution here\n}"
-    elif lang in ["mysql", "sql"]:
+    lang = (language or "java").lower()
+    if lang in ["mysql", "sql"]:
         return "-- Write your SQL query here\n"
     elif lang in ["cpp", "c++"]:
         return "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Write your solution here\n    return 0;\n}"
     elif lang in ["c"]:
         return "#include <stdio.h>\n\nint main() {\n    // Write your solution here\n    return 0;\n}"
     else:
-        return "# Write your solution here\ndef solution():\n    pass"
+        return "public class Solution {\n    // Write your solution here\n}"
 
 
 async def get_assignment_questions(db: AsyncSession, assignment_id: int, sanitize_hidden: bool = True):
@@ -291,7 +302,7 @@ async def get_assignment_questions(db: AsyncSession, assignment_id: int, sanitiz
                         "is_hidden": tc.is_hidden
                     })
 
-                lang = prob.language or "python"
+                lang = detect_problem_language(prob.title, prob.description or "", assignment.title, day_title, prob.language or "")
                 result_questions.append({
                     "id": prob.id,
                     "type": "coding",
@@ -304,6 +315,7 @@ async def get_assignment_questions(db: AsyncSession, assignment_id: int, sanitiz
                     "sample_output": prob.sample_output or "",
                     "explanation": f"Solve {prob.title}",
                     "language": lang,
+                    "allowed_language": lang,
                     "starter_code": sanitize_starter_template(lang, prob.starter_code),
                     "test_cases": formatted_tcs
                 })
@@ -318,7 +330,10 @@ async def get_assignment_questions(db: AsyncSession, assignment_id: int, sanitiz
             sanitize_hidden=sanitize_hidden,
         )
         for g in generated:
-            g["starter_code"] = sanitize_starter_template(g.get("language", "python"), g.get("starter_code"))
+            lang = detect_problem_language(g.get("title", ""), g.get("problem_statement", ""), assignment.title, day_title, g.get("language", ""))
+            g["language"] = lang
+            g["allowed_language"] = lang
+            g["starter_code"] = sanitize_starter_template(lang, g.get("starter_code"))
         return generated
 
     from app.services.mcq_generator_service import generate_25_mcqs_for_day

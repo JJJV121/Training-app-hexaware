@@ -76,7 +76,7 @@ export default function ProctoredTestView({ courseDayId, assessmentId: propAsses
         if (typeof attInfo.current_question === 'number') {
           setCurrentIdx(attInfo.current_question);
         }
-        const firstLang = testInfo.questions?.[0]?.allowed_language || 'python';
+        const firstLang = testInfo.questions?.[0]?.allowed_language || testInfo.questions?.[0]?.language || 'java';
         setCurrentLanguage(firstLang);
 
         if (attInfo.status === 'submitted') {
