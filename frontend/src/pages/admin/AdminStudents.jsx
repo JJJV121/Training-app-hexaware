@@ -34,6 +34,19 @@ export default function AdminStudents() {
     loadCoursesAndTrainees();
   }, []);
 
+  const formatTrainee = (t) => {
+    const rawCids = Array.isArray(t.course_ids) && t.course_ids.length > 0
+      ? t.course_ids
+      : (t.course_id ? [t.course_id] : []);
+    const course_ids = Array.from(new Set(rawCids.map(Number).filter(id => !isNaN(id))));
+    return {
+      ...t,
+      college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
+      course_ids,
+      course_id: course_ids[0] || t.course_id || null
+    };
+  };
+
   const loadCoursesAndTrainees = async () => {
     setLoading(true);
     setError('');
@@ -43,14 +56,17 @@ export default function AdminStudents() {
         adminUserService.getTrainees()
       ]);
 
-      const enrichedStudents = traineesData.map(t => ({
-        ...t,
-        college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
-        course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
-      }));
+      const enrichedStudents = traineesData.map(formatTrainee);
 
       setCourses(coursesData);
       setStudents(enrichedStudents);
+
+      if (selectedStudent) {
+        const updated = enrichedStudents.find(s => s.id === selectedStudent.id);
+        if (updated) {
+          setSelectedStudent(updated);
+        }
+      }
     } catch (err) {
       console.error('Failed to load trainee data:', err);
       setError('Could not retrieve students registry. Please check server connection.');
@@ -73,20 +89,12 @@ export default function AdminStudents() {
       try {
         if (value.trim() === '') {
           const traineesData = await adminUserService.getTrainees();
-          setStudents(traineesData.map(t => ({
-            ...t,
-            college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
-            course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
-          })));
+          setStudents(traineesData.map(formatTrainee));
           return;
         }
 
         const searchResults = await adminUserService.searchTrainees(value);
-        setStudents(searchResults.map(t => ({
-          ...t,
-          college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
-          course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
-        })));
+        setStudents(searchResults.map(formatTrainee));
       } catch (err) {
         console.error('Failed to search trainees:', err);
       } finally {
@@ -101,20 +109,12 @@ export default function AdminStudents() {
     try {
       if (courseId === 'All') {
         const traineesData = await adminUserService.getTrainees();
-        setStudents(traineesData.map(t => ({
-          ...t,
-          college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
-          course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
-        })));
+        setStudents(traineesData.map(formatTrainee));
         return;
       }
 
       const filtered = await adminUserService.filterTrainees({ course_id: courseId });
-      setStudents(filtered.map(t => ({
-        ...t,
-        college: t.college_name || localStorage.getItem(`student_college_${t.id}`) || collegesList[0] || 'Hexaware College',
-        course_ids: Array.isArray(t.course_ids) && t.course_ids.length > 0 ? t.course_ids : (t.course_id ? [t.course_id] : [])
-      })));
+      setStudents(filtered.map(formatTrainee));
     } catch (err) {
       console.error('Failed to filter trainees:', err);
     } finally {
@@ -144,9 +144,7 @@ export default function AdminStudents() {
     setFormEmail(student.email || '');
     setFormPassword('');
     setFormCollege(student.college || collegesList[0]);
-    const currentCourses = student.course_ids && student.course_ids.length > 0
-      ? student.course_ids
-      : (student.course_id ? [student.course_id] : []);
+    const currentCourses = normalizeStudentCourseIds(student);
     setSelectedCourseIds(currentCourses);
     setIsModalOpen(true);
   };
@@ -160,7 +158,7 @@ export default function AdminStudents() {
           setSelectedStudent(null);
         }
         triggerToast('Student profile deleted.');
-        loadCoursesAndTrainees();
+        await loadCoursesAndTrainees();
       } catch (err) {
         console.error('Failed to delete student:', err);
         alert(err.response?.data?.detail || 'Failed to delete student.');
@@ -181,9 +179,9 @@ export default function AdminStudents() {
     try {
       await adminUserService.updateTraineeStatus(id, nextState);
       triggerToast(`Account for ${name} ${nextState ? 'activated' : 'deactivated'}.`);
-      loadCoursesAndTrainees();
+      await loadCoursesAndTrainees();
       if (selectedStudent && selectedStudent.id === id) {
-        setSelectedStudent({ ...selectedStudent, is_active: nextState });
+        setSelectedStudent(prev => prev ? { ...prev, is_active: nextState } : null);
       }
     } catch (err) {
       console.error('Failed to update student status:', err);
@@ -215,7 +213,7 @@ export default function AdminStudents() {
       employee_id: editStudent ? editStudent.employee_id : `ST_${Date.now()}`,
       name: formName,
       email: formEmail,
-      password: formPassword || 'Password123!',
+      ...(formPassword ? { password: formPassword } : {}),
       course_ids: selectedCourseIds,
       course_id: selectedCourseIds.length > 0 ? selectedCourseIds[0] : null,
       college_name: formCollege
@@ -223,9 +221,13 @@ export default function AdminStudents() {
 
     try {
       if (editStudent) {
-        await adminUserService.updateTrainee(editStudent.id, payload);
+        const updatedUser = await adminUserService.updateTrainee(editStudent.id, payload);
         localStorage.setItem(`student_college_${editStudent.id}`, formCollege);
         triggerToast('Student details updated.');
+        if (selectedStudent && selectedStudent.id === editStudent.id) {
+          const formattedUpdated = formatTrainee(updatedUser);
+          setSelectedStudent(formattedUpdated);
+        }
       } else {
         const newStudent = await adminUserService.createTrainee(payload);
         if (newStudent && newStudent.id) {
@@ -234,7 +236,7 @@ export default function AdminStudents() {
         triggerToast('New student enrolled successfully. Welcome email sent!');
       }
       setIsModalOpen(false);
-      loadCoursesAndTrainees();
+      await loadCoursesAndTrainees();
     } catch (err) {
       console.error('Failed to save student:', err);
       const errorMessage = typeof err.response?.data?.detail === 'string'
@@ -250,18 +252,16 @@ export default function AdminStudents() {
 
   const getCourseTitle = (courseId) => {
     if (!courseId) return 'Unassigned';
-    const c = courses.find(course => course.id === courseId);
+    const c = courses.find(course => course.id === Number(courseId));
     return c ? c.title : 'Unassigned';
   };
 
   const normalizeStudentCourseIds = (student) => {
-    if (Array.isArray(student?.course_ids) && student.course_ids.length > 0) {
-      return student.course_ids.map(Number);
-    }
-    if (student?.course_id !== undefined && student?.course_id !== null) {
-      return [Number(student.course_id)];
-    }
-    return [];
+    if (!student) return [];
+    const rawCids = Array.isArray(student.course_ids) && student.course_ids.length > 0
+      ? student.course_ids
+      : (student.course_id ? [student.course_id] : []);
+    return Array.from(new Set(rawCids.map(Number).filter(id => !isNaN(id))));
   };
 
   const filteredStudents = students.filter(s => {
@@ -447,8 +447,12 @@ export default function AdminStudents() {
 
                 <div className="details-body-list">
                   <div className="details-body-item">
-                    <span className="details-item-label">Enrolled Course</span>
-                    <span className="details-item-value">{getCourseTitle(selectedStudent.course_id)}</span>
+                    <span className="details-item-label">Enrolled Courses</span>
+                    <span className="details-item-value">
+                      {normalizeStudentCourseIds(selectedStudent).length > 0
+                        ? normalizeStudentCourseIds(selectedStudent).map(getCourseTitle).join(', ')
+                        : 'Unassigned'}
+                    </span>
                   </div>
                   <div className="details-body-item">
                     <span className="details-item-label">Attendance Rate</span>

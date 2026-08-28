@@ -30,7 +30,8 @@ async def _serialize_user_with_courses(db: AsyncSession, user: User | None):
         .where(Enrollment.user_id == user.id)
         .order_by(Enrollment.enrolled_at.desc())
     )
-    course_ids = [int(course_id) for course_id, in course_rows.all() if course_id is not None]
+    raw_course_ids = [int(course_id) for course_id, in course_rows.all() if course_id is not None]
+    course_ids = list(dict.fromkeys(raw_course_ids))
     primary_course_id = course_ids[0] if course_ids else None
 
     return {
@@ -129,11 +130,13 @@ async def create_trainee(
     await db.flush()
 
     # Handle multi-course or single course enrollment
-    course_ids = []
+    raw_course_ids = []
     if trainee_data.course_ids:
-        course_ids = trainee_data.course_ids
+        raw_course_ids = trainee_data.course_ids
     elif trainee_data.course_id:
-        course_ids = [trainee_data.course_id]
+        raw_course_ids = [trainee_data.course_id]
+
+    course_ids = list(dict.fromkeys([int(cid) for cid in raw_course_ids if cid is not None]))
 
     course_names = []
     for cid in course_ids:
@@ -156,7 +159,7 @@ async def create_trainee(
     except Exception as e:
         print("Notice: email trigger log:", e)
 
-    return user
+    return await _serialize_user_with_courses(db, user)
 
 
 async def update_user(
@@ -178,8 +181,34 @@ async def update_user(
 
     update_data = data.model_dump(exclude_unset=True)
 
+    # Handle enrollment updates if course_ids or course_id is present
+    has_course_ids = "course_ids" in update_data and update_data["course_ids"] is not None
+    has_course_id = "course_id" in update_data and update_data["course_id"] is not None
+
+    if has_course_ids or has_course_id:
+        raw_ids = []
+        if has_course_ids:
+            raw_ids = update_data.pop("course_ids")
+            if "course_id" in update_data:
+                update_data.pop("course_id")
+        elif has_course_id:
+            raw_ids = [update_data.pop("course_id")]
+
+        target_course_ids = list(dict.fromkeys([int(cid) for cid in raw_ids if cid is not None]))
+
+        # Remove existing enrollments for user
+        await db.execute(delete(Enrollment).where(Enrollment.user_id == user_id))
+
+        # Add new enrollments
+        for cid in target_course_ids:
+            db.add(Enrollment(user_id=user_id, course_id=cid))
+    else:
+        update_data.pop("course_ids", None)
+        update_data.pop("course_id", None)
+
     for field, value in update_data.items():
-        setattr(user, field, value)
+        if hasattr(user, field):
+            setattr(user, field, value)
 
     await db.commit()
     await db.refresh(user)
