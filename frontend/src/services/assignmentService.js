@@ -53,6 +53,13 @@ export const assignmentService = {
     return response.data;
   },
 
+  async downloadSubmission(submissionId) {
+    const response = await apiClient.get(`/assignment-submissions/${submissionId}/download`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
   async submitAssignment(assignmentId, file, userId) {
     const formData = new FormData();
     formData.append('file', file);

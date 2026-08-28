@@ -104,8 +104,8 @@ const normalizeVideoUrl = (url) => {
     try {
       if (showLoading) setIsLoading(true);
 
-      const dashData = await dashboardService.getDashboardData(userId);
-      const activeDay = dashData?.current_course?.current_day || 1;
+      const dashData = await dashboardService.getDashboard(userId, activeCourseId);
+      const activeDay = dashData?.current_course?.current_day || dashData?.course?.current_day || 1;
       setCurrentUnlockedDay(activeDay);
 
       if (showLoading) {
@@ -212,9 +212,9 @@ if (Array.isArray(progressData?.completed_learning_units)) {
   }, [isLoading, course, activeCourseId]);
 
   // Accordion Toggle Handler
-  const toggleDayAccordion = (dayId, isLocked) => {
+  const toggleDayAccordion = (dayIdOrNum, isLocked) => {
     if (isLocked) return; 
-    setExpandedDay(expandedDay === dayId ? null : dayId);
+    setExpandedDay(prev => (Number(prev) === Number(dayIdOrNum) ? null : dayIdOrNum));
   };
 
   // Automated Progress Sync
@@ -378,8 +378,9 @@ const handleSeeking = (e) => {
         <div className="course-workspace-scroll-area">
           {activeMainTab === 'Content' ? (
             course.modules.map(module => {
-              const isLocked = Number(module.id) > Number(currentUnlockedDay);
-              const isExpanded = expandedDay === module.id;
+              const modDayNum = Number(module.dayNumber || module.id);
+              const isLocked = modDayNum > Number(currentUnlockedDay);
+              const isExpanded = Number(expandedDay) === modDayNum || Number(expandedDay) === Number(module.id);
 
               return (
                 <div 
@@ -395,7 +396,7 @@ const handleSeeking = (e) => {
                 >
                   <div 
                     className="module-timeline-header" 
-                    onClick={() => toggleDayAccordion(module.id, isLocked)}
+                    onClick={() => toggleDayAccordion(modDayNum, isLocked)}
                     style={{ 
                       cursor: isLocked ? 'not-allowed' : 'pointer', 
                       display: 'flex', 
@@ -407,7 +408,7 @@ const handleSeeking = (e) => {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                       <div className="module-numeric-badge" style={{ background: isLocked ? 'var(--border-color)' : 'var(--primary-blue)', color: '#fff' }}>
-                        {module.id}
+                        {module.dayNumber || module.id}
                       </div>
                       <div className="module-heading-details">
                         <h3 className="module-primary-title" style={{ color: isLocked ? 'var(--text-medium)' : 'var(--text-dark)', margin: 0 }}>
@@ -420,12 +421,12 @@ const handleSeeking = (e) => {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {!isLocked && (![1, 2, 16].includes(Number(module.id)) && ![1, 2, 16].includes(Number(module.dayNumber))) && (
+                      {!isLocked && (![1, 2, 16].includes(modDayNum) && ![1, 2, 16].includes(Number(module.id))) && (
                         <button
                           className="action-pill-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setExpandedDay(module.id);
+                            setExpandedDay(modDayNum);
                             const firstLesson = module.lessons && module.lessons[0];
                             if (firstLesson) {
                               handleLaunchVideoPlayer(firstLesson, 'Assignment');
@@ -672,7 +673,7 @@ const handleSeeking = (e) => {
             <Assignment
               courseDayId={activeDayDbId}
               userId={userId}
-              isUnlocked={expandedDay <= currentUnlockedDay}
+              isUnlocked={(course?.modules?.find(m => Number(m.id) === Number(activeDayDbId) || Number(m.dayNumber) === Number(activeDayDbId))?.dayNumber || expandedDay || 1) <= currentUnlockedDay}
               onBackToCourse={() => setSubView('outline')}
             />
           )}

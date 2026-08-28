@@ -269,6 +269,8 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
 
   const getAssignmentType = (task) => String(task.assignment_type || '').toUpperCase();
 
+  const [submissionUrls, setSubmissionUrls] = useState({});
+
   const handleViewAttachment = async (task) => {
     if (attachmentUrls[task.id]) return;
 
@@ -278,6 +280,21 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
       setAttachmentUrls(prev => ({ ...prev, [task.id]: url }));
     } catch (err) {
       setError(err.response?.data?.detail || 'Unable to load the assignment PDF.');
+    }
+  };
+
+  const handleViewSubmission = async (record) => {
+    if (submissionUrls[record.id]) {
+      setSubmissionUrls(prev => ({ ...prev, [record.id]: null }));
+      return;
+    }
+
+    try {
+      const blob = await assignmentService.downloadSubmission(record.id);
+      const url = URL.createObjectURL(blob);
+      setSubmissionUrls(prev => ({ ...prev, [record.id]: url }));
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Unable to load your submitted solution.');
     }
   };
 
@@ -558,6 +575,7 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
                   <th style={styles.th}>Assignment / Problem Name</th>
                   <th style={styles.th}>Type</th>
                   <th style={styles.th}>Marks</th>
+                  <th style={styles.th}>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -568,6 +586,13 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
                       <td style={styles.td}>{q.title}</td>
                       <td style={styles.td}>CODING</td>
                       <td style={styles.td}>{q.marks || Math.round((task.total_marks || 100) / questions.length)}</td>
+                      <td style={styles.td}>
+                        {record ? (
+                          <span style={styles.statusSubmitted}>✓ Submitted</span>
+                        ) : (
+                          <span style={styles.statusPending}>Pending</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -576,6 +601,13 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
                     <td style={styles.td}>{task.title}</td>
                     <td style={styles.td}>{assignmentType}</td>
                     <td style={styles.td}>{task.total_marks}</td>
+                    <td style={styles.td}>
+                      {record ? (
+                        <span style={styles.statusSubmitted}>✓ Submitted</span>
+                      ) : (
+                        <span style={styles.statusPending}>Pending</span>
+                      )}
+                    </td>
                   </tr>
                 )}
                 <tr style={{ fontWeight: '700', backgroundColor: '#f8fafc' }}>
@@ -583,29 +615,195 @@ export default function Assignment({ courseDayId, userId, isUnlocked = true, onB
                   <td style={styles.td}>Total</td>
                   <td style={styles.td}>{isCoding ? `${questions.length} Coding Problems` : '1 Activity'}</td>
                   <td style={styles.td}>{task.total_marks}</td>
+                  <td style={styles.td}>
+                    {record ? (
+                      <span style={{ color: '#16a34a', fontWeight: '700' }}>Completed</span>
+                    ) : (
+                      <span style={{ color: '#64748b' }}>In Progress</span>
+                    )}
+                  </td>
                 </tr>
               </tbody>
             </table>
 
             {isDocumentAssignment && (
-              <div style={{ marginTop: '24px' }}>
-                <h4 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>
-                  {assignmentType === 'NON_CODING' ? 'Question PDF and solution upload' : assignmentType === 'CASE_STUDY' ? 'Case study PDF and GitHub submission' : 'Project requirement PDF and GitHub submission'}
-                </h4>
+              <div style={styles.documentAssignmentContainer}>
+                {/* Question PDF Card */}
                 {task.attachment_path && (
-                  <>
-                    <button type="button" onClick={() => handleViewAttachment(task)} style={styles.instructionsLinkBtn}>View Question PDF</button>
-                    {attachmentUrls[task.id] && <iframe title={`${task.title} question PDF`} src={attachmentUrls[task.id]} style={styles.pdfFrame} />}
-                  </>
+                  <div style={styles.attachmentCard}>
+                    <div style={styles.attachmentHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '24px' }}>📄</span>
+                        <div>
+                          <div style={{ fontWeight: '700', fontSize: '15px', color: '#0f172a' }}>Assignment Question PDF</div>
+                          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Review the problem statement before uploading your solution</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (attachmentUrls[task.id]) {
+                            setAttachmentUrls(prev => ({ ...prev, [task.id]: null }));
+                          } else {
+                            handleViewAttachment(task);
+                          }
+                        }}
+                        style={styles.viewPdfBtn}
+                      >
+                        {attachmentUrls[task.id] ? ' Hide Question PDF' : '👁 View Question PDF'}
+                      </button>
+                    </div>
+                    {attachmentUrls[task.id] && (
+                      <div style={styles.pdfContainer}>
+                        <iframe title={`${task.title} question PDF`} src={attachmentUrls[task.id]} style={styles.pdfFrame} />
+                      </div>
+                    )}
+                  </div>
                 )}
-                {assignmentType === 'NON_CODING' ? (
-                  <input type="file" accept="application/pdf" onChange={(e) => setSelectedFiles(prev => ({ ...prev, [task.id]: e.target.files?.[0] || null }))} />
-                ) : (
-                  <input type="url" value={githubUrls[task.id] || ''} onChange={(e) => setGithubUrls(prev => ({ ...prev, [task.id]: e.target.value }))} placeholder="https://github.com/your-name/repository" style={styles.githubInput} />
-                )}
-                <button onClick={() => handleSubmitDocumentAssignment(task)} style={styles.takeTestPrimaryBtn} disabled={submittingAssignmentId === task.id}>
-                  {submittingAssignmentId === task.id ? 'Submitting...' : 'Submit Assignment'}
-                </button>
+
+                {/* Submission Card */}
+                <div style={styles.submissionCard}>
+                  <div style={styles.submissionHeader}>
+                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>📤</span>
+                      {assignmentType === 'NON_CODING'
+                        ? 'Solution Upload'
+                        : 'GitHub Repository Submission'}
+                    </h4>
+                    {record && (
+                      <span style={styles.submittedBadge}>
+                        ✓ Submitted
+                      </span>
+                    )}
+                  </div>
+
+                  {record && (
+                    <div style={styles.submittedInfoBox}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#15803d', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#22c55e' }}></span>
+                            Assignment Submitted Successfully
+                          </div>
+
+                          {record.submission_path && (
+                            <div style={styles.submittedDetailRow}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                <span style={styles.fileNameBadge}>
+                                  📄 Submitted Solution PDF
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewSubmission(record)}
+                                  style={styles.viewSubmissionBtn}
+                                >
+                                  {submissionUrls[record.id] ? ' Hide My Submission' : '👁 View My Submission'}
+                                </button>
+                              </div>
+                              {submissionUrls[record.id] && (
+                                <div style={styles.pdfContainer}>
+                                  <iframe title="My Submitted Solution PDF" src={submissionUrls[record.id]} style={styles.pdfFrame} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {record.github_url && (
+                            <div style={styles.submittedDetailRow}>
+                              <strong style={{ color: '#334155' }}>Repository URL: </strong>
+                              <a href={record.github_url} target="_blank" rel="noopener noreferrer" style={styles.githubLink}>
+                                🔗 {record.github_url}
+                              </a>
+                            </div>
+                          )}
+
+                          {record.submitted_at && (
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+                              Submitted on: {new Date(record.submitted_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                            </div>
+                          )}
+                        </div>
+
+                        {record.marks !== null && record.marks !== undefined && (
+                          <div style={styles.scoreCardBadge}>
+                            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b', fontWeight: '700' }}>Grade</span>
+                            <span style={{ fontSize: '18px', fontWeight: '800', color: '#2563eb' }}>{record.marks} / {task.total_marks}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {record.feedback && (
+                        <div style={styles.feedbackBox}>
+                          <strong>Trainer Feedback:</strong> {record.feedback}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Upload Form */}
+                  <div style={{ marginTop: record ? '16px' : '12px' }}>
+                    {record && (
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '10px' }}>
+                        Want to update your submission? Select a new file below:
+                      </div>
+                    )}
+
+                    {assignmentType === 'NON_CODING' ? (
+                      <div style={styles.fileUploadWrapper}>
+                        <label htmlFor={`file-input-${task.id}`} style={styles.customFileLabel}>
+                          <span>📁</span>
+                          <span>{selectedFiles[task.id] ? selectedFiles[task.id].name : 'Choose PDF File'}</span>
+                        </label>
+                        <input
+                          id={`file-input-${task.id}`}
+                          type="file"
+                          accept="application/pdf"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            setSelectedFiles(prev => ({ ...prev, [task.id]: file }));
+                          }}
+                        />
+
+                        {selectedFiles[task.id] && (
+                          <div style={styles.selectedFileChip}>
+                            <span>📄 {selectedFiles[task.id].name} ({Math.round(selectedFiles[task.id].size / 1024)} KB)</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedFiles(prev => ({ ...prev, [task.id]: null }))}
+                              style={styles.clearFileBtn}
+                              title="Remove file"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        type="url"
+                        value={githubUrls[task.id] || ''}
+                        onChange={(e) => setGithubUrls(prev => ({ ...prev, [task.id]: e.target.value }))}
+                        placeholder="https://github.com/your-name/repository"
+                        style={styles.githubInput}
+                      />
+                    )}
+
+                    <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => handleSubmitDocumentAssignment(task)}
+                        style={styles.takeTestPrimaryBtn}
+                        disabled={submittingAssignmentId === task.id || (assignmentType === 'NON_CODING' && !selectedFiles[task.id] && !record)}
+                      >
+                        {submittingAssignmentId === task.id
+                          ? 'Submitting...'
+                          : record
+                          ? 'Re-submit Assignment'
+                          : 'Submit Assignment'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1032,10 +1230,182 @@ const styles = {
   pdfFrame: {
     display: 'block',
     width: '100%',
-    height: '420px',
-    marginTop: '12px',
+    height: '480px',
+    border: 'none'
+  },
+  pdfContainer: {
+    marginTop: '16px',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    border: '1px solid #cbd5e1'
+  },
+  documentAssignmentContainer: {
+    marginTop: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px'
+  },
+  attachmentCard: {
+    backgroundColor: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    borderRadius: '12px',
+    padding: '18px 20px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+  },
+  attachmentHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '12px'
+  },
+  viewPdfBtn: {
+    backgroundColor: '#ffffff',
+    color: '#2563eb',
     border: '1px solid #cbd5e1',
-    borderRadius: '6px'
+    borderRadius: '8px',
+    padding: '8px 16px',
+    fontWeight: '600',
+    fontSize: '13px',
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px'
+  },
+  submissionCard: {
+    backgroundColor: '#ffffff',
+    border: '1px solid #e2e8f0',
+    borderRadius: '12px',
+    padding: '20px',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+  },
+  submissionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '16px'
+  },
+  submittedBadge: {
+    backgroundColor: '#dcfce7',
+    color: '#15803d',
+    fontWeight: '700',
+    fontSize: '12px',
+    padding: '4px 12px',
+    borderRadius: '20px',
+    border: '1px solid #bbf7d0',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px'
+  },
+  statusSubmitted: {
+    color: '#16a34a',
+    fontWeight: '700',
+    fontSize: '13px'
+  },
+  statusPending: {
+    color: '#dc2626',
+    fontWeight: '600',
+    fontSize: '13px'
+  },
+  submittedInfoBox: {
+    backgroundColor: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    borderRadius: '10px',
+    padding: '16px',
+    marginBottom: '16px'
+  },
+  submittedDetailRow: {
+    fontSize: '14px',
+    color: '#1e293b',
+    marginTop: '6px'
+  },
+  fileNameBadge: {
+    backgroundColor: '#ffffff',
+    border: '1px solid #cbd5e1',
+    padding: '3px 10px',
+    borderRadius: '6px',
+    fontWeight: '600',
+    fontSize: '13px',
+    color: '#0f172a',
+    display: 'inline-block'
+  },
+  viewSubmissionBtn: {
+    backgroundColor: '#ffffff',
+    color: '#15803d',
+    border: '1px solid #86efac',
+    borderRadius: '6px',
+    padding: '5px 12px',
+    fontWeight: '600',
+    fontSize: '12px',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+  },
+  githubLink: {
+    color: '#2563eb',
+    fontWeight: '600',
+    textDecoration: 'none'
+  },
+  scoreCardBadge: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    border: '1px solid #cbd5e1',
+    padding: '8px 14px',
+    borderRadius: '8px'
+  },
+  feedbackBox: {
+    marginTop: '12px',
+    paddingTop: '12px',
+    borderTop: '1px dashed #bbf7d0',
+    fontSize: '13px',
+    color: '#166534'
+  },
+  fileUploadWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    flexWrap: 'wrap',
+    marginTop: '8px'
+  },
+  customFileLabel: {
+    backgroundColor: '#f8fafc',
+    color: '#334155',
+    border: '1.5px dashed #cbd5e1',
+    borderRadius: '8px',
+    padding: '10px 18px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    transition: 'all 0.2s ease'
+  },
+  selectedFileChip: {
+    backgroundColor: '#eff6ff',
+    color: '#1e40af',
+    border: '1px solid #bfdbfe',
+    borderRadius: '6px',
+    padding: '6px 12px',
+    fontSize: '13px',
+    fontWeight: '600',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  clearFileBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#1e40af',
+    cursor: 'pointer',
+    fontWeight: '800',
+    padding: 0,
+    fontSize: '13px'
   },
   stateBox: {
     padding: '40px',
