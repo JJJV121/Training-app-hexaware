@@ -58,10 +58,22 @@ import {
   TrendingDown,
   UserCheck,
   ChevronDown,
-  BarChart
+  BarChart,
+  Bot,
+  Sparkles,
+  HelpCircle,
+  Minimize2,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 
 const iconMap = {
+  'bot': Bot,
+  'sparkles': Sparkles,
+  'help-circle': HelpCircle,
+  'minimize-2': Minimize2,
+  'refresh-cw': RefreshCw,
+  'external-link': ExternalLink,
   'home': Home,
   'book-open': BookOpen,
   'clock': Clock,

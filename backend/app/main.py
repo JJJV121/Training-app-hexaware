@@ -170,6 +170,11 @@ app.include_router(gamification_router)
 from app.routers.proctored_assessment_router import router as proctored_assessment_router
 app.include_router(proctored_assessment_router)
 
+# AI Chatbot Assistant Router
+from app.routers.chatbot_router import router as chatbot_router
+app.include_router(chatbot_router)
+
+
 
 # --------------------------------------------------
 # Health Check

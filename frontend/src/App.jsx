@@ -26,6 +26,8 @@ import AdminCalendar from './pages/admin/AdminCalendar';
 
 // Import Admin Styles
 import './styles/admin.css';
+import AIChatbot from './components/AIChatbot';
+
 
 function AdminApp() {
   const navigate = useNavigate();
@@ -162,6 +164,9 @@ function AdminApp() {
       <main className="main-content" id="app-content">
         {renderContent()}
       </main>
+
+      {/* Hexaware AI Assistant for Admin */}
+      <AIChatbot role="admin" />
     </div>
   );
 }

@@ -9,6 +9,8 @@ import SessionScheduler from './trainer/SessionScheduler';
 import TrainerMentorConnect from './trainer/MentorConnect';
 import Placeholder from './Placeholder';
 import '../styles/trainer/trainer-dashboard.css';
+import AIChatbot from '../components/AIChatbot';
+
 
 
 export default function TrainerDashboard() {
@@ -187,6 +189,9 @@ export default function TrainerDashboard() {
       <main className="trainer-main-content">
         {renderContent()}
       </main>
+
+      {/* Hexaware AI Assistant for Trainer */}
+      <AIChatbot role="trainer" />
     </div>
   );
 }
