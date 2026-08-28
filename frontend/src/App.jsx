@@ -204,17 +204,17 @@ function AppRoutes() {
         <Route 
           path="/trainer-dashboard/*" 
           element={
-            // <ProtectedRoute>
+            <ProtectedRoute>
             <TrainerDashboard />
-            // </ProtectedRoute>
+            </ProtectedRoute>
           } 
         />
         <Route 
           path="/trainer-dashboard" 
           element={
-            // <ProtectedRoute>
+            <ProtectedRoute>
             <TrainerDashboard />
-            // </ProtectedRoute>
+            </ProtectedRoute>
           } 
         />
 
