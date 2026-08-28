@@ -14,13 +14,18 @@
 
 /* Sidebar styling for Trainer Dashboard */
 .trainer-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
   width: 280px;
   background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   padding: 24px;
-  height: 100%;
+  height: 100dvh;
+  z-index: 1000;
   flex-shrink: 0;
   overflow: hidden;
   transition: transform var(--transition-base), box-shadow var(--transition-base);
@@ -95,6 +100,23 @@
 /* Sidebar Nav Menu */
 .trainer-nav-menu {
   flex-grow: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.trainer-nav-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.trainer-nav-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.trainer-nav-menu::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
 }
 
 .trainer-nav-menu ul {
@@ -132,11 +154,16 @@
   box-shadow: 0 4px 14px rgba(53, 99, 233, 0.3);
 }
 
+.trainer-sidebar .sidebar-footer {
+  flex-shrink: 0;
+}
+
 /* Main Viewport Content */
 .trainer-main-content {
   flex-grow: 1;
   flex-shrink: 1;
   min-width: 0;
+  margin-left: 280px;
   overflow-y: auto;
   padding: 40px;
   position: relative;
@@ -167,10 +194,6 @@
   }
 
   .trainer-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
     width: min(84vw, 280px);
     padding: 20px 16px 24px;
     transform: translateX(-100%);
@@ -184,7 +207,25 @@
   }
 
   .trainer-main-content {
+    margin-left: 0;
     padding: 20px 16px 24px;
     overflow: visible;
+  }
+
+  .trainer-nav-menu ul {
+    gap: 4px;
+  }
+
+  .trainer-nav-item {
+    gap: 12px;
+    padding: 9px 12px;
+  }
+
+  .trainer-sidebar .sidebar-footer {
+    padding-top: 12px;
+  }
+
+  .trainer-sidebar .logout-btn {
+    padding: 9px 12px;
   }
 }
