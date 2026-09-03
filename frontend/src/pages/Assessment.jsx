@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import Icon from '../components/Icon';
 import '../styles/assessment.css';
 import { useTheme } from '../context/ThemeContext';
+import { useCopyProtection } from '../utils/copyProtection';
 
 // ==========================================
 // 1. MOCK DATA SCHEMAS (FASTAPI FORMAT)
@@ -312,6 +313,7 @@ export default function Assessment({
   onFinished = null, // Callback on exit or completed submission
   onLockChange = null // Callback to signal locking status
 }) {
+  useCopyProtection(true);
   const { isDarkMode } = useTheme();
   // Select active assessment configuration payload
   const activeAssessment = assessmentType === "Coding" ? CODING_ASSESSMENT_MOCK : MCQ_ASSESSMENT_MOCK;

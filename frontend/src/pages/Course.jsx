@@ -8,6 +8,7 @@ import { qaService } from '../services/qaService';
 import { caseStudyService } from '../services/caseStudyService';
 import { proctoredTestService } from '../services/proctoredTestService';
 import ProctoredTestView from './ProctoredTestView';
+import { useCopyProtection, requestFullScreenMode, exitFullScreenMode } from '../utils/copyProtection';
 
 // 🌟 Prop Injection: Accept courseId dynamically from DashBoard parent component shell
 export default function Course({ courseId, onLockChange }) {
@@ -801,12 +802,56 @@ function NotesSection({ learningUnitId }) {
 }
 
 export function QnASection({ courseId, dayId }) {
+  const quizContainerRef = useRef(null);
+  useCopyProtection(true, quizContainerRef);
+
   const [mcqs, setMcqs] = useState([]);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Handle Fullscreen tracking & auto-request
+  useEffect(() => {
+    const handleFSChange = () => {
+      const isFS = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      setIsFullscreen(isFS);
+    };
+
+    document.addEventListener('fullscreenchange', handleFSChange);
+    document.addEventListener('webkitfullscreenchange', handleFSChange);
+    document.addEventListener('mozfullscreenchange', handleFSChange);
+    document.addEventListener('MSFullscreenChange', handleFSChange);
+
+    // Auto request fullscreen on mount
+    requestFullScreenMode(quizContainerRef.current || document.documentElement).catch(() => {
+      // Browser may block automatic fullscreen without direct user gesture; user button provided below
+    });
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFSChange);
+      document.removeEventListener('webkitfullscreenchange', handleFSChange);
+      document.removeEventListener('mozfullscreenchange', handleFSChange);
+      document.removeEventListener('MSFullscreenChange', handleFSChange);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (isFullscreen) {
+      exitFullScreenMode();
+    } else {
+      requestFullScreenMode(quizContainerRef.current || document.documentElement).catch((err) => {
+        console.error("Fullscreen error:", err);
+      });
+    }
+  };
 
   useEffect(() => {
     if (!courseId || !dayId) return;
@@ -880,7 +925,58 @@ export function QnASection({ courseId, dayId }) {
   }
 
   return (
-    <div style={{ padding: '24px', backgroundColor: 'var(--bg-sidebar)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+    <div
+      ref={quizContainerRef}
+      className="no-copy"
+      style={{
+        padding: '24px',
+        backgroundColor: 'var(--bg-sidebar)',
+        borderRadius: '12px',
+        border: '1px solid var(--border-color)',
+        overflowY: 'auto'
+      }}
+    >
+      {/* Quiz Fullscreen & Security Notice Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 16px',
+          marginBottom: '16px',
+          borderRadius: '8px',
+          backgroundColor: isFullscreen ? 'rgba(37,99,235,0.08)' : 'rgba(234,179,8,0.12)',
+          border: isFullscreen ? '1px solid rgba(37,99,235,0.2)' : '1px solid rgba(234,179,8,0.3)',
+          fontSize: '0.85rem'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '1.1rem' }}>{isFullscreen ? '🖥️' : '⚠️'}</span>
+          <span style={{ fontWeight: 600, color: 'var(--text-dark)' }}>
+            {isFullscreen ? 'Quiz is running in Fullscreen Mode' : 'Fullscreen Mode is recommended for quizzes'}
+          </span>
+          <span style={{ color: 'var(--text-medium)', marginLeft: '8px', fontSize: '0.78rem' }}>
+            🔒 Copying & context menu are disabled
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '6px',
+            border: 'none',
+            backgroundColor: isFullscreen ? '#475569' : '#2563eb',
+            color: '#ffffff',
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontSize: '0.8rem'
+          }}
+        >
+          {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen Mode'}
+        </button>
+      </div>
+
       {/* Quiz Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
         <div>
@@ -917,7 +1013,10 @@ export function QnASection({ courseId, dayId }) {
           ) : (
             <button
               type="button"
-              onClick={() => setIsSubmitted(true)}
+              onClick={() => {
+                setIsSubmitted(true);
+                if (isFullscreen) exitFullScreenMode();
+              }}
               disabled={totalAnswered === 0}
               style={{
                 padding: '9px 18px',

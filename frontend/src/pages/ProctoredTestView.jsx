@@ -4,8 +4,10 @@ import Icon from '../components/Icon';
 import { useTheme } from '../context/ThemeContext';
 import CodingWorkspace from '../components/CodingWorkspace';
 import '../styles/assessment.css';
+import { useCopyProtection } from '../utils/copyProtection';
 
 export default function ProctoredTestView({ courseDayId, assessmentId: propAssessmentId, onBack }) {
+  useCopyProtection(true);
   const { isDarkMode } = useTheme();
 
   // Core Data States

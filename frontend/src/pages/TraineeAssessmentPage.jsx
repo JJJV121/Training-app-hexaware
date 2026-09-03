@@ -44,7 +44,7 @@ export default function TraineeAssessmentPage({ onLockChange }) {
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>{error}</div>;
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1000px', margin: '0 auto' }}>
+    <div className="no-copy" style={{ padding: '32px', maxWidth: '1000px', margin: '0 auto' }}>
       <h2 style={{ marginTop: 0, color: 'var(--text-dark)' }}>Assessments</h2>
       <p style={{ color: 'var(--text-medium)' }}>Assessments for your current training day.</p>
       {assessments.length === 0 ? (

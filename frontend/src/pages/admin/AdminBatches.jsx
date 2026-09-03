@@ -238,7 +238,11 @@ export default function AdminBatches() {
           <span className="admin-banner-subtitle">COLLEGE-BASED BATCH & TRAINER-TRAINEE FORMATION</span>
           <h2 className="admin-banner-title">Batch Management Module</h2>
         </div>
-        <div className="admin-banner-right">
+        <div className="admin-banner-right" style={{ display: 'flex', gap: '10px' }}>
+          <button className="admin-banner-btn" onClick={() => window.location.hash = 'admin-mass-enrollment?type=batches'} style={{ background: 'var(--card-bg, #ffffff)', color: 'var(--primary-color)' }}>
+            <Icon name="upload-cloud" style={{ width: '16px', height: '16px' }} />
+            <span>Bulk Import</span>
+          </button>
           <button className="admin-banner-btn" onClick={handleOpenAdd}>
             <Icon name="plus" style={{ width: '16px', height: '16px' }} />
             <span>Create College Batch</span>

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { assignmentService } from '../services/assignmentService';
 import CodingWorkspace from './CodingWorkspace';
+import { useCopyProtection } from '../utils/copyProtection';
 
 export default function Assignment({ courseDayId, userId, isUnlocked = true, onBackToCourse }) {
+  useCopyProtection(true);
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [questionsMap, setQuestionsMap] = useState({}); // assignmentId -> array of 3 questions

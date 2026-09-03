@@ -577,3 +577,24 @@
   color: #0061fe !important;
 }
 
+/* Copy Protection Utilities */
+.no-copy,
+.no-copy * {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+.no-copy input,
+.no-copy textarea,
+.no-copy [contenteditable="true"],
+.no-copy .monaco-editor,
+.no-copy .monaco-editor * {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+

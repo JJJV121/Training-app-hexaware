@@ -36,5 +36,9 @@ export default function TraineeAssignmentPage() {
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading assignments...</div>;
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>{error}</div>;
 
-  return <Assignment courseDayId={courseDayId} userId={userId} isUnlocked={isUnlocked} />;
+  return (
+    <div className="no-copy">
+      <Assignment courseDayId={courseDayId} userId={userId} isUnlocked={isUnlocked} />
+    </div>
+  );
 }

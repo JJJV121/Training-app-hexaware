@@ -35,5 +35,9 @@ export default function TraineeQuizPage() {
 
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading quiz...</div>;
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>{error}</div>;
-  return <QnASection courseId={courseId} dayId={courseDayId} />;
+  return (
+    <div className="no-copy">
+      <QnASection courseId={courseId} dayId={courseDayId} />
+    </div>
+  );
 }

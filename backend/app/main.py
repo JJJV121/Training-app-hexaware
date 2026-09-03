@@ -18,6 +18,9 @@ from app.routers.admin_course_assignment import (
     router as admin_course_assignment_router
 )
 from app.routers.admin_user import router as admin_user_router
+from app.routers.mass_enrollment_router import (
+    router as mass_enrollment_router
+)
 
 # Coding / Assignment routers
 from app.routers.coding_problem_router import router as coding_problem_router
@@ -125,6 +128,7 @@ app.include_router(batch_router)
 app.include_router(admin_course_router)
 app.include_router(admin_course_assignment_router)
 app.include_router(admin_user_router)
+app.include_router(mass_enrollment_router)
 
 # Coding Problems
 app.include_router(coding_problem_router)
