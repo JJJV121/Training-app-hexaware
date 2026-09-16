@@ -24,6 +24,7 @@ import AdminBatches from './pages/admin/AdminBatches';
 import AdminAssignments from './pages/admin/AdminAssignments';
 import AdminCalendar from './pages/admin/AdminCalendar';
 import AdminMassEnrollment from './pages/admin/AdminMassEnrollment';
+import AdminAttendanceAutomation from './pages/admin/AdminAttendanceAutomation';
 
 // Import Admin Styles
 import './styles/admin.css';
@@ -77,6 +78,8 @@ function AdminApp() {
         return <AdminCalendar />;
       case 'admin-mass-enrollment':
         return <AdminMassEnrollment />;
+      case 'admin-attendance-automation':
+        return <AdminAttendanceAutomation />;
       default:
         return <AdminDashboard />;
     }
@@ -92,7 +95,8 @@ function AdminApp() {
     { page: 'admin-course-assignment', icon: 'sliders', label: 'Course Assignment' },
     { page: 'admin-batches', icon: 'layers', label: 'Batch Management' },
     { page: 'admin-assignments', icon: 'file-text', label: 'Assignment & Assessment' },
-    { page: 'admin-calendar', icon: 'calendar', label: 'Calendar & Schedule' }
+    { page: 'admin-calendar', icon: 'calendar', label: 'Calendar & Schedule' },
+    { page: 'admin-attendance-automation', icon: 'clock', label: 'Attendance Automation' }
   ];
 
   return (

@@ -54,6 +54,11 @@ class Batch(Base):
         nullable=True,
     )
 
+    spoc_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True,
+    )
+
     college_name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,

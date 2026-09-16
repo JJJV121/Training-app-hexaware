@@ -40,6 +40,11 @@ class LiveSession(Base):
         nullable=False
     )
 
+    candidate_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True
+    )
+
     start_time: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False

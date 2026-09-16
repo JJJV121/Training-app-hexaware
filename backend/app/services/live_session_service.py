@@ -14,6 +14,18 @@ from app.schemas.live_session import (
 # Create Live Session
 # --------------------------------------------------
 
+async def _enrich_sessions(db: AsyncSession, sessions: list[LiveSession]):
+    from app.models.user import User
+    candidate_ids = {s.candidate_id for s in sessions if getattr(s, 'candidate_id', None)}
+    if candidate_ids:
+        users = (await db.scalars(select(User).where(User.id.in_(candidate_ids)))).all()
+        user_map = {u.id: (u.name or u.email) for u in users}
+        for s in sessions:
+            if getattr(s, 'candidate_id', None) and s.candidate_id in user_map:
+                setattr(s, 'candidate_name', user_map[s.candidate_id])
+    return sessions
+
+
 async def create_live_session(
     db: AsyncSession,
     trainer_id: int,
@@ -37,6 +49,7 @@ async def create_live_session(
         session_type=data.session_type,
         batch_id=data.batch_id,
         trainer_id=data.trainer_id or trainer_id,
+        candidate_id=data.candidate_id,
         start_time=data.start_time,
         end_time=data.end_time,
         meeting_link=data.meeting_link,
@@ -45,6 +58,7 @@ async def create_live_session(
     db.add(session)
     await db.commit()
     await db.refresh(session)
+    await _enrich_sessions(db, [session])
 
     return session
 
@@ -67,7 +81,9 @@ async def get_live_sessions(
         )
     )
 
-    return result.scalars().all()
+    sessions = result.scalars().all()
+    await _enrich_sessions(db, sessions)
+    return sessions
 
 
 # --------------------------------------------------
@@ -84,7 +100,9 @@ async def get_all_live_sessions(
         )
     )
 
-    return result.scalars().all()
+    sessions = result.scalars().all()
+    await _enrich_sessions(db, sessions)
+    return sessions
 
 
 # --------------------------------------------------
@@ -109,6 +127,7 @@ async def get_live_session_by_id(
             detail="Live session not found.",
         )
 
+    await _enrich_sessions(db, [session])
     return session
 
 
@@ -137,6 +156,7 @@ async def update_live_session(
 
     await db.commit()
     await db.refresh(session)
+    await _enrich_sessions(db, [session])
 
     return session
 
@@ -191,4 +211,6 @@ async def get_upcoming_sessions(
         )
     )
 
-    return result.scalars().all()
+    sessions = result.scalars().all()
+    await _enrich_sessions(db, sessions)
+    return sessions

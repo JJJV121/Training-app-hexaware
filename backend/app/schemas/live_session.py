@@ -9,6 +9,7 @@ class LiveSessionBase(BaseModel):
     session_type: str
     batch_id: int
     trainer_id: int
+    candidate_id: int | None = None
     start_time: datetime
     end_time: datetime
     meeting_link: str | None = None
@@ -29,6 +30,7 @@ class LiveSessionUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     session_type: str | None = None
+    candidate_id: int | None = None
     start_time: datetime | None = None
     end_time: datetime | None = None
     meeting_link: str | None = None
@@ -43,6 +45,7 @@ class LiveSessionUpdate(BaseModel):
 
 class LiveSessionResponse(LiveSessionBase):
     id: int
+    candidate_name: str | None = None
     created_at: datetime
     updated_at: datetime
 

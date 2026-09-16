@@ -6,9 +6,15 @@ import apiClient from '../../services/apiClient';
 export default function SessionScheduler() {
   const [sessions, setSessions] = useState([]);
   const [batches, setBatches] = useState([]);
+  const [trainees, setTrainees] = useState([]);
+  const [loadingTrainees, setLoadingTrainees] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Form Target Audience: 'BATCH' | 'INDIVIDUAL'
+  const [targetAudience, setTargetAudience] = useState('BATCH');
+  const [candidateId, setCandidateId] = useState('');
 
   // Form Fields
   const [title, setTitle] = useState('');
@@ -25,6 +31,14 @@ export default function SessionScheduler() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (batchId) {
+      loadTraineesForBatch(batchId);
+    } else {
+      setTrainees([]);
+    }
+  }, [batchId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -47,15 +61,29 @@ export default function SessionScheduler() {
     }
   };
 
+  const loadTraineesForBatch = async (bId) => {
+    setLoadingTrainees(true);
+    try {
+      const traineesList = await trainerService.getBatchTrainees(bId);
+      setTrainees(traineesList || []);
+      if (traineesList && traineesList.length > 0 && !candidateId) {
+        setCandidateId(String(traineesList[0].trainee_id));
+      }
+    } catch (err) {
+      console.error('Failed to load batch trainees:', err);
+      setTrainees([]);
+    } finally {
+      setLoadingTrainees(false);
+    }
+  };
+
   const parseDateTimeRange = (dateStr, slot) => {
-    // slot is like "09:00 - 10:30"
     const [start, end] = slot.split('-').map(s => s.trim());
     const [startH, startM] = start.split(':');
     const [endH, endM] = end.split(':');
 
     const [yr, mo, dy] = dateStr.split('-');
     
-    // Construct local datetimes
     const startObj = new Date(Number(yr), Number(mo) - 1, Number(dy), Number(startH), Number(startM));
     const endObj = new Date(Number(yr), Number(mo) - 1, Number(dy), Number(endH), Number(endM));
 
@@ -68,7 +96,12 @@ export default function SessionScheduler() {
   const handleSaveSession = async (e) => {
     e.preventDefault();
     if (!title || !date || !batchId) {
-      alert('Please fill out all fields.');
+      alert('Please fill out all required fields.');
+      return;
+    }
+
+    if (targetAudience === 'INDIVIDUAL' && !candidateId) {
+      alert('Please select an individual candidate for the session.');
       return;
     }
 
@@ -80,6 +113,7 @@ export default function SessionScheduler() {
         description,
         session_type: sessionType,
         batch_id: Number(batchId),
+        candidate_id: targetAudience === 'INDIVIDUAL' && candidateId ? Number(candidateId) : null,
         start_time,
         end_time,
         meeting_link: meetingLink,
@@ -98,12 +132,14 @@ export default function SessionScheduler() {
       setTitle('');
       setDescription('');
       setDate('');
+      setTargetAudience('BATCH');
+      setCandidateId('');
       setMeetingLink('https://zoom.us/j/123456789');
       setEditSessionId(null);
       loadData();
     } catch (err) {
       console.error('Failed to save session:', err);
-      alert('Failed to save live session. Verify database status.');
+      alert('Failed to save live session.');
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +165,14 @@ export default function SessionScheduler() {
     setSessionType(s.session_type);
     setBatchId(s.batch_id);
     
-    // Parse start_time to populate date and slot
+    if (s.candidate_id) {
+      setTargetAudience('INDIVIDUAL');
+      setCandidateId(String(s.candidate_id));
+    } else {
+      setTargetAudience('BATCH');
+      setCandidateId('');
+    }
+
     const dateObj = new Date(s.start_time);
     const endObj = new Date(s.end_time);
     
@@ -147,6 +190,14 @@ export default function SessionScheduler() {
     setMeetingLink(s.meeting_link || '');
   };
 
+  const handleSelectCandidate = (cId) => {
+    setCandidateId(cId);
+    const candidate = trainees.find(t => String(t.trainee_id) === String(cId));
+    if (candidate && (!title || title.startsWith('1-on-1'))) {
+      setTitle(`1-on-1 Mentoring Session: ${candidate.name || candidate.email}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="batch-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -161,15 +212,18 @@ export default function SessionScheduler() {
       <div className="batch-banner">
         <div className="batch-banner-left">
           <h2>Live Lecture & Webinar Scheduler</h2>
-          <p>Schedule new interactive video webinars and manage active virtual labs for your assigned batches.</p>
+          <p>Schedule interactive lectures for entire batches or 1-on-1 meetings for individual candidates.</p>
         </div>
       </div>
 
       <div className="split-view-container" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', marginTop: '24px' }}>
         {/* Left Side: Sessions Directory */}
         <div className="admin-table-container">
-          <div className="trainee-table-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)' }}>
+          <div className="trainee-table-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-dark)' }}>My Scheduled Live Sessions</h3>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary-blue)', backgroundColor: 'var(--primary-blue-light)', padding: '4px 10px', borderRadius: '12px' }}>
+              {sessions.length} Scheduled
+            </span>
           </div>
 
           <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -183,20 +237,41 @@ export default function SessionScheduler() {
                 const startTimeStr = new Date(s.start_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                 const endTimeStr = new Date(s.end_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                 const batchName = batches.find(b => b.id === s.batch_id)?.name || `Batch ID: ${s.batch_id}`;
+                const isIndividual = Boolean(s.candidate_id || s.candidate_name);
 
                 return (
-                  <div key={s.id} className="session-item" style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                  <div key={s.id} className="session-item" style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', backgroundColor: isIndividual ? 'var(--bg-main)' : 'var(--bg-card)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div className="session-icon-wrap" style={{ backgroundColor: 'rgba(53, 99, 233, 0.1)', color: '#3563e9', padding: '10px', borderRadius: '50%' }}>
-                        <Icon name="video" style={{ width: '22px', height: '22px' }} />
+                      <div className="session-icon-wrap" style={{ backgroundColor: isIndividual ? 'rgba(99, 102, 241, 0.12)' : 'rgba(53, 99, 233, 0.1)', color: isIndividual ? '#6366f1' : '#3563e9', padding: '12px', borderRadius: '12px' }}>
+                        <Icon name={isIndividual ? "user" : "video"} style={{ width: '22px', height: '22px' }} />
                       </div>
                       <div>
-                        <h4 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-dark)', marginBottom: '4px' }}>{s.title}</h4>
-                        <p style={{ fontSize: '12px', color: 'var(--text-medium)', marginBottom: '6px' }}>{s.description}</p>
-                        <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--text-light)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <h4 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-dark)', margin: 0 }}>{s.title}</h4>
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            backgroundColor: isIndividual ? '#e0e7ff' : '#dbeafe',
+                            color: isIndividual ? '#3730a3' : '#1e40af',
+                            textTransform: 'uppercase'
+                          }}>
+                            {isIndividual ? '👤 1-on-1 Candidate' : '👥 Batch Session'}
+                          </span>
+                        </div>
+
+                        <p style={{ fontSize: '12px', color: 'var(--text-medium)', marginBottom: '8px' }}>{s.description || 'No description provided.'}</p>
+
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '11px', color: 'var(--text-light)' }}>
                           <span>📅 {dateStr}</span>
                           <span>⏰ {startTimeStr} - {endTimeStr}</span>
                           <span style={{ color: 'var(--primary-blue)', fontWeight: 700 }}>🏷️ {batchName}</span>
+                          {isIndividual && (
+                            <span style={{ color: '#6366f1', fontWeight: 700 }}>
+                              👤 Target: {s.candidate_name || `Candidate #${s.candidate_id}`}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -211,7 +286,7 @@ export default function SessionScheduler() {
                           style={{ fontSize: '11px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >
                           <Icon name="link" style={{ width: '12px', height: '12px' }} />
-                          Join Webinar
+                          Join Meeting
                         </a>
                       )}
                       
@@ -244,31 +319,68 @@ export default function SessionScheduler() {
         {/* Right Side: Scheduler Form */}
         <div className="review-blade-card" style={{ padding: '24px', backgroundColor: 'var(--bg-card)' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-dark)', marginBottom: '16px' }}>
-            {editSessionId ? 'Modify Scheduled Session' : 'Schedule Training Lecture'}
+            {editSessionId ? 'Modify Scheduled Session' : 'Schedule Training Meeting'}
           </h3>
 
           <form onSubmit={handleSaveSession} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Target Audience Selector: Batch vs Individual Candidate */}
             <div className="form-group">
-              <label className="form-label">Lecture/Webinar Title</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="e.g. Intro to Spring Boot Security"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
+              <label className="form-label" style={{ fontWeight: 700 }}>Target Audience</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <button
+                  type="button"
+                  className={`schedule-filter-pill ${targetAudience === 'BATCH' ? 'active' : ''}`}
+                  onClick={() => {
+                    setTargetAudience('BATCH');
+                    setCandidateId('');
+                  }}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: targetAudience === 'BATCH' ? '#3563e9' : 'var(--bg-main)',
+                    color: targetAudience === 'BATCH' ? '#ffffff' : 'var(--text-dark)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontSize: '12px'
+                  }}
+                >
+                  <Icon name="users" style={{ width: '14px', height: '14px' }} />
+                  Entire Batch
+                </button>
 
-            <div className="form-group">
-              <label className="form-label">Brief Description</label>
-              <textarea 
-                className="form-input" 
-                placeholder="Details about syllabus coverage..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                style={{ minHeight: '60px', padding: '8px', fontFamily: 'inherit' }}
-              />
+                <button
+                  type="button"
+                  className={`schedule-filter-pill ${targetAudience === 'INDIVIDUAL' ? 'active' : ''}`}
+                  onClick={() => {
+                    setTargetAudience('INDIVIDUAL');
+                    if (trainees.length > 0) {
+                      handleSelectCandidate(String(trainees[0].trainee_id));
+                    }
+                  }}
+                  style={{
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: targetAudience === 'INDIVIDUAL' ? '#6366f1' : 'var(--bg-main)',
+                    color: targetAudience === 'INDIVIDUAL' ? '#ffffff' : 'var(--text-dark)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    fontSize: '12px'
+                  }}
+                >
+                  <Icon name="user" style={{ width: '14px', height: '14px' }} />
+                  Individual Candidate
+                </button>
+              </div>
             </div>
 
             <div className="form-group">
@@ -289,6 +401,56 @@ export default function SessionScheduler() {
               </select>
             </div>
 
+            {/* Individual Candidate Selector */}
+            {targetAudience === 'INDIVIDUAL' && (
+              <div className="form-group" style={{ backgroundColor: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '10px', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                <label className="form-label" style={{ color: '#4338ca', fontWeight: 700 }}>
+                  Select Individual Candidate / Student
+                </label>
+                {loadingTrainees ? (
+                  <div style={{ fontSize: '12px', color: 'var(--text-light)' }}>Loading candidates for batch...</div>
+                ) : trainees.length === 0 ? (
+                  <div style={{ fontSize: '12px', color: 'var(--accent-red)' }}>No enrolled candidates found in this batch.</div>
+                ) : (
+                  <select
+                    className="form-input"
+                    value={candidateId}
+                    onChange={(e) => handleSelectCandidate(e.target.value)}
+                    required
+                  >
+                    {trainees.map(t => (
+                      <option key={t.trainee_id} value={t.trainee_id}>
+                        👤 {t.name || t.email} ({t.email})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">Meeting / Session Title</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder={targetAudience === 'INDIVIDUAL' ? 'e.g. 1-on-1 Code Review & Mentoring' : 'e.g. Intro to Spring Boot Security'}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Brief Description</label>
+              <textarea 
+                className="form-input" 
+                placeholder="Meeting agenda & topic coverage..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={{ minHeight: '60px', padding: '8px', fontFamily: 'inherit' }}
+              />
+            </div>
+
             <div className="form-group">
               <label className="form-label">Choose Date</label>
               <input 
@@ -302,10 +464,10 @@ export default function SessionScheduler() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="form-group">
-                <label className="form-label">Session Type</label>
+                <label className="form-label">Session Format</label>
                 <select className="form-input" value={sessionType} onChange={(e) => setSessionType(e.target.value)}>
                   <option value="ONLINE">ONLINE (Zoom/Teams)</option>
-                  <option value="OFFLINE">OFFLINE (Lab/Class)</option>
+                  <option value="OFFLINE">OFFLINE (In-Person Lab)</option>
                 </select>
               </div>
 
@@ -321,7 +483,7 @@ export default function SessionScheduler() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Webinar / Zoom Meeting Link</label>
+              <label className="form-label">Meeting / Zoom Link</label>
               <input 
                 type="url" 
                 className="form-input" 
@@ -342,6 +504,8 @@ export default function SessionScheduler() {
                     setTitle('');
                     setDescription('');
                     setDate('');
+                    setTargetAudience('BATCH');
+                    setCandidateId('');
                   }}
                 >
                   Cancel Edit
@@ -353,7 +517,7 @@ export default function SessionScheduler() {
                 style={{ flex: 2, padding: '10px', justifyContent: 'center' }} 
                 disabled={submitting}
               >
-                {submitting ? 'Saving...' : editSessionId ? 'Update Session' : 'Schedule Webinar'}
+                {submitting ? 'Saving...' : editSessionId ? 'Update Meeting' : targetAudience === 'INDIVIDUAL' ? 'Schedule 1-on-1 Meeting' : 'Schedule Batch Session'}
               </button>
             </div>
           </form>

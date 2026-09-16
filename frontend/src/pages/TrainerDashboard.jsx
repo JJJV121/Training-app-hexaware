@@ -7,6 +7,7 @@ import GradingQueue from './trainer/GradingQueue';
 import PerformanceReports from './trainer/PerformanceReports';
 import SessionScheduler from './trainer/SessionScheduler';
 import TrainerMentorConnect from './trainer/MentorConnect';
+import SPOCAttendanceRequests from './trainer/SPOCAttendanceRequests';
 import Placeholder from './Placeholder';
 import '../styles/trainer/trainer-dashboard.css';
 import AIChatbot from '../components/AIChatbot';
@@ -91,6 +92,8 @@ export default function TrainerDashboard() {
         return <TrainerMentorConnect />;
       case 'reports':
         return <PerformanceReports />;
+      case 'spoc-approvals':
+        return <SPOCAttendanceRequests />;
       default:
         return <TrainerOverview />;
     }
@@ -100,6 +103,7 @@ export default function TrainerDashboard() {
     { page: 'overview', icon: 'home', label: 'Home/Overview' },
     { page: 'mentor-connect', icon: 'message-square', label: 'Mentor Connect' },
     { page: 'batches', icon: 'users', label: 'Enrolled Batches' },
+    { page: 'spoc-approvals', icon: 'check-square', label: 'Attendance Approvals' },
     { page: 'grading', icon: 'clipboard-check', label: 'Grading Queue' },
     { page: 'scheduler', icon: 'clock', label: 'Session Scheduler' },
     { page: 'reports', icon: 'bar-chart-2', label: 'Performance Reports' },

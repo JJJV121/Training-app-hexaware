@@ -183,6 +183,11 @@ app.include_router(proctored_assessment_router)
 from app.routers.chatbot_router import router as chatbot_router
 app.include_router(chatbot_router)
 
+# Attendance & Follow-up Automation Router
+from app.routers.attendance_followup_router import router as attendance_followup_router
+app.include_router(attendance_followup_router)
+
+
 
 
 # --------------------------------------------------

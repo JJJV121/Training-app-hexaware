@@ -54,4 +54,11 @@ from app.models.assessment import (
     AttemptStatus,
 )
 from app.models.trainee_feedback import TraineeFeedback
+from app.models.attendance_followup import (
+    AttendanceFollowupRecord,
+    AttendanceFollowupAuditLog,
+    SystemSetting,
+    FollowupStage,
+)
+
 

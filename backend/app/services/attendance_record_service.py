@@ -63,6 +63,19 @@ async def create_attendance(
     await db.commit()
     await db.refresh(attendance)
 
+    # Trigger attendance follow-up automation evaluation for eligible candidates
+    try:
+        from app.services.attendance_followup_service import process_attendance_event
+        await process_attendance_event(
+            db=db,
+            trainee_id=data.trainee_id,
+            session_id=session_id,
+            marked_status=data.status,
+            actor_id=trainer_id,
+        )
+    except Exception as e:
+        print(f"Attendance follow-up event trigger notice: {e}")
+
     return attendance
 
 
@@ -100,6 +113,19 @@ async def update_attendance(
 
     await db.commit()
     await db.refresh(attendance)
+
+    # Trigger attendance follow-up automation evaluation for eligible candidates
+    try:
+        from app.services.attendance_followup_service import process_attendance_event
+        await process_attendance_event(
+            db=db,
+            trainee_id=attendance.trainee_id,
+            session_id=attendance.session_id,
+            marked_status=data.status,
+            actor_id=trainer_id,
+        )
+    except Exception as e:
+        print(f"Attendance follow-up event trigger notice on update: {e}")
 
     return attendance
 
