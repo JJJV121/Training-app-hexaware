@@ -204,17 +204,47 @@
   border-color: #065f46 !important;
 }
 
-/* Video section — nav tabs */
+/* Video section — tab bar (segmented control in dark mode) */
+.app-container.dark-theme .video-content-horizontal-nav-row {
+  background: rgba(255,255,255,0.05) !important;
+}
+
 .app-container.dark-theme .video-horizontal-nav-item {
-  background-color: var(--bg-sidebar) !important;
-  border-color: var(--border-color) !important;
+  background: transparent !important;
+  border: none !important;
   color: var(--text-medium) !important;
 }
 
+.app-container.dark-theme .video-horizontal-nav-item:hover:not(.active-nav-pill) {
+  background: rgba(255,255,255,0.08) !important;
+  color: var(--text-dark) !important;
+}
+
 .app-container.dark-theme .video-horizontal-nav-item.active-nav-pill {
-  background-color: var(--primary-blue) !important;
-  border-color: var(--primary-blue) !important;
+  background: rgba(255,255,255,0.12) !important;
   color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+}
+
+/* Status colours — dark mode label text */
+.app-container.dark-theme .video-horizontal-nav-item:not(.active-nav-pill).tab-status-completed {
+  color: #4ade80 !important;
+}
+.app-container.dark-theme .video-horizontal-nav-item:not(.active-nav-pill).tab-status-ongoing {
+  color: #fbbf24 !important;
+}
+.app-container.dark-theme .video-horizontal-nav-item:not(.active-nav-pill).tab-status-upcoming {
+  color: #60a5fa !important;
+}
+
+/* Active pill status colour overrides in dark mode */
+.app-container.dark-theme .video-horizontal-nav-item.active-nav-pill.tab-status-completed {
+  background: rgba(22, 163, 74, 0.25) !important;
+  color: #4ade80 !important;
+}
+.app-container.dark-theme .video-horizontal-nav-item.active-nav-pill.tab-status-ongoing {
+  background: rgba(245, 158, 11, 0.2) !important;
+  color: #fbbf24 !important;
 }
 
 /* Video dynamic card container */

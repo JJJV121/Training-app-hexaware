@@ -347,55 +347,99 @@
 }
 
 /* ==========================================================================
-   VIEW 2: LECTURE WORKSPACE MEDIA SYSTEM ("video 2")
-   ========================================================================== */
+/* === WORKSPACE BANNER === */
 .video-workspace-banner {
-  background-color: #3b82f6;
-  padding: 32px 40px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%);
+  padding: 28px 40px 32px;
   color: #ffffff;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.video-workspace-banner::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 220px;
+  height: 220px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.video-workspace-banner::after {
+  content: '';
+  position: absolute;
+  bottom: -40px;
+  left: 30%;
+  width: 160px;
+  height: 160px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .video-banner-back-btn {
-  background: transparent;
-  border: none;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  opacity: 0.9;
-  margin-bottom: 16px;
-  padding: 0;
+  margin-bottom: 18px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  transition: background 0.2s, transform 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.video-banner-back-btn:hover {
+  background: rgba(255,255,255,0.25);
+  transform: translateX(-2px);
 }
 
 .video-banner-title {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 800;
-  margin: 0;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.5px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.15);
 }
 
 .video-banner-subtitle {
   font-size: 13px;
-  font-weight: 600;
-  opacity: 0.85;
-  margin: 4px 0 0 0;
+  font-weight: 500;
+  opacity: 0.8;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* 📐 THE ENFORCED 16:9 RATIO VIDEO HOUSING CARD */
+/* === VIDEO FRAME === */
 .video-media-frame-wrapper {
   position: relative;
   width: 100%;
   max-width: 1000px;
-  aspect-ratio: 16 / 9; 
-  min-height: 500px; 
-  background-color: #000000;
-  border-radius: 16px;
+  aspect-ratio: 16 / 9;
+  min-height: 480px;
+  background-color: #0a0a0f;
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-  margin: 0 0 24px 0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255,255,255,0.04);
+  margin: 0 0 28px 0;
+  animation: videoFadeIn 0.35s ease;
+}
+
+@keyframes videoFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .video-playback-screen-canvas {
@@ -410,36 +454,101 @@
 .dashboard-active-video-element {
   width: 100%;
   height: 100%;
-  object-fit: cover; 
+  object-fit: contain;
   background-color: #000000;
   outline: none;
   border: none;
 }
 
-/* Navigation Horizontal Tab Controls */
+/* === NAVIGATION TAB BAR === */
 .video-content-horizontal-nav-row {
   display: flex;
-  gap: 12px;
-  margin: 28px 0 20px 0;
+  gap: 8px;
+  margin: 24px 0 20px 0;
+  background: #f1f5f9;
+  padding: 5px;
+  border-radius: 14px;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .video-horizontal-nav-item {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: transparent;
+  border: none;
   color: #64748b;
-  padding: 10px 24px;
-  border-radius: 24px;
+  padding: 9px 22px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  position: relative;
 }
 
+.video-horizontal-nav-item:hover:not(.active-nav-pill) {
+  background: rgba(255,255,255,0.8);
+  color: #1e293b;
+}
+
+/* Status dot — small coloured circle before the label */
+.tab-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #94a3b8; /* default grey */
+  transition: background 0.2s;
+}
+
+/* Active pill */
 .video-horizontal-nav-item.active-nav-pill {
-  background-color: #0061fe;
-  border-color: #0061fe;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 97, 254, 0.2);
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.10);
+}
+
+/* ---- Status colour overrides on the dot (inactive) ---- */
+.video-horizontal-nav-item.tab-status-completed .tab-status-dot {
+  background: #16a34a;
+}
+.video-horizontal-nav-item.tab-status-ongoing .tab-status-dot {
+  background: #f59e0b;
+}
+.video-horizontal-nav-item.tab-status-upcoming .tab-status-dot {
+  background: #3b82f6;
+}
+
+/* ---- Label colour when NOT active ---- */
+.video-horizontal-nav-item:not(.active-nav-pill).tab-status-completed {
+  color: #15803d;
+}
+.video-horizontal-nav-item:not(.active-nav-pill).tab-status-ongoing {
+  color: #b45309;
+}
+.video-horizontal-nav-item:not(.active-nav-pill).tab-status-upcoming {
+  color: #1d4ed8;
+}
+
+/* When active, colour the pill background based on status */
+.video-horizontal-nav-item.active-nav-pill.tab-status-completed {
+  background: #f0fdf4;
+  color: #15803d;
+  box-shadow: 0 2px 10px rgba(22, 163, 74, 0.15);
+}
+.video-horizontal-nav-item.active-nav-pill.tab-status-ongoing {
+  background: #fffbeb;
+  color: #92400e;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.15);
+}
+.video-horizontal-nav-item.active-nav-pill.tab-status-upcoming {
+  background: #ffffff;
+  color: #1e40af;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.12);
 }
 
 /* White Layout Structured Sub-Section Enclosure Panel Card Wrapper */

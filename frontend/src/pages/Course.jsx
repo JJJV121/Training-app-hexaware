@@ -295,6 +295,16 @@ console.log("Normalized URL:", normalizeVideoUrl(videos[0].video_url || videos[0
       setCurrentVideoUrl(normalizedUrl);
     }
   };
+const getCurrentVideoId = () => {
+    const currentIndex = unitVideos.findIndex(v => {
+      const vUrl = normalizeVideoUrl(v.video_url || v.url);
+      return vUrl === currentVideoUrl;
+    });
+    if (currentIndex === -1) return null;
+    const v = unitVideos[currentIndex];
+    return String(v.id ?? v.video_id ?? currentIndex);
+  };
+
 const handleTimeUpdate = (e) => {
     if (!e.target.seeking) {
         lastValidTime.current = e.target.currentTime;
@@ -302,7 +312,10 @@ const handleTimeUpdate = (e) => {
 };
 
 const handleSeeking = (e) => {
-    if (e.target.currentTime > lastValidTime.current + 1) {
+    // Allow forward seeking if the current video has already been completed
+    const videoId = getCurrentVideoId();
+    const alreadyWatched = videoId && completedVideos.has(videoId);
+    if (!alreadyWatched && e.target.currentTime > lastValidTime.current + 1) {
         e.target.currentTime = lastValidTime.current;
     }
 };
@@ -630,7 +643,7 @@ const handleSeeking = (e) => {
       </div>
 
       <div className="course-workspace-scroll-area">
-        {unitVideos.length > 0 && activeHorizontalTab !== 'Assignment' && (
+        {activeHorizontalTab === 'Videos' && unitVideos.length > 0 && (
           <div className="video-media-frame-wrapper">
             <div className="video-playback-screen-canvas">
               {currentVideoUrl && (
@@ -655,9 +668,45 @@ const handleSeeking = (e) => {
         )}
 
         <div className="video-content-horizontal-nav-row">
-          {['Videos', 'Notes', 'Assignment', 'Quiz', 'Assessment'].map((tabName) => (
-            <button key={tabName} onClick={() => setActiveHorizontalTab(tabName)} className={`video-horizontal-nav-item ${activeHorizontalTab === tabName ? 'active-nav-pill' : ''}`}>{tabName}</button>
-          ))}
+          {[
+            { name: 'Videos',     statusKey: 'videos' },
+            { name: 'Quiz',       statusKey: 'quiz' },
+            { name: 'Assignment', statusKey: 'assignment' },
+            { name: 'Assessment', statusKey: 'assessment' },
+            { name: 'Notes',      statusKey: 'notes' },
+          ].map(({ name, statusKey }) => {
+            // Determine per-tab status colour
+            let statusClass = 'tab-status-upcoming'; // blue default
+            if (name === 'Videos') {
+              const allVideosWatched = unitVideos.length > 0 && unitVideos.every((v, i) => {
+                const vid = String(v.id ?? v.video_id ?? i);
+                return completedVideos.has(vid);
+              });
+              const anyVideoWatched = unitVideos.some((v, i) => completedVideos.has(String(v.id ?? v.video_id ?? i)));
+              if (allVideosWatched) {
+                statusClass = 'tab-status-completed';
+              } else if (activeHorizontalTab === 'Videos' || anyVideoWatched) {
+                // When actively viewing/watching videos or partly watched, show ongoing (yellow)
+                statusClass = 'tab-status-ongoing';
+              }
+            } else if (name === 'Notes') {
+              statusClass = activeHorizontalTab === 'Notes' ? 'tab-status-ongoing' : 'tab-status-upcoming';
+            } else {
+              const lessonId = String(selectedLesson?.id || '');
+              if (lessonId && completedLessons.has(lessonId)) statusClass = 'tab-status-completed';
+              else if (activeHorizontalTab === name) statusClass = 'tab-status-ongoing';
+            }
+            return (
+              <button
+                key={name}
+                onClick={() => setActiveHorizontalTab(name)}
+                className={`video-horizontal-nav-item ${activeHorizontalTab === name ? 'active-nav-pill' : ''} ${statusClass}`}
+              >
+                <span className="tab-status-dot"></span>
+                {name}
+              </button>
+            );
+          })}
         </div>
 
         <div className="video-dynamic-card-container-wrapper">
