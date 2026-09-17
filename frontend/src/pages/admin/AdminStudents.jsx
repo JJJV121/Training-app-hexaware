@@ -287,8 +287,8 @@ export default function AdminStudents() {
           <h2 className="admin-banner-title">Student Registry & College Mapping</h2>
         </div>
         <div className="admin-banner-right" style={{ display: 'flex', gap: '10px' }}>
-          <button className="admin-banner-btn" onClick={() => window.location.hash = 'admin-mass-enrollment?type=trainees'} style={{ background: 'var(--card-bg, #ffffff)', color: 'var(--primary-color)' }}>
-            <Icon name="upload-cloud" style={{ width: '16px', height: '16px' }} /> <span>Bulk Import</span>
+          <button className="admin-banner-btn admin-banner-btn-secondary" onClick={() => window.location.hash = 'admin-mass-enrollment?type=trainees'}>
+            <Icon name="upload-cloud" style={{ width: '16px', height: '16px' }} /> <span>Mass Enrollment</span>
           </button>
           <button className="admin-banner-btn" onClick={handleOpenAddModal}>
             <Icon name="plus" style={{ width: '16px', height: '16px' }} />

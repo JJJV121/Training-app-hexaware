@@ -224,9 +224,9 @@ export default function AdminTrainers() {
           <h2 className="admin-banner-title">Trainer Management Portal</h2>
         </div>
         <div className="admin-banner-right" style={{ display: 'flex', gap: '10px' }}>
-          <button className="admin-banner-btn" onClick={() => window.location.hash = 'admin-mass-enrollment?type=trainers'} style={{ background: 'var(--card-bg, #ffffff)', color: 'var(--primary-color)' }}>
+          <button className="admin-banner-btn admin-banner-btn-secondary" onClick={() => window.location.hash = 'admin-mass-enrollment?type=trainers'}>
             <Icon name="upload-cloud" style={{ width: '16px', height: '16px' }} />
-            <span>Bulk Import</span>
+            <span>Mass Enrollment</span>
           </button>
           <button className="admin-banner-btn" onClick={handleOpenAddModal}>
             <Icon name="plus" style={{ width: '16px', height: '16px' }} />

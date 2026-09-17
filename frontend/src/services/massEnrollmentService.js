@@ -29,11 +29,7 @@ const massEnrollmentService = {
     formData.append('enrollment_type', enrollmentType);
     formData.append('file', file);
 
-    const response = await apiClient.post('/admin/mass-enrollment/validate', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await apiClient.post('/admin/mass-enrollment/validate', formData);
     return response.data;
   },
 

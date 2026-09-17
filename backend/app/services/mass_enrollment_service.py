@@ -54,7 +54,7 @@ def _normalize_headers(raw_headers: list[str]) -> dict[str, str]:
     for original in raw_headers:
         cleaned = original.strip().lower().replace(" ", "_").replace("-", "_")
         
-        if cleaned in ["employee_id", "employeeid", "emp_id", "empid", "user_id"]:
+        if cleaned in ["employee_id", "employeeid", "emp_id", "empid", "user_id", "student_id", "studentid", "trainee_id"]:
             header_map[original] = "employee_id"
         elif cleaned in ["name", "full_name", "fullname", "user_name"]:
             header_map[original] = "name"
@@ -86,7 +86,10 @@ def _normalize_headers(raw_headers: list[str]) -> dict[str, str]:
     return header_map
 
 
-def _parse_csv_content(csv_file_bytes: bytes) -> tuple[list[str], list[dict[str, str]]]:
+def _parse_csv_content(
+    csv_file_bytes: bytes,
+    enrollment_type: str,
+) -> tuple[list[str], list[dict[str, str]]]:
     """Parses binary CSV content handling UTF-8/BOM, quotes, empty lines."""
     try:
         text = csv_file_bytes.decode("utf-8-sig")
@@ -98,22 +101,44 @@ def _parse_csv_content(csv_file_bytes: bytes) -> tuple[list[str], list[dict[str,
     
     stream = io.StringIO(text)
     reader = csv.reader(stream)
-    
-    rows = [row for row in reader if any(cell.strip() for cell in row)]
+
+    try:
+        rows = [row for row in reader if any(cell.strip() for cell in row)]
+    except csv.Error as exc:
+        raise ValueError(f"Malformed CSV file: {exc}") from exc
     if not rows:
         raise ValueError("CSV file is empty")
 
     raw_headers = [h.strip() for h in rows[0]]
+    while raw_headers and not raw_headers[-1]:
+        raw_headers.pop()
+    if not raw_headers or any(not header for header in raw_headers):
+        raise ValueError("CSV header row contains an empty column name.")
+    if len({header.lower() for header in raw_headers}) != len(raw_headers):
+        raise ValueError("CSV header row contains duplicate column names.")
     header_mapping = _normalize_headers(raw_headers)
     
     data_rows = []
     for raw_row in rows[1:]:
+        if len(raw_row) > len(raw_headers) and any(cell.strip() for cell in raw_row[len(raw_headers):]):
+            raise ValueError("CSV contains data in a column without a header.")
         row_dict = {}
         for idx, header in enumerate(raw_headers):
             key = header_mapping[header]
             val = raw_row[idx].strip() if idx < len(raw_row) else ""
             row_dict[key] = val
         data_rows.append(row_dict)
+
+    required_headers = {
+        "trainees": {"employee_id", "name", "email"},
+        "trainers": {"employee_id", "name", "email", "password"},
+        "batches": {"name", "course", "start_date", "end_date"},
+    }
+    missing_headers = required_headers.get(enrollment_type, set()) - set(header_mapping.values())
+    if missing_headers:
+        raise ValueError(
+            f"CSV is missing required column(s): {', '.join(sorted(missing_headers))}."
+        )
 
     return list(header_mapping.values()), data_rows
 
@@ -188,7 +213,7 @@ async def validate_csv_upload(
     if enrollment_type not in ["trainees", "trainers", "batches"]:
         raise ValueError("Invalid enrollment type. Must be 'trainees', 'trainers', or 'batches'.")
 
-    headers, data_rows = _parse_csv_content(file_bytes)
+    headers, data_rows = _parse_csv_content(file_bytes, enrollment_type)
     
     # Pre-fetch existing DB identifiers for fast lookup
     existing_emails = set()

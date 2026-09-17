@@ -90,6 +90,11 @@
   transform: translateY(-1px);
 }
 
+.admin-banner-btn-secondary {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
 /* Stats card grids overlapping */
 .admin-stats-grid-9 {
   display: grid;

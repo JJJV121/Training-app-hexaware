@@ -14,6 +14,10 @@ const apiClient = axios.create({
 // Request interceptor to dynamically inject the token
 apiClient.interceptors.request.use(
   (config) => {
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      config.headers['Content-Type'] = undefined;
+    }
+
     const rawToken = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
     if (rawToken) {
       const cleanToken = rawToken.replace(/^bearer\s+/i, '');

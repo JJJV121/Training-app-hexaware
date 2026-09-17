@@ -48,8 +48,12 @@ export default function AdminMassEnrollment() {
 
   const handleFileSelect = (file) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endswith('.csv')) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
       setErrorMsg('Invalid file format. Please upload a .csv file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMsg('File is too large. Please upload a CSV file smaller than 10 MB.');
       return;
     }
     setErrorMsg('');
