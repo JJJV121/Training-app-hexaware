@@ -203,61 +203,113 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
     q_check_res = await db.execute(q_check_stmt)
     existing_questions = q_check_res.scalars().all()
 
-    if not existing_questions:
-        if assessment.assessment_type == "MCQ":
-            from app.services.mcq_generator_service import generate_25_mcqs_for_day
-            mcq_list = generate_25_mcqs_for_day(course_name, course_day.title, course_day.description or "")[:10]
-            for i, q_data in enumerate(mcq_list, start=1):
-                question_obj = AssessmentQuestion(
-                    assessment_id=assessment.id,
-                    question_number=i,
-                    question_text=q_data["question"],
-                    question_type="mcq",
-                    points=1,
-                    difficulty=q_data.get("difficulty", "Medium"),
-                    explanation=q_data.get("explanation", "")
-                )
-                db.add(question_obj)
-                await db.flush()
-                for option_index, option_text in enumerate(q_data.get("options", [])):
-                    db.add(AssessmentOption(
-                        question_id=question_obj.id,
-                        option_text=option_text,
-                        is_correct=option_index == q_data.get("correct_index")
-                    ))
-        else:
-            coding_q_list = get_default_coding_questions_for_day(course_day.day_number, topic_title)
+async def ensure_grading_assessment_questions(db: AsyncSession, assessment: Assessment):
+    """
+    Ensures that for any of the 4 Grading Assessments, questions are dynamically generated from
+    the MCQQuestionBank matching the specific mapped categories and Medium+Hard difficulty requirements.
+    """
+    from sqlalchemy import func
+    from app.models.mcq_bank import MCQQuestionBank
+    import random
 
-            for i, q_data in enumerate(coding_q_list, start=1):
-                db.add(AssessmentQuestion(
-                    assessment_id=assessment.id,
-                    question_number=i,
-                    question_text=q_data["question_text"],
-                    question_type="coding",
-                    points=q_data.get("points", 33),
-                    title=q_data["title"],
-                    input_format=q_data.get("input_format", ""),
-                    output_format=q_data.get("output_format", ""),
-                    constraints=q_data.get("constraints", ""),
-                    sample_input=q_data.get("sample_input", ""),
-                    sample_output=q_data.get("sample_output", ""),
-                    difficulty="Medium",
-                    allowed_language=q_data.get("allowed_language", "python"),
-                    starter_code=q_data.get("starter_code", "def solution():\n    pass"),
-                    test_cases=q_data.get("test_cases", []),
-                    explanation=q_data.get("explanation", "")
-                ))
+    title_lower = assessment.title.lower()
 
+    config = None
+    if "problem solving" in title_lower or "mysql" in title_lower:
+        config = {"count": 65, "categories": ["dsa", "agile", "mysql"], "duration": 75, "total_marks": 65, "passing": 49}
+    elif "java" in title_lower and "junit" in title_lower:
+        config = {"count": 55, "categories": ["java", "junit"], "duration": 70, "total_marks": 55, "passing": 42}
+    elif "git" in title_lower or "cloud" in title_lower:
+        config = {"count": 35, "categories": ["git", "cloud"], "duration": 50, "total_marks": 35, "passing": 27}
+    elif "generative" in title_lower or "prompt" in title_lower or "genai" in title_lower:
+        config = {"count": 20, "categories": ["genai"], "duration": 30, "total_marks": 20, "passing": 15}
+
+    if not config:
+        return
+
+    # Update assessment settings
+    assessment.duration_minutes = config["duration"]
+    assessment.total_marks = config["total_marks"]
+    assessment.passing_marks = config["passing"]
+    assessment.assessment_type = "MCQ"
+
+    # Check existing questions
+    q_check_stmt = select(AssessmentQuestion).where(AssessmentQuestion.assessment_id == assessment.id)
+    existing = (await db.execute(q_check_stmt)).scalars().all()
+
+    if len(existing) >= config["count"]:
         await db.commit()
+        return
 
-        # Reload assessment with questions
-        res = await db.execute(stmt)
-        assessment = res.scalar_one_or_none()
+    # Clear incomplete previous questions if any
+    for q in existing:
+        await db.delete(q)
+    await db.flush()
 
-    return assessment
+    # Query matching questions from MCQQuestionBank (Medium and Hard only)
+    stmt = select(MCQQuestionBank).where(
+        MCQQuestionBank.is_active == True,
+        func.lower(MCQQuestionBank.category).in_([c.lower() for c in config["categories"]]),
+        func.upper(MCQQuestionBank.difficulty).in_(["MEDIUM", "HARD"])
+    )
+    pool = (await db.execute(stmt)).scalars().all()
+
+    # Fallback if pool is smaller than required count
+    if len(pool) < config["count"]:
+        fallback_stmt = select(MCQQuestionBank).where(
+            MCQQuestionBank.is_active == True,
+            func.lower(MCQQuestionBank.category).in_([c.lower() for c in config["categories"]])
+        )
+        pool = (await db.execute(fallback_stmt)).scalars().all()
+
+    if not pool:
+        await db.commit()
+        return
+
+    sample_size = min(config["count"], len(pool))
+    selected_pool = random.sample(pool, sample_size)
+    random.shuffle(selected_pool)
+
+    for i, bank_q in enumerate(selected_pool, start=1):
+        question_obj = AssessmentQuestion(
+            assessment_id=assessment.id,
+            question_number=i,
+            question_text=bank_q.question_text,
+            question_type="mcq",
+            points=1,
+            difficulty=(bank_q.difficulty or "MEDIUM").capitalize(),
+            explanation=bank_q.explanation or ""
+        )
+        db.add(question_obj)
+        await db.flush()
+
+        # Options map & correct text
+        opts_map = {"A": bank_q.option_a, "B": bank_q.option_b, "C": bank_q.option_c, "D": bank_q.option_d}
+        correct_text = opts_map.get((bank_q.correct_answer or "A").upper().strip(), bank_q.option_a)
+        if bank_q.correct_answer_text and bank_q.correct_answer_text.strip():
+            correct_text = bank_q.correct_answer_text.strip()
+
+        shuffled_options = [bank_q.option_a, bank_q.option_b, bank_q.option_c, bank_q.option_d]
+        random.shuffle(shuffled_options)
+
+        try:
+            correct_idx = shuffled_options.index(correct_text)
+        except ValueError:
+            shuffled_options[0] = correct_text
+            correct_idx = 0
+
+        for opt_idx, opt_text in enumerate(shuffled_options):
+            db.add(AssessmentOption(
+                question_id=question_obj.id,
+                option_text=opt_text,
+                is_correct=(opt_idx == correct_idx)
+            ))
+
+    await db.commit()
 
 
 async def get_assessments_by_day(db: AsyncSession, course_day_id: int) -> list[dict]:
+
     day = await db.get(CourseDay, course_day_id)
     if not day:
         raise HTTPException(status_code=404, detail="Course day not found.")
@@ -350,6 +402,12 @@ async def get_proctored_assessment_trainee_view(
 
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")
+
+    await ensure_grading_assessment_questions(db, assessment)
+    db.expire(assessment, ["questions"])
+    res = await db.execute(stmt)
+    assessment = res.scalar_one_or_none()
+
 
     course_name = "Course"
     day_number = 1
@@ -456,6 +514,11 @@ async def create_or_get_active_attempt(
 
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")
+
+    await ensure_grading_assessment_questions(db, assessment)
+    res = await db.execute(stmt)
+    assessment = res.scalar_one_or_none()
+
 
     att_stmt = (
         select(AssessmentAttempt)

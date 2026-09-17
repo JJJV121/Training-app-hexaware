@@ -73,6 +73,10 @@ async def is_assignment_unlocked(
     day = course_day.day_number
     course_id = course_day.course_id
 
+    # Day 1
+    if day == 1:
+        return True
+
     # Day 2 Non-Coding
     if day == 2:
         return await are_days_completed(
@@ -133,4 +137,17 @@ async def is_assignment_unlocked(
             16,
         )
 
-    return False
+    # General unlock for all other days
+    return await are_days_completed(
+        db,
+        user_id,
+        course_id,
+        day,
+        day,
+    ) or await are_days_completed(
+        db,
+        user_id,
+        course_id,
+        1,
+        max(1, day - 1),
+    )

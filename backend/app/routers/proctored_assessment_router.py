@@ -32,7 +32,36 @@ from app.services.code_execution_service import execute_code_against_testcases
 router = APIRouter(tags=["Proctored Assessment"])
 
 
+@router.get("/assessments/grading-list")
+async def get_grading_assessments_list(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_optional_user),
+):
+    """
+    Returns the list of 4 Grading Assessments configured in the training plan.
+    """
+    from app.models.assessment import Assessment
+    stmt = select(Assessment).where(
+        Assessment.title.ilike("%Grading Assessment%")
+    ).order_by(Assessment.id)
+    res = await db.execute(stmt)
+    assessments = res.scalars().all()
+    
+    return [{
+        "assessment_id": a.id,
+        "title": a.title,
+        "description": a.description,
+        "instructions": a.instructions,
+        "duration_minutes": a.duration_minutes,
+        "total_marks": a.total_marks,
+        "passing_marks": a.passing_marks,
+        "day_id": a.course_day_id,
+        "assessment_type": a.assessment_type
+    } for a in assessments]
+
+
 @router.get("/assessments/by-day/{course_day_id}", response_model=list[AssessmentSummaryResponse])
+
 async def list_assessments_by_day(
     course_day_id: int,
     db: AsyncSession = Depends(get_db),

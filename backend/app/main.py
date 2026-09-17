@@ -187,6 +187,11 @@ app.include_router(chatbot_router)
 from app.routers.attendance_followup_router import router as attendance_followup_router
 app.include_router(attendance_followup_router)
 
+# Practice MCQ Router
+from app.routers.practice_mcq_router import router as practice_mcq_router
+app.include_router(practice_mcq_router)
+
+
 
 
 

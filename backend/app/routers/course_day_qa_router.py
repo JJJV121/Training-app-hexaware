@@ -119,23 +119,12 @@ async def get_day_mcqs(
     day_title = day.title if day else f"Day {day_id}"
     day_desc = day.description if day else ""
 
-    from app.models.course import Course
-    c_res = await db.execute(select(Course).where(Course.id == course_id))
-    c = c_res.scalars().first()
-    course_title = c.title if c else "Java Training"
+    from app.services.practice_mcq_service import get_topic_practice_mcqs
+    res = await get_topic_practice_mcqs(db, topic_name=day_title)
+    res["course_id"] = course_id
+    res["day_id"] = day_id
+    return res
 
-    from app.services.mcq_generator_service import generate_25_mcqs_for_day
-    mcqs = generate_25_mcqs_for_day(course_title, day_title, day_desc)
-
-    return {
-        "course_id": course_id,
-        "day_id": day_id,
-        "total_mcqs": len(mcqs),
-        "low_count": len([m for m in mcqs if m["difficulty"] == "low"]),
-        "medium_count": len([m for m in mcqs if m["difficulty"] == "medium"]),
-        "hard_count": len([m for m in mcqs if m["difficulty"] == "hard"]),
-        "mcqs": mcqs
-    }
 
 
 # Update Q&A (Admin Only)
