@@ -9,11 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.course import Course
-from app.models.batch_models import Batch, BatchTrainee
+from app.models.batch_models import Batch
 from app.models.enrollment import Enrollment
 from app.core.security import hash_password
 from app.core.password_validation import validate_password_syntax
 from app.services.batch_service import calculate_batch_status
+from app.services.auth_service import generate_activation_token, build_activation_link
+from app.services.email_service import send_activation_email
 
 
 EMAIL_REGEX = re.compile(r"^[\w\.-]+@[\w\.-]+\.\w+$")
@@ -26,15 +28,15 @@ def get_csv_template(enrollment_type: str) -> str:
     if enrollment_type == "trainees":
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["employee_id", "name", "email", "college_name", "password", "course_id_or_title", "batch_id_or_name"])
-        writer.writerow(["EMP1001", "Jane Trainee", "jane.trainee@hexaware.com", "Hexaware Academy", "Pass@12345678", "1", "Batch Alpha 2026"])
+        writer.writerow(["employee_id", "name", "email", "college_name", "password", "course_id_or_title"])
+        writer.writerow(["EMP1001", "Jane Trainee", "jane.trainee@hexaware.com", "Hexaware Academy", "Pass@12345678", "1"])
         return output.getvalue()
 
     elif enrollment_type == "trainers":
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["employee_id", "name", "email", "password", "college_name", "course_id_or_title"])
-        writer.writerow(["TRN1001", "John Trainer", "john.trainer@hexaware.com", "SecurePass@123", "Hexaware Corp", "1"])
+        writer.writerow(["employee_id", "name", "email", "password", "course_id_or_title"])
+        writer.writerow(["TRN1001", "John Trainer", "john.trainer@hexaware.com", "SecurePass@123", "1"])
         return output.getvalue()
 
     elif enrollment_type == "batches":
@@ -140,6 +142,16 @@ def _parse_csv_content(
             f"CSV is missing required column(s): {', '.join(sorted(missing_headers))}."
         )
 
+    unsupported_headers = {
+        "trainees": {"batch"},
+        "trainers": {"college_name", "batch"},
+    }
+    unsupported = unsupported_headers.get(enrollment_type, set()) & set(header_mapping.values())
+    if unsupported:
+        raise ValueError(
+            f"CSV contains unsupported column(s) for {enrollment_type}: {', '.join(sorted(unsupported))}."
+        )
+
     return list(header_mapping.values()), data_rows
 
 
@@ -180,22 +192,6 @@ async def _resolve_trainer(db: AsyncSession, trainer_ref: str) -> User | None:
                 func.lower(User.name) == trainer_ref.lower(),
             )
         )
-    )
-    return result.scalar_one_or_none()
-
-
-async def _resolve_batch(db: AsyncSession, batch_ref: str) -> Batch | None:
-    """Finds a batch by integer ID or name."""
-    if not batch_ref:
-        return None
-
-    if batch_ref.isdigit():
-        batch = await db.get(Batch, int(batch_ref))
-        if batch:
-            return batch
-
-    result = await db.execute(
-        select(Batch).where(func.lower(Batch.name) == batch_ref.lower())
     )
     return result.scalar_one_or_none()
 
@@ -252,7 +248,6 @@ async def validate_csv_upload(
             email = row.get("email", "").strip()
             password = row.get("password", "").strip()
             course_ref = row.get("course", "").strip()
-            batch_ref = row.get("batch", "").strip()
 
             # Required field checks
             if not emp_id:
@@ -302,14 +297,6 @@ async def validate_csv_upload(
                 else:
                     row["resolved_course_id"] = str(c_obj.id)
                     row["resolved_course_title"] = c_obj.title
-
-            if batch_ref:
-                b_obj = await _resolve_batch(db, batch_ref)
-                if not b_obj:
-                    row_errors.append(f"Batch '{batch_ref}' does not exist.")
-                else:
-                    row["resolved_batch_id"] = str(b_obj.id)
-                    row["resolved_batch_name"] = b_obj.name
 
         elif enrollment_type == "trainers":
             emp_id = row.get("employee_id", "").strip()
@@ -495,7 +482,6 @@ async def process_mass_import(
                 college = data.get("college_name")
                 password = data.get("password")
                 course_id = data.get("resolved_course_id")
-                batch_id = data.get("resolved_batch_id")
 
                 # Double-check existing user in DB
                 existing = await db.scalar(
@@ -528,9 +514,9 @@ async def process_mass_import(
                     enrollment = Enrollment(user_id=user.id, course_id=int(course_id))
                     db.add(enrollment)
 
-                if batch_id:
-                    bt = BatchTrainee(batch_id=int(batch_id), trainee_id=user.id)
-                    db.add(bt)
+                token_obj = await generate_activation_token(db, user.id)
+                activation_link = build_activation_link(token_obj.token, user.email)
+                await send_activation_email(user.email, activation_link, user.name)
 
                 successful_count += 1
                 results.append({
@@ -543,7 +529,6 @@ async def process_mass_import(
                 emp_id = data.get("employee_id")
                 name = data.get("name")
                 email = data.get("email")
-                college = data.get("college_name")
                 password = data.get("password")
 
                 existing = await db.scalar(
@@ -563,7 +548,6 @@ async def process_mass_import(
                     employee_id=emp_id,
                     name=name,
                     email=email,
-                    college_name=college,
                     role="trainer",
                     is_active=True,
                     password_hash=hash_password(password),

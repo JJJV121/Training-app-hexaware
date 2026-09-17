@@ -495,7 +495,7 @@ export default function AdminStudents() {
       {/* Add / Edit Modal */}
       {isModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-box">
+          <div className="modal-box student-modal-box">
             <div className="modal-header">
               <h3 className="modal-title">{editStudent ? 'Edit Student Details' : 'Enroll New Student'}</h3>
               <button className="modal-close-btn" onClick={() => setIsModalOpen(false)}>
@@ -516,7 +516,7 @@ export default function AdminStudents() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="student-modal-field-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
                   <label className="form-label">Email Address</label>
                   <input 
@@ -557,18 +557,20 @@ export default function AdminStudents() {
 
               <div className="form-group">
                 <label className="form-label">Enrolling Courses (Select Multiple)</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '140px', overflowY: 'auto', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-main)' }}>
-                  {courses.map(c => (
+                <div className="student-course-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '140px', overflowY: 'auto', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-main)' }}>
+                  {courses.length > 0 ? courses.map(c => (
                     <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={selectedCourseIds.includes(c.id)}
                         onChange={() => toggleCourseSelection(c.id)}
                         style={{ width: '16px', height: '16px' }}
                       />
                       <span>{c.title}</span>
                     </label>
-                  ))}
+                  )) : (
+                    <span className="student-course-empty">No courses available</span>
+                  )}
                 </div>
               </div>
 
