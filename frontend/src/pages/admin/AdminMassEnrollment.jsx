@@ -215,7 +215,7 @@ export default function AdminMassEnrollment() {
               </button>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>
-              Bulk register trainees into user tables, optionally assigning courses & batches.
+              Bulk register trainees into user tables and enroll them in courses. Assign batches separately through Batch Management.
             </p>
           </div>
 
@@ -457,7 +457,6 @@ export default function AdminMassEnrollment() {
                       <th style={{ padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Name</th>
                       <th style={{ padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Email</th>
                       <th style={{ padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Resolved Course</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'left', borderBottom: '1px solid var(--border-color)' }}>Resolved Batch</th>
                     </>
                   )}
                   {enrollmentType === 'trainers' && (
@@ -515,7 +514,6 @@ export default function AdminMassEnrollment() {
                           <td style={{ padding: '10px 12px' }}>{row.data.name || '-'}</td>
                           <td style={{ padding: '10px 12px' }}>{row.data.email || '-'}</td>
                           <td style={{ padding: '10px 12px' }}>{row.data.resolved_course_title || row.data.course || '-'}</td>
-                          <td style={{ padding: '10px 12px' }}>{row.data.resolved_batch_name || row.data.batch || '-'}</td>
                         </>
                       )}
 
