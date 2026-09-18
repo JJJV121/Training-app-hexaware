@@ -1,62 +1,59 @@
 import random
 from fastapi import HTTPException, status
-from sqlalchemy import select, or_, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.mcq_bank import MCQQuestionBank
+from app.models.course_day import CourseDay
 from app.models.learning_unit import LearningUnit
+from app.services.question_bank_policy import get_verified_question_pool
 
 async def get_topic_practice_mcqs(
     db: AsyncSession,
     unit_id: int | None = None,
-    topic_name: str | None = None
+    topic_name: str | None = None,
+    unit_ids: list[int] | None = None,
+    course_id: int | None = None,
 ) -> dict:
     target_topic = topic_name
     matched_unit_id = unit_id
 
     if unit_id and not topic_name:
-        unit = await db.get(LearningUnit, unit_id)
-        if unit:
-            target_topic = unit.title
-
-    # Query matching questions from MCQ Question Bank
-    query = select(MCQQuestionBank).where(MCQQuestionBank.is_active == True)
-
-    conditions = []
-    if matched_unit_id:
-        conditions.append(MCQQuestionBank.learning_unit_id == matched_unit_id)
-    if target_topic:
-        clean_topic = target_topic.strip()
-        conditions.append(func.lower(MCQQuestionBank.topic) == clean_topic.lower())
-        conditions.append(MCQQuestionBank.topic.ilike(f"%{clean_topic}%"))
-
-    if conditions:
-        query = query.where(or_(*conditions))
-
-    res = await db.execute(query)
-    questions = res.scalars().all()
-
-    # Fallback search if exact match returned less than 10 questions
-    if len(questions) < 10 and target_topic:
-        # Search by keyword
-        words = [w for w in target_topic.lower().replace("&", " ").replace("-", " ").replace("/", " ").split() if len(w) > 2]
-        if words:
-            word_conditions = [MCQQuestionBank.topic.ilike(f"%{w}%") for w in words] + [MCQQuestionBank.subtopic.ilike(f"%{w}%") for w in words]
-            fallback_query = select(MCQQuestionBank).where(
-                MCQQuestionBank.is_active == True,
-                or_(*word_conditions)
+        unit = await db.scalar(
+            select(LearningUnit)
+            .join(CourseDay, LearningUnit.day_id == CourseDay.id)
+            .where(
+                LearningUnit.id == unit_id,
+                course_id is None or CourseDay.course_id == course_id,
             )
-            fallback_res = await db.execute(fallback_query)
-            questions = fallback_res.scalars().all()
+        )
+        if not unit:
+            return {
+                "unit_id": matched_unit_id,
+                "topic": target_topic or "Java Practice",
+                "total_mcqs": 0,
+                "low_count": 0,
+                "medium_count": 0,
+                "hard_count": 0,
+                "mcqs": [],
+            }
+        target_topic = unit.title
+        unit_ids = [unit_id]
 
-    # Generic fallback if still no questions
+    questions = await get_verified_question_pool(
+        db,
+        course_id=course_id,
+        learning_unit_ids=unit_ids,
+        topic_names=[target_topic] if target_topic and not unit_ids else None,
+    )
+
     if not questions:
-        fallback_res = await db.execute(select(MCQQuestionBank).where(MCQQuestionBank.is_active == True).limit(50))
-        questions = fallback_res.scalars().all()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No verified question-bank questions are mapped to this course/topic/learning unit.",
+        )
 
-    # Pick 25 questions randomly (or all if fewer than 25)
-    sample_size = min(25, len(questions))
-    selected = random.sample(questions, sample_size)
+    # Use every available mapped question when a topic has fewer than 25.
+    selected = random.sample(questions, min(25, len(questions)))
     random.shuffle(selected)
 
     formatted_mcqs = []

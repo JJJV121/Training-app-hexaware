@@ -23,7 +23,7 @@ async def get_unit_practice_mcqs(
     Retrieves 25 randomized practice MCQs for a specific topic / learning unit.
     Randomizes question order and option choices while preserving correct answer evaluation.
     """
-    result = await get_topic_practice_mcqs(db, unit_id=unit_id)
+    result = await get_topic_practice_mcqs(db, unit_id=unit_id, course_id=course_id)
     return result
 
 @router.get("/topics/{topic_name}/mcqs")
