@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Icon from '../../components/Icon';
+import adminCourseService from '../../services/adminCourseService';
 import massEnrollmentService from '../../services/massEnrollmentService';
 
 export default function AdminMassEnrollment() {
@@ -8,6 +9,8 @@ export default function AdminMassEnrollment() {
     const hash = window.location.hash;
     if (hash.includes('type=trainers')) return 'trainers';
     if (hash.includes('type=batches')) return 'batches';
+    if (hash.includes('type=question_bank')) return 'question_bank';
+    if (hash.includes('type=training_plan')) return 'training_plan';
     return 'trainees';
   });
 
@@ -21,8 +24,25 @@ export default function AdminMassEnrollment() {
   const [errorMsg, setErrorMsg] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
 
   useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const result = await adminCourseService.getCourses(1, 100);
+        setCourses(Array.isArray(result) ? result : []);
+        if (Array.isArray(result) && result.length > 0) {
+          setSelectedCourseId((prev) => prev || String(result[0].id));
+        }
+      } catch (err) {
+        console.error('Failed to load courses', err);
+        setCourses([]);
+      }
+    };
+
+    loadCourses();
+
     // Reset state on type change
     setSelectedFile(null);
     setValidationData(null);
@@ -85,10 +105,14 @@ export default function AdminMassEnrollment() {
 
   const handleValidate = async () => {
     if (!selectedFile) return;
+    if (enrollmentType === 'training_plan' && !selectedCourseId) {
+      setErrorMsg('Please select a course before validating a training plan CSV.');
+      return;
+    }
     setIsValidating(true);
     setErrorMsg('');
     try {
-      const data = await massEnrollmentService.validateCsv(enrollmentType, selectedFile);
+      const data = await massEnrollmentService.validateCsv(enrollmentType, selectedFile, selectedCourseId ? Number(selectedCourseId) : null);
       setValidationData(data);
       showToast(`CSV Validated: ${data.valid_count} valid, ${data.invalid_count} invalid, ${data.duplicate_count} duplicate rows.`);
     } catch (err) {
@@ -102,10 +126,14 @@ export default function AdminMassEnrollment() {
 
   const handleImport = async () => {
     if (!validationData || !validationData.rows) return;
+    if (enrollmentType === 'training_plan' && !selectedCourseId) {
+      setErrorMsg('Please select a course before importing a training plan.');
+      return;
+    }
     setIsImporting(true);
     setErrorMsg('');
     try {
-      const res = await massEnrollmentService.importCsv(enrollmentType, validationData.rows);
+      const res = await massEnrollmentService.importCsv(enrollmentType, validationData.rows, selectedCourseId ? Number(selectedCourseId) : null);
       setImportResult(res);
       showToast(`Import finished: ${res.successful_count} created, ${res.failed_count} failed.`);
     } catch (err) {
@@ -160,7 +188,7 @@ export default function AdminMassEnrollment() {
             Mass Enrollment & Bulk Import
           </h1>
           <p className="page-subtitle" style={{ margin: '4px 0 0 0', color: 'var(--text-light)', fontSize: '14px' }}>
-            Bulk upload Trainees, Trainers, and Batches via CSV using existing database structures.
+            Bulk upload trainees, trainers, batches, question-bank rows, and training-plan rows via CSV using the existing LMS schema.
           </p>
         </div>
       </div>
@@ -288,6 +316,76 @@ export default function AdminMassEnrollment() {
               Create training batches with validated course & trainer foreign key references.
             </p>
           </div>
+
+          {/* Category Card: Question Bank */}
+          <div
+            onClick={() => setEnrollmentType('question_bank')}
+            style={{
+              padding: '16px',
+              borderRadius: '10px',
+              border: enrollmentType === 'question_bank' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+              background: enrollmentType === 'question_bank' ? 'rgba(79, 70, 229, 0.04)' : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '15px' }}>
+                <Icon name="file-text" style={{ color: 'var(--primary-color)' }} />
+                <span>Question Bank</span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-xs btn-outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadTemplate('question_bank');
+                }}
+                title="Download Question Bank CSV Template"
+                style={{ padding: '4px 8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <Icon name="download" /> Template
+              </button>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>
+              Import question-bank rows using the exact structure: question, ans1, ans2, ans3, ans4, answer, explanation, difficulty, subject_name, topic_name, sub_topic_name.
+            </p>
+          </div>
+
+          {/* Category Card: Training Plan */}
+          <div
+            onClick={() => setEnrollmentType('training_plan')}
+            style={{
+              padding: '16px',
+              borderRadius: '10px',
+              border: enrollmentType === 'training_plan' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+              background: enrollmentType === 'training_plan' ? 'rgba(79, 70, 229, 0.04)' : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '15px' }}>
+                <Icon name="clipboard" style={{ color: 'var(--primary-color)' }} />
+                <span>Training Plan</span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-xs btn-outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadTemplate('training_plan');
+                }}
+                title="Download Training Plan CSV Template"
+                style={{ padding: '4px 8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <Icon name="download" /> Template
+              </button>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-light)', margin: 0 }}>
+              Import training-plan rows with the exact column order: S.No, Skills, Duration (in days), Topics, Detailed Coverage, Duration in Hours.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -298,6 +396,24 @@ export default function AdminMassEnrollment() {
             <span style={{ display: 'inline-flex', width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', color: '#fff', fontSize: '12px', justifyContent: 'center', alignItems: 'center' }}>2</span>
             Upload CSV File ({enrollmentType.toUpperCase()})
           </h2>
+
+          {enrollmentType === 'training_plan' && (
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-light)' }}>
+                Select Course
+              </label>
+              <select
+                value={selectedCourseId}
+                onChange={(e) => setSelectedCourseId(e.target.value)}
+                style={{ width: '100%', maxWidth: '420px', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'white' }}
+              >
+                {!selectedCourseId && <option value="">Select a course</option>}
+                {courses.map((course) => (
+                  <option key={course.id} value={String(course.id)}>{course.title}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div
             onDragOver={handleDragOver}

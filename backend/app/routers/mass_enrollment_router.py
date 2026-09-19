@@ -19,6 +19,7 @@ router = APIRouter(
 class MassImportRequest(BaseModel):
     enrollment_type: str
     rows: List[dict[str, Any]]
+    course_id: int | None = None
 
 
 @router.get(
@@ -45,6 +46,7 @@ async def download_template(enrollment_type: str):
 async def validate_csv(
     enrollment_type: str = Form(...),
     file: UploadFile = File(...),
+    course_id: int | None = Form(None),
     db: AsyncSession = Depends(get_db),
 ):
     if not file.filename or not file.filename.lower().endswith(".csv"):
@@ -55,7 +57,7 @@ async def validate_csv(
         raise HTTPException(status_code=400, detail="Uploaded CSV file is empty.")
 
     try:
-        validation_result = await validate_csv_upload(db, enrollment_type, file_bytes)
+        validation_result = await validate_csv_upload(db, enrollment_type, file_bytes, course_id=course_id)
         return validation_result
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -79,6 +81,7 @@ async def execute_import(
             db=db,
             enrollment_type=payload.enrollment_type,
             rows=payload.rows,
+            course_id=payload.course_id,
             created_by=1,
         )
         return result

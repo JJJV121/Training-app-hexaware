@@ -24,20 +24,24 @@ const massEnrollmentService = {
   },
 
   // Validate uploaded CSV file
-  async validateCsv(enrollmentType, file) {
+  async validateCsv(enrollmentType, file, courseId = null) {
     const formData = new FormData();
     formData.append('enrollment_type', enrollmentType);
     formData.append('file', file);
+    if (courseId !== null && courseId !== undefined) {
+      formData.append('course_id', String(courseId));
+    }
 
     const response = await apiClient.post('/admin/mass-enrollment/validate', formData);
     return response.data;
   },
 
   // Execute bulk import for validated records
-  async importCsv(enrollmentType, rows) {
+  async importCsv(enrollmentType, rows, courseId = null) {
     const response = await apiClient.post('/admin/mass-enrollment/import', {
       enrollment_type: enrollmentType,
       rows: rows,
+      course_id: courseId,
     });
     return response.data;
   },

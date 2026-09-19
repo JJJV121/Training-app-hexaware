@@ -9,6 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.course import Course
+from app.models.course_day import CourseDay
+from app.models.learning_unit import LearningUnit
+from app.models.content import Content
+from app.models.mcq_bank import MCQQuestionBank
 from app.models.batch_models import Batch
 from app.models.enrollment import Enrollment
 from app.core.security import hash_password
@@ -23,8 +27,8 @@ EMAIL_REGEX = re.compile(r"^[\w\.-]+@[\w\.-]+\.\w+$")
 
 def get_csv_template(enrollment_type: str) -> str:
     """Generates sample CSV template content with headers and an example row."""
-    enrollment_type = enrollment_type.lower()
-    
+    enrollment_type = enrollment_type.lower().replace("-", "_")
+
     if enrollment_type == "trainees":
         output = io.StringIO()
         writer = csv.writer(output)
@@ -46,16 +50,109 @@ def get_csv_template(enrollment_type: str) -> str:
         writer.writerow(["Batch Alpha 2026", "1", "john.trainer@hexaware.com", "Hexaware Academy", "2026-10-01", "2026-11-15", "09:00:00", "17:00:00", "30"])
         return output.getvalue()
 
+    elif enrollment_type in {"question_bank", "questionbank", "mcq_bank", "mcqbank"}:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["question", "ans1", "ans2", "ans3", "ans4", "answer", "explanation", "difficulty", "subject_name", "topic_name", "sub_topic_name"])
+        writer.writerow([
+            "What is the time complexity of binary search on a sorted array?",
+            "O(n)",
+            "O(log n)",
+            "O(n log n)",
+            "O(1)",
+            "B",
+            "Binary search halves the search space each step, so the time complexity is logarithmic.",
+            "MEDIUM",
+            "Data Structures",
+            "Searching",
+            "Array Search"
+        ])
+        return output.getvalue()
+
+    elif enrollment_type in {"training_plan", "trainingplan"}:
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["S.No", "Skills", "Duration (in days)", "Topics", "Detailed Coverage", "Duration in Hours"])
+        writer.writerow([
+            "1",
+            "Problem Solving Techniques and Data Structures",
+            "Day 1",
+            "Algorithm Basics",
+            "Heuristic approach; Brute Force; Greedy; Divide and Conquer; Dynamic Programming; practical Java implementation",
+            "2"
+        ])
+        return output.getvalue()
+
     else:
         raise ValueError("Invalid enrollment type specified")
+
+
+def _normalize_mcq_answer_values(raw_answer: str) -> tuple[set[str], str | None]:
+    """Normalizes valid MCQ answer inputs to option letters.
+
+    Accepts both letter values (A, B, C, D) and numeric values (1, 2, 3, 4),
+    including multiple correct options like A,D or 1,2,4.
+    """
+    if not raw_answer:
+        return set(), None
+
+    pattern = r"[;,|/\\]+|\s+"
+    parts = [token.strip().upper() for token in re.split(pattern, raw_answer.replace("&", ",")) if token.strip()]
+    if not parts:
+        return set(), None
+
+    letter_map = {"1": "A", "2": "B", "3": "C", "4": "D"}
+    normalized: set[str] = set()
+    for part in parts:
+        if part in {"A", "B", "C", "D"}:
+            normalized.add(part)
+        elif part in letter_map:
+            normalized.add(letter_map[part])
+        else:
+            return set(), f"Answer must contain only A/B/C/D or 1/2/3/4 values. Received '{raw_answer}'."
+
+    return normalized, None
+
+
+def _parse_training_day_number(raw_day: str) -> int | None:
+    """Extracts a day number from values like 'Day 2' or '2'. Returns None for shared sections."""
+    if raw_day is None:
+        return None
+    value = str(raw_day).strip()
+    if not value:
+        return None
+
+    match = re.search(r"(?i)\bday\s*(\d+)\b", value)
+    if match:
+        return int(match.group(1))
+
+    if re.fullmatch(r"\d+", value):
+        return int(value)
+
+    return None
+
+
+def _parse_training_hours(raw_hours: str) -> int | None:
+    """Converts decimal hours like '1.5' to minutes; returns None for 'Offline'."""
+    if raw_hours is None:
+        return None
+    value = str(raw_hours).strip()
+    if not value:
+        return None
+    if value.lower() == "offline":
+        return None
+    try:
+        return int(float(value) * 60)
+    except ValueError:
+        return None
 
 
 def _normalize_headers(raw_headers: list[str]) -> dict[str, str]:
     """Maps raw CSV header names to standard internal field keys."""
     header_map = {}
     for original in raw_headers:
-        cleaned = original.strip().lower().replace(" ", "_").replace("-", "_")
-        
+        cleaned = re.sub(r"[^a-z0-9]+", "_", original.strip().lower()).strip("_")
+
         if cleaned in ["employee_id", "employeeid", "emp_id", "empid", "user_id", "student_id", "studentid", "trainee_id"]:
             header_map[original] = "employee_id"
         elif cleaned in ["name", "full_name", "fullname", "user_name"]:
@@ -82,9 +179,43 @@ def _normalize_headers(raw_headers: list[str]) -> dict[str, str]:
             header_map[original] = "end_time"
         elif cleaned in ["max_strength", "max_capacity", "capacity", "strength"]:
             header_map[original] = "max_strength"
+        elif cleaned in ["s_no", "serial_no", "serial_number"]:
+            header_map[original] = "s_no"
+        elif cleaned in ["skills", "skill"]:
+            header_map[original] = "skills"
+        elif cleaned in ["duration_in_days", "duration_days", "day_number"]:
+            header_map[original] = "duration_in_days"
+        elif cleaned in ["topics", "topic"]:
+            header_map[original] = "topics"
+        elif cleaned in ["detailed_coverage", "coverage", "detailed_coverage_details"]:
+            header_map[original] = "detailed_coverage"
+        elif cleaned in ["duration_in_hours", "hours", "hours_duration"]:
+            header_map[original] = "duration_in_hours"
+        elif cleaned in ["question", "question_text"]:
+            header_map[original] = "question"
+        elif cleaned in ["ans1", "option_a", "answer_1"]:
+            header_map[original] = "ans1"
+        elif cleaned in ["ans2", "option_b", "answer_2"]:
+            header_map[original] = "ans2"
+        elif cleaned in ["ans3", "option_c", "answer_3"]:
+            header_map[original] = "ans3"
+        elif cleaned in ["ans4", "option_d", "answer_4"]:
+            header_map[original] = "ans4"
+        elif cleaned in ["answer", "correct_answer"]:
+            header_map[original] = "answer"
+        elif cleaned in ["explanation"]:
+            header_map[original] = "explanation"
+        elif cleaned in ["difficulty"]:
+            header_map[original] = "difficulty"
+        elif cleaned in ["subject_name", "subject"]:
+            header_map[original] = "subject_name"
+        elif cleaned in ["topic_name", "topic", "main_topic"]:
+            header_map[original] = "topic_name"
+        elif cleaned in ["sub_topic_name", "subtopic", "sub_topic"]:
+            header_map[original] = "sub_topic_name"
         else:
             header_map[original] = cleaned
-            
+
     return header_map
 
 
@@ -135,6 +266,8 @@ def _parse_csv_content(
         "trainees": {"employee_id", "name", "email"},
         "trainers": {"employee_id", "name", "email", "password"},
         "batches": {"name", "course", "start_date", "end_date"},
+        "question_bank": {"question", "ans1", "ans2", "ans3", "ans4", "answer", "explanation", "difficulty", "subject_name", "topic_name", "sub_topic_name"},
+        "training_plan": {"s_no", "skills", "duration_in_days", "topics", "detailed_coverage", "duration_in_hours"},
     }
     missing_headers = required_headers.get(enrollment_type, set()) - set(header_mapping.values())
     if missing_headers:
@@ -200,14 +333,24 @@ async def validate_csv_upload(
     db: AsyncSession,
     enrollment_type: str,
     file_bytes: bytes,
+    course_id: int | None = None,
 ) -> dict[str, Any]:
     """
-    Parses and validates CSV content for Trainees, Trainers, or Batches.
-    Returns preview data with status, error details, and summary statistics.
+    Parses and validates CSV content for Trainees, Trainers, Batches, Question Bank,
+    and Training Plan rows. For training-plan uploads, course_id is supplied separately
+    through the UI and not expected in the CSV file itself.
     """
     enrollment_type = enrollment_type.lower()
-    if enrollment_type not in ["trainees", "trainers", "batches"]:
-        raise ValueError("Invalid enrollment type. Must be 'trainees', 'trainers', or 'batches'.")
+    if enrollment_type not in ["trainees", "trainers", "batches", "question_bank", "training_plan"]:
+        raise ValueError("Invalid enrollment type. Must be 'trainees', 'trainers', 'batches', 'question_bank', or 'training_plan'.")
+
+    if enrollment_type == "training_plan" and not course_id:
+        raise ValueError("A course must be selected before validating a training plan upload.")
+
+    if enrollment_type == "training_plan":
+        selected_course = await db.get(Course, int(course_id))
+        if not selected_course:
+            raise ValueError(f"Course with id {course_id} does not exist.")
 
     headers, data_rows = _parse_csv_content(file_bytes, enrollment_type)
     
@@ -242,7 +385,92 @@ async def validate_csv_upload(
         row_errors = []
         is_duplicate = False
 
-        if enrollment_type == "trainees":
+        if enrollment_type == "question_bank":
+            question = row.get("question", "").strip()
+            ans1 = row.get("ans1", "").strip()
+            ans2 = row.get("ans2", "").strip()
+            ans3 = row.get("ans3", "").strip()
+            ans4 = row.get("ans4", "").strip()
+            answer = row.get("answer", "").strip().upper()
+            explanation = row.get("explanation", "").strip()
+            difficulty = row.get("difficulty", "").strip().upper()
+            subject_name = row.get("subject_name", "").strip()
+            topic_name = row.get("topic_name", "").strip()
+            sub_topic_name = row.get("sub_topic_name", "").strip()
+
+            for field_name, field_value in {
+                "question": question,
+                "ans1": ans1,
+                "ans2": ans2,
+                "ans3": ans3,
+                "ans4": ans4,
+                "answer": answer,
+                "explanation": explanation,
+                "difficulty": difficulty,
+                "subject_name": subject_name,
+                "topic_name": topic_name,
+                "sub_topic_name": sub_topic_name,
+            }.items():
+                if not field_value:
+                    row_errors.append(f"Required field '{field_name}' is missing.")
+
+            normalized_answers, answer_error = _normalize_mcq_answer_values(answer)
+            if answer_error:
+                row_errors.append(answer_error)
+
+            valid_options = {"A": ans1, "B": ans2, "C": ans3, "D": ans4}
+            if normalized_answers:
+                missing_selected_options = [
+                    option for option in sorted(normalized_answers)
+                    if not valid_options.get(option, "")
+                ]
+                if missing_selected_options:
+                    row_errors.append(
+                        "Selected correct answer option(s) are missing from the uploaded choices: "
+                        + ", ".join(missing_selected_options)
+                        + "."
+                    )
+
+            if difficulty and difficulty not in {"EASY", "MEDIUM", "HARD"}:
+                row_errors.append(f"Difficulty must be one of EASY, MEDIUM, or HARD. Received '{difficulty}'.")
+
+        elif enrollment_type == "training_plan":
+            s_no = row.get("s_no", "").strip()
+            skills = row.get("skills", "").strip()
+            duration_in_days = row.get("duration_in_days", "").strip()
+            topics = row.get("topics", "").strip()
+            detailed_coverage = row.get("detailed_coverage", "").strip()
+            duration_in_hours = row.get("duration_in_hours", "").strip()
+
+            has_any_content = any([s_no, skills, duration_in_days, topics, detailed_coverage, duration_in_hours])
+            if not has_any_content:
+                row_errors.append("Training plan row is empty.")
+
+            if not topics and not skills and not detailed_coverage:
+                row_errors.append("Training plan row must include at least a topic or skill description.")
+
+            if duration_in_hours:
+                if str(duration_in_hours).strip().lower() == "offline":
+                    pass
+                else:
+                    try:
+                        float(duration_in_hours)
+                    except ValueError:
+                        row_errors.append(
+                            f"Duration in Hours '{duration_in_hours}' must be numeric (for example 1.5 or 2) or 'Offline'."
+                        )
+
+            # Accept continuation rows used in the curriculum CSV.
+            # Example patterns: 'Day 2', 'Shared / 2 Hours', blank values for a continuation row.
+            if duration_in_days and duration_in_days.lower() != "offline":
+                parsed_day = _parse_training_day_number(duration_in_days)
+                if parsed_day is not None and parsed_day <= 0:
+                    row_errors.append("Duration (in days) must be a positive day number.")
+
+            if course_id:
+                row["resolved_course_id"] = str(course_id)
+
+        elif enrollment_type == "trainees":
             emp_id = row.get("employee_id", "").strip()
             name = row.get("name", "").strip()
             email = row.get("email", "").strip()
@@ -446,6 +674,7 @@ async def process_mass_import(
     db: AsyncSession,
     enrollment_type: str,
     rows: list[dict[str, Any]],
+    course_id: int | None = None,
     created_by: int = 1,
 ) -> dict[str, Any]:
     """
@@ -457,6 +686,9 @@ async def process_mass_import(
     failed_count = 0
     duplicate_count = 0
     results = []
+
+    if enrollment_type == "training_plan" and not course_id:
+        raise ValueError("A course must be selected before importing a training plan.")
 
     for row_item in rows:
         row_idx = row_item.get("row_index", 0)
@@ -475,6 +707,133 @@ async def process_mass_import(
             continue
 
         try:
+            if enrollment_type == "question_bank":
+                normalized_answers, answer_error = _normalize_mcq_answer_values(str(data.get("answer", "")).strip())
+                if answer_error:
+                    raise ValueError(answer_error)
+
+                selected_answers = sorted(normalized_answers)
+                correct_answer_value = ",".join(selected_answers) if len(selected_answers) > 1 else (selected_answers[0] if selected_answers else "")
+                if not correct_answer_value:
+                    raise ValueError("No valid correct answer could be resolved from the uploaded answer field.")
+
+                question_text = str(data.get("question", "")).strip()
+                option_a = str(data.get("ans1", "")).strip()
+                option_b = str(data.get("ans2", "")).strip()
+                option_c = str(data.get("ans3", "")).strip()
+                option_d = str(data.get("ans4", "")).strip()
+                subject_name = str(data.get("subject_name", "")).strip() or "General"
+                topic_name = str(data.get("topic_name", "")).strip() or subject_name
+                sub_topic_name = str(data.get("sub_topic_name", "")).strip() or None
+                difficulty = str(data.get("difficulty", "MEDIUM")).strip().upper() or "MEDIUM"
+                explanation = str(data.get("explanation", "")).strip()
+
+                question_row = MCQQuestionBank(
+                    course_id=int(course_id) if course_id else 1,
+                    category=subject_name,
+                    topic=topic_name,
+                    subtopic=sub_topic_name,
+                    set_name=None,
+                    question_no=None,
+                    question_text=question_text,
+                    option_a=option_a,
+                    option_b=option_b,
+                    option_c=option_c,
+                    option_d=option_d,
+                    correct_answer=correct_answer_value,
+                    correct_answer_text=correct_answer_value,
+                    explanation=explanation,
+                    difficulty=difficulty,
+                    question_type="Concept",
+                    is_active=True,
+                )
+                db.add(question_row)
+                await db.flush()
+
+                successful_count += 1
+                results.append({
+                    "row_index": row_idx,
+                    "status": "Success",
+                    "reason": f"Question bank row imported into mcq_question_bank (ID: {question_row.id}).",
+                })
+                continue
+
+            if enrollment_type == "training_plan":
+                course = await db.get(Course, int(course_id))
+                if not course:
+                    raise ValueError(f"Course with id {course_id} does not exist.")
+
+                raw_day = str(data.get("duration_in_days", "")).strip()
+                topic = str(data.get("topics", "")).strip()
+                detailed_coverage = str(data.get("detailed_coverage", "")).strip()
+                skills = str(data.get("skills", "")).strip()
+                duration_hours = str(data.get("duration_in_hours", "")).strip()
+
+                day_number = _parse_training_day_number(raw_day)
+                if day_number is None:
+                    day_number = int((await db.execute(
+                        select(func.coalesce(func.max(CourseDay.day_number), 0))
+                        .where(CourseDay.course_id == course.id)
+                    )).scalar_one())
+
+                if not topic:
+                    topic = skills or f"Module {day_number}"
+
+                day_record = await db.scalar(
+                    select(CourseDay).where(
+                        CourseDay.course_id == course.id,
+                        CourseDay.day_number == day_number,
+                    )
+                )
+                if day_record is None:
+                    day_record = CourseDay(
+                        course_id=course.id,
+                        day_number=day_number,
+                        title=skills or f"Day {day_number}",
+                        description=skills or f"Day {day_number}",
+                    )
+                    db.add(day_record)
+                    await db.flush()
+
+                existing_unit = await db.scalar(
+                    select(LearningUnit).where(
+                        LearningUnit.day_id == day_record.id,
+                        func.lower(LearningUnit.title) == topic.lower(),
+                    )
+                )
+                if existing_unit is not None:
+                    duplicate_count += 1
+                    results.append({
+                        "row_index": row_idx,
+                        "status": "Skipped",
+                        "reason": f"Training-plan topic '{topic}' already exists for course '{course.title}' on day {day_number}.",
+                    })
+                    continue
+
+                duration_minutes = _parse_training_hours(duration_hours)
+
+                learning_unit = LearningUnit(
+                    day_id=day_record.id,
+                    title=topic,
+                    description=detailed_coverage or skills or "",
+                    display_order=(await db.execute(
+                        select(func.coalesce(func.max(LearningUnit.display_order), 0)).where(LearningUnit.day_id == day_record.id)
+                    )).scalar_one() + 1,
+                    duration_minutes=duration_minutes,
+                )
+                db.add(learning_unit)
+                await db.flush()
+
+                content_text = detailed_coverage or topic
+                db.add(Content(learning_unit_id=learning_unit.id, content_text=content_text))
+                successful_count += 1
+                results.append({
+                    "row_index": row_idx,
+                    "status": "Success",
+                    "reason": f"Training plan row assigned to course '{course.title}' on day {day_number}.",
+                })
+                continue
+
             if enrollment_type == "trainees":
                 emp_id = data.get("employee_id")
                 name = data.get("name")
