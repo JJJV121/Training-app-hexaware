@@ -232,7 +232,7 @@ function AppRoutes() {
   const { isDarkMode } = useTheme();
 
   const themeClass = isDarkMode ? 'dark-theme' : '';
-  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/trainer-dashboard') || location.pathname.startsWith('/batch-coordinator') || location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/badges');
+  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/trainer-dashboard') || location.pathname.startsWith('/batch-coordinator') || location.pathname.startsWith('/coordinator-dashboard') || location.pathname.startsWith('/coordinator') || location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/badges');
 
   return (
     <div className={`app-container ${themeClass}`}>
@@ -281,6 +281,32 @@ function AppRoutes() {
           element={
             <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR', 'ADMIN']}>
             <CoordinatorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Coordinator / SPOC routes */}
+        <Route 
+          path="/coordinator-dashboard/*" 
+          element={
+            <ProtectedRoute>
+              <CoordinatorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/coordinator-dashboard" 
+          element={
+            <ProtectedRoute>
+              <CoordinatorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/coordinator/*" 
+          element={
+            <ProtectedRoute>
+              <CoordinatorDashboard />
             </ProtectedRoute>
           } 
         />

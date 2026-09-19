@@ -30,6 +30,8 @@ export default function LoginScreen() {
             navigate('/batch-coordinator');
           } else if (role === 'trainer') {
             navigate('/trainer-dashboard');
+          } else if (role === 'coordinator' || role === 'spoc' || role === 'batch_coordinator') {
+            navigate('/coordinator-dashboard');
           } else {
             navigate('/dashboard');
           }
@@ -76,6 +78,8 @@ export default function LoginScreen() {
           navigate('/batch-coordinator');
         } else if (role === 'trainer') {
           navigate('/trainer-dashboard');
+        } else if (role === 'coordinator' || role === 'spoc' || role === 'batch_coordinator') {
+          navigate('/coordinator-dashboard');
         } else {
           navigate('/dashboard');
         }
