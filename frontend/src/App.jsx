@@ -83,6 +83,8 @@ function AdminApp() {
         return <AdminAttendanceAutomation />;
       case 'admin-issues':
         return <AdminCandidateIssues />;
+      case 'admin-reports':
+        return <AdminReports />;
       default:
         return <AdminDashboard />;
     }
@@ -91,6 +93,7 @@ function AdminApp() {
   const adminNavItems = [
     { page: 'admin-dashboard', icon: 'home', label: 'Dashboard' },
     { type: 'header', label: 'Core Modules' },
+    { page: 'admin-reports', icon: 'file-text', label: 'Reports & Performance' },
     { page: 'admin-issues', icon: 'help-circle', label: 'Candidate Issues' },
     { page: 'admin-mass-enrollment', icon: 'upload-cloud', label: 'Mass Enrollment' },
     { page: 'admin-trainers', icon: 'user', label: 'Trainer Management' },
@@ -187,6 +190,10 @@ function AdminApp() {
 import Leaderboard from './pages/Leaderboard';
 import Badges from './pages/Badges';
 import CoordinatorDashboard from './pages/CoordinatorDashboard';
+import TraineeFeedbackScreen from './pages/trainee/TraineeFeedbackScreen';
+import TrainerFeedbackScreen from './pages/trainer/TrainerFeedbackScreen';
+import AdminReports from './pages/admin/AdminReports';
+import CoordinatorReports from './pages/coordinator/CoordinatorReports';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const hasAuthToken = Boolean(
@@ -310,6 +317,12 @@ function AppRoutes() {
             </ProtectedRoute>
           } 
         />
+
+        {/* Feedback & Reports Routes */}
+        <Route path="/trainee/feedback" element={<ProtectedRoute allowedRoles={['STUDENT', 'TRAINEE']}><TraineeFeedbackScreen /></ProtectedRoute>} />
+        <Route path="/trainer/feedback" element={<ProtectedRoute allowedRoles={['TRAINER', 'ADMIN']}><TrainerFeedbackScreen /></ProtectedRoute>} />
+        <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminReports /></ProtectedRoute>} />
+        <Route path="/coordinator/reports" element={<ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR', 'ADMIN']}><CoordinatorReports /></ProtectedRoute>} />
 
         {/* Admin route */}
         <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminApp /></ProtectedRoute>} />

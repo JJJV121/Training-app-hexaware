@@ -196,11 +196,15 @@ from app.routers.candidate_issue_router import router as candidate_issue_router
 from app.routers.admin_issue_router import router as admin_issue_router
 from app.routers.notification_router import router as notification_router
 from app.routers.coordinator_router import router as coordinator_router
+from app.routers.feedback_router import router as feedback_router
+from app.routers.report_router import router as report_router
 
 app.include_router(candidate_issue_router)
 app.include_router(admin_issue_router)
 app.include_router(notification_router)
 app.include_router(coordinator_router)
+app.include_router(feedback_router)
+app.include_router(report_router)
 
 
 

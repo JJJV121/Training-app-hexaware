@@ -63,6 +63,9 @@ from app.models.attendance_followup import (
 from app.models.mcq_bank import MCQQuestionBank
 from app.models.notification import Notification
 from app.models.candidate_issue import CandidateIssue
+from app.models.course_trainee_feedback import CourseTraineeFeedback
+from app.models.trainer_evaluation import TrainerEvaluation
+from app.models.trainee_report_override import TraineeReportOverride
 
 
 
