@@ -9,6 +9,7 @@ import SessionScheduler from './trainer/SessionScheduler';
 import TrainerMentorConnect from './trainer/MentorConnect';
 import SPOCAttendanceRequests from './trainer/SPOCAttendanceRequests';
 import Placeholder from './Placeholder';
+import NotificationBell from '../components/NotificationBell';
 import '../styles/trainer/trainer-dashboard.css';
 import AIChatbot from '../components/AIChatbot';
 import hexawareLogo from '../assets/HEXAWARE logo.png';
@@ -125,16 +126,19 @@ export default function TrainerDashboard() {
       />
 
       {/* Mobile Top Header */}
-      <header className="mobile-topbar">
-        <button
-          type="button"
-          className="mobile-menu-toggle"
-          aria-label="Toggle navigation"
-          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-        >
-          <Icon name={isMobileMenuOpen ? 'x' : 'menu'} className="nav-icon" />
-        </button>
-        <span className="mobile-topbar-title">Hexaware Trainer</span>
+      <header className="mobile-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingRight: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            aria-label="Toggle navigation"
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+          >
+            <Icon name={isMobileMenuOpen ? 'x' : 'menu'} className="nav-icon" />
+          </button>
+          <span className="mobile-topbar-title">Hexaware Trainer</span>
+        </div>
+        <NotificationBell />
       </header>
 
       {/* Sidebar navigation */}

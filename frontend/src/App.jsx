@@ -25,6 +25,7 @@ import AdminAssignments from './pages/admin/AdminAssignments';
 import AdminCalendar from './pages/admin/AdminCalendar';
 import AdminMassEnrollment from './pages/admin/AdminMassEnrollment';
 import AdminAttendanceAutomation from './pages/admin/AdminAttendanceAutomation';
+import AdminCandidateIssues from './pages/admin/AdminCandidateIssues';
 
 // Import Admin Styles
 import './styles/admin.css';
@@ -80,6 +81,8 @@ function AdminApp() {
         return <AdminMassEnrollment />;
       case 'admin-attendance-automation':
         return <AdminAttendanceAutomation />;
+      case 'admin-issues':
+        return <AdminCandidateIssues />;
       default:
         return <AdminDashboard />;
     }
@@ -88,6 +91,7 @@ function AdminApp() {
   const adminNavItems = [
     { page: 'admin-dashboard', icon: 'home', label: 'Dashboard' },
     { type: 'header', label: 'Core Modules' },
+    { page: 'admin-issues', icon: 'help-circle', label: 'Candidate Issues' },
     { page: 'admin-mass-enrollment', icon: 'upload-cloud', label: 'Mass Enrollment' },
     { page: 'admin-trainers', icon: 'user', label: 'Trainer Management' },
     { page: 'admin-students', icon: 'users', label: 'Student Management' },
@@ -180,24 +184,55 @@ function AdminApp() {
   );
 }
 
-function ProtectedRoute({ children }) {
+import Leaderboard from './pages/Leaderboard';
+import Badges from './pages/Badges';
+import CoordinatorDashboard from './pages/coordinator/CoordinatorDashboard';
+
+function ProtectedRoute({ children, allowedRoles }) {
   const hasAuthToken = Boolean(
     localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
   );
 
-  return hasAuthToken ? children : <Navigate to="/login" replace />;
-}
+  if (!hasAuthToken) {
+    return <Navigate to="/login" replace />;
+  }
 
-import Leaderboard from './pages/Leaderboard';
-import Badges from './pages/Badges';
-import CoordinatorDashboard from './pages/CoordinatorDashboard';
+  if (allowedRoles && allowedRoles.length > 0) {
+    let user = null;
+    try {
+      const userStr = localStorage.getItem('user');
+      user = userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+      user = null;
+    }
+
+    if (!user || !user.role) {
+      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      return <Navigate to="/login" replace />;
+    }
+
+    const userRole = (user.role || '').toUpperCase();
+
+    if (!allowedRoles.map(r => r.toUpperCase()).includes(userRole)) {
+      if (userRole === 'ADMIN') return <Navigate to="/admin" replace />;
+      if (userRole === 'BATCH_COORDINATOR' || userRole === 'COORDINATOR') return <Navigate to="/batch-coordinator" replace />;
+      if (userRole === 'TRAINER') return <Navigate to="/trainer-dashboard" replace />;
+      if (userRole === 'STUDENT' || userRole === 'TRAINEE') return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/login" replace />;
+    }
+  }
+
+  return children;
+}
 
 function AppRoutes() {
   const location = useLocation();
   const { isDarkMode } = useTheme();
 
   const themeClass = isDarkMode ? 'dark-theme' : '';
-  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/trainer-dashboard') || location.pathname.startsWith('/coordinator-dashboard') || location.pathname.startsWith('/coordinator') || location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/badges');
+  const isDashboardPage = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/course/') || location.pathname.startsWith('/admin') || location.pathname.startsWith('/trainer-dashboard') || location.pathname.startsWith('/batch-coordinator') || location.pathname.startsWith('/coordinator-dashboard') || location.pathname.startsWith('/coordinator') || location.pathname.startsWith('/leaderboard') || location.pathname.startsWith('/badges');
 
   return (
     <div className={`app-container ${themeClass}`}>
@@ -212,15 +247,15 @@ function AppRoutes() {
         <Route path="/register-course" element={<RegisterCourse />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/dashboard" element={<ProtectedRoute><OverallDashboard /></ProtectedRoute>} />
-        <Route path="/dashboard/:courseId" element={<ProtectedRoute><DashBoard /></ProtectedRoute>} />
-        <Route path="/course/:courseId" element={<ProtectedRoute><DashBoard /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['STUDENT', 'TRAINEE']}><OverallDashboard /></ProtectedRoute>} />
+        <Route path="/dashboard/:courseId" element={<ProtectedRoute allowedRoles={['STUDENT', 'TRAINEE']}><DashBoard /></ProtectedRoute>} />
+        <Route path="/course/:courseId" element={<ProtectedRoute allowedRoles={['STUDENT', 'TRAINEE']}><DashBoard /></ProtectedRoute>} />
         <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
         <Route path="/badges" element={<ProtectedRoute><Badges /></ProtectedRoute>} />
         <Route 
           path="/trainer-dashboard/*" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['TRAINER', 'ADMIN']}>
             <TrainerDashboard />
             </ProtectedRoute>
           } 
@@ -228,8 +263,24 @@ function AppRoutes() {
         <Route 
           path="/trainer-dashboard" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['TRAINER', 'ADMIN']}>
             <TrainerDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/batch-coordinator/*" 
+          element={
+            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR', 'ADMIN']}>
+            <CoordinatorDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/batch-coordinator" 
+          element={
+            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR', 'ADMIN']}>
+            <CoordinatorDashboard />
             </ProtectedRoute>
           } 
         />
@@ -261,7 +312,7 @@ function AppRoutes() {
         />
 
         {/* Admin route */}
-        <Route path="/admin/*" element={<AdminApp />} />
+        <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminApp /></ProtectedRoute>} />
 
         {/* Catch-all route to redirect unknown URLs back to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -53,9 +53,9 @@ async def create_user(
 
     role = user_data.role.lower()
 
-    if role in ["trainer", "admin"] and not user_data.password:
+    if role in ["trainer", "admin", "batch_coordinator", "coordinator"] and not user_data.password:
         raise ValueError(
-            "Password is required for trainer/admin"
+            "Password is required for staff roles"
         )
 
     user = User(
@@ -63,10 +63,10 @@ async def create_user(
         name=user_data.name,
         email=user_data.email,
         role=user_data.role,
-        is_active=role in ["trainer", "admin"],
+        is_active=role in ["trainer", "admin", "batch_coordinator", "coordinator"],
     )
 
-    if role in ["trainer", "admin"]:
+    if role in ["trainer", "admin", "batch_coordinator", "coordinator"]:
         if user_data.password:
             validate_password_syntax(user_data.password)
         user.password_hash = hash_password(
@@ -210,8 +210,8 @@ async def login_user(
     # Extract system information
     ip_address = (
         request.client.host
-        if request.client
-        else None
+        if request and request.client
+        else "127.0.0.1"
     )
 
     user_agent = request.headers.get(

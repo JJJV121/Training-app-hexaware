@@ -26,10 +26,10 @@ export default function LoginScreen() {
           const role = user.role.toLowerCase().replace(/[-_ ]/g, '');
           if (role === 'admin') {
             navigate('/admin');
+          } else if (role === 'batchcoordinator' || role === 'coordinator' || role === 'spoc') {
+            navigate('/batch-coordinator');
           } else if (role === 'trainer') {
             navigate('/trainer-dashboard');
-          } else if (role === 'coordinator' || role === 'spoc' || role === 'batchcoordinator') {
-            navigate('/coordinator-dashboard');
           } else {
             navigate('/dashboard');
           }
@@ -72,10 +72,10 @@ export default function LoginScreen() {
         const role = user.role.toLowerCase().replace(/[-_ ]/g, '');
         if (role === 'admin') {
           navigate('/admin');
+        } else if (role === 'batchcoordinator' || role === 'coordinator' || role === 'spoc') {
+          navigate('/batch-coordinator');
         } else if (role === 'trainer') {
           navigate('/trainer-dashboard');
-        } else if (role === 'coordinator' || role === 'spoc' || role === 'batchcoordinator') {
-          navigate('/coordinator-dashboard');
         } else {
           navigate('/dashboard');
         }
