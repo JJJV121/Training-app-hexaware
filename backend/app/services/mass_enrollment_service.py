@@ -73,14 +73,9 @@ def get_csv_template(enrollment_type: str) -> str:
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(["S.No", "Skills", "Duration (in days)", "Topics", "Detailed Coverage", "Duration in Hours"])
-        writer.writerow([
-            "1",
-            "Problem Solving Techniques and Data Structures",
-            "Day 1",
-            "Algorithm Basics",
-            "Heuristic approach; Brute Force; Greedy; Divide and Conquer; Dynamic Programming; practical Java implementation",
-            "2"
-        ])
+        writer.writerow(["1", "Java Fundamentals", "1", "Syntax and Data Types", "Variables, primitive types, operators, and expressions.", "2"])
+        writer.writerow(["2", "", "", "Object-Oriented Programming", "Classes, objects, inheritance, polymorphism, and encapsulation.", "3"])
+        writer.writerow(["3", "Collections and Exceptions", "2", "Collections Framework", "Lists, sets, maps, iterators, and common collection patterns.", "2.5"])
         return output.getvalue()
 
     else:
@@ -132,21 +127,6 @@ def _parse_training_day_number(raw_day: str) -> int | None:
     return None
 
 
-def _parse_training_hours(raw_hours: str) -> int | None:
-    """Converts decimal hours like '1.5' to minutes; returns None for 'Offline'."""
-    if raw_hours is None:
-        return None
-    value = str(raw_hours).strip()
-    if not value:
-        return None
-    if value.lower() == "offline":
-        return None
-    try:
-        return int(float(value) * 60)
-    except ValueError:
-        return None
-
-
 def _normalize_headers(raw_headers: list[str]) -> dict[str, str]:
     """Maps raw CSV header names to standard internal field keys."""
     header_map = {}
@@ -185,12 +165,20 @@ def _normalize_headers(raw_headers: list[str]) -> dict[str, str]:
             header_map[original] = "skills"
         elif cleaned in ["duration_in_days", "duration_days", "day_number"]:
             header_map[original] = "duration_in_days"
+        elif cleaned in ["learning_unit_title", "unit_title", "learning_title"]:
+            header_map[original] = "learning_unit_title"
         elif cleaned in ["topics", "topic"]:
             header_map[original] = "topics"
         elif cleaned in ["detailed_coverage", "coverage", "detailed_coverage_details"]:
             header_map[original] = "detailed_coverage"
         elif cleaned in ["duration_in_hours", "hours", "hours_duration"]:
             header_map[original] = "duration_in_hours"
+        elif cleaned in ["duration_minutes", "minutes", "duration_mins"]:
+            header_map[original] = "duration_minutes"
+        elif cleaned in ["display_order", "order", "sequence", "sequence_number"]:
+            header_map[original] = "display_order"
+        elif cleaned in ["description", "unit_description"]:
+            header_map[original] = "description"
         elif cleaned in ["question", "question_text"]:
             header_map[original] = "question"
         elif cleaned in ["ans1", "option_a", "answer_1"]:
@@ -329,6 +317,34 @@ async def _resolve_trainer(db: AsyncSession, trainer_ref: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def _resolve_mcq_learning_unit(
+    db: AsyncSession,
+    course_id: int,
+    subject_name: str,
+    topic_name: str,
+) -> tuple[CourseDay | None, LearningUnit | None, str | None]:
+    """Resolve a curriculum unit using exact normalized day and unit titles."""
+    normalized_subject = " ".join(subject_name.split()).casefold()
+    normalized_topic = " ".join(topic_name.split()).casefold()
+    result = await db.execute(
+        select(CourseDay, LearningUnit)
+        .join(LearningUnit, LearningUnit.day_id == CourseDay.id)
+        .where(CourseDay.course_id == int(course_id))
+    )
+    matches = [
+        (day, unit)
+        for day, unit in result.all()
+        if " ".join((day.title or "").split()).casefold() == normalized_subject
+        and " ".join((unit.title or "").split()).casefold() == normalized_topic
+    ]
+    if len(matches) == 1:
+        day, unit = matches[0]
+        return day, unit, None
+    if not matches:
+        return None, None, "No CourseDay/LearningUnit matched subject_name and topic_name exactly."
+    return None, None, "Subject and topic matched more than one learning unit; mapping is ambiguous."
+
+
 async def validate_csv_upload(
     db: AsyncSession,
     enrollment_type: str,
@@ -344,10 +360,10 @@ async def validate_csv_upload(
     if enrollment_type not in ["trainees", "trainers", "batches", "question_bank", "training_plan"]:
         raise ValueError("Invalid enrollment type. Must be 'trainees', 'trainers', 'batches', 'question_bank', or 'training_plan'.")
 
-    if enrollment_type == "training_plan" and not course_id:
-        raise ValueError("A course must be selected before validating a training plan upload.")
+    if enrollment_type in {"training_plan", "question_bank"} and not course_id:
+        raise ValueError("A course must be selected before validating this upload.")
 
-    if enrollment_type == "training_plan":
+    if enrollment_type in {"training_plan", "question_bank"}:
         selected_course = await db.get(Course, int(course_id))
         if not selected_course:
             raise ValueError(f"Course with id {course_id} does not exist.")
@@ -358,6 +374,9 @@ async def validate_csv_upload(
     existing_emails = set()
     existing_employee_ids = set()
     existing_batch_names = set()
+
+    existing_mcq_questions = set()
+    seen_mcq_questions = set()
 
     if enrollment_type in ["trainees", "trainers"]:
         user_res = await db.execute(select(User.email, User.employee_id))
@@ -371,11 +390,17 @@ async def validate_csv_upload(
         for (bname,) in batch_res.all():
             if bname:
                 existing_batch_names.add(bname.lower())
+    elif enrollment_type == "question_bank":
+        existing_question_rows = await db.execute(
+            select(MCQQuestionBank.question_text).where(MCQQuestionBank.course_id == int(course_id))
+        )
+        existing_mcq_questions = {value.strip().casefold() for (value,) in existing_question_rows.all() if value}
 
     seen_emails_in_file = set()
     seen_employee_ids_in_file = set()
     seen_batch_names_in_file = set()
-
+    seen_training_units_in_file = set()
+    seen_training_serials_in_file = set()
     validated_rows = []
     valid_count = 0
     invalid_count = 0
@@ -417,6 +442,9 @@ async def validate_csv_upload(
             normalized_answers, answer_error = _normalize_mcq_answer_values(answer)
             if answer_error:
                 row_errors.append(answer_error)
+            else:
+                row["resolved_normalized_answer"] = ",".join(sorted(normalized_answers))
+                row["resolved_question_type"] = "Multiple" if len(normalized_answers) > 1 else "Single"
 
             valid_options = {"A": ans1, "B": ans2, "C": ans3, "D": ans4}
             if normalized_answers:
@@ -434,41 +462,109 @@ async def validate_csv_upload(
             if difficulty and difficulty not in {"EASY", "MEDIUM", "HARD"}:
                 row_errors.append(f"Difficulty must be one of EASY, MEDIUM, or HARD. Received '{difficulty}'.")
 
-        elif enrollment_type == "training_plan":
-            s_no = row.get("s_no", "").strip()
-            skills = row.get("skills", "").strip()
-            duration_in_days = row.get("duration_in_days", "").strip()
-            topics = row.get("topics", "").strip()
-            detailed_coverage = row.get("detailed_coverage", "").strip()
-            duration_in_hours = row.get("duration_in_hours", "").strip()
+            if question and question.casefold() in existing_mcq_questions:
+                is_duplicate = True
+                row_errors.append("Question already exists for the selected course.")
+            if question:
+                question_key = question.casefold()
+                if question_key in seen_mcq_questions:
+                    is_duplicate = True
+                    row_errors.append("Duplicate question within CSV file.")
+                seen_mcq_questions.add(question_key)
 
-            has_any_content = any([s_no, skills, duration_in_days, topics, detailed_coverage, duration_in_hours])
-            if not has_any_content:
-                row_errors.append("Training plan row is empty.")
-
-            if not topics and not skills and not detailed_coverage:
-                row_errors.append("Training plan row must include at least a topic or skill description.")
-
-            if duration_in_hours:
-                if str(duration_in_hours).strip().lower() == "offline":
-                    pass
+            if question and subject_name and topic_name:
+                day, unit, mapping_error = await _resolve_mcq_learning_unit(
+                    db, int(course_id), subject_name, topic_name
+                )
+                if mapping_error:
+                    row_errors.append(mapping_error)
                 else:
-                    try:
-                        float(duration_in_hours)
-                    except ValueError:
-                        row_errors.append(
-                            f"Duration in Hours '{duration_in_hours}' must be numeric (for example 1.5 or 2) or 'Offline'."
-                        )
+                    row["resolved_course_id"] = str(course_id)
+                    row["resolved_course_day_id"] = str(day.id)
+                    row["resolved_learning_unit_id"] = str(unit.id)
+                    row["resolved_course_day_number"] = day.day_number
+                    row["resolved_course_day_title"] = day.title
+                    row["resolved_learning_unit_title"] = unit.title
 
-            # Accept continuation rows used in the curriculum CSV.
-            # Example patterns: 'Day 2', 'Shared / 2 Hours', blank values for a continuation row.
-            if duration_in_days and duration_in_days.lower() != "offline":
-                parsed_day = _parse_training_day_number(duration_in_days)
-                if parsed_day is not None and parsed_day <= 0:
-                    row_errors.append("Duration (in days) must be a positive day number.")
+        elif enrollment_type == "training_plan":
+            serial_value = row.get("s_no", "").strip()
+            skill = row.get("skills", "").strip()
+            day_value = row.get("duration_in_days", "").strip()
+            title = row.get("topics", "").strip()
+            coverage = row.get("detailed_coverage", "").strip()
+            hours_value = row.get("duration_in_hours", "").strip()
 
-            if course_id:
-                row["resolved_course_id"] = str(course_id)
+            if not serial_value:
+                row_errors.append("Required field 'S.No' is missing.")
+                serial_number = None
+            else:
+                try:
+                    serial_number = int(serial_value)
+                    if serial_number <= 0:
+                        row_errors.append("S.No must be a positive integer.")
+                except ValueError:
+                    serial_number = None
+                    row_errors.append(f"S.No '{serial_value}' must be a positive integer.")
+
+            if serial_number is not None:
+                if serial_number in seen_training_serials_in_file:
+                    row_errors.append(f"Duplicate S.No '{serial_value}' within CSV file.")
+                seen_training_serials_in_file.add(serial_number)
+
+            # The organization file uses blank cells for continuation rows.
+            previous_row = validated_rows[-1]["data"] if validated_rows else {}
+            if not skill:
+                skill = previous_row.get("resolved_skill", "").strip()
+            if not day_value:
+                day_value = previous_row.get("resolved_day_value", "").strip()
+
+            day_number = _parse_training_day_number(day_value)
+            if not skill:
+                row_errors.append("Required field 'Skills' is missing (and no previous skill is available for this continuation row).")
+            if not day_value:
+                row_errors.append("Required field 'Duration (in days)' is missing (and no previous day is available for this continuation row).")
+            elif day_number is None or day_number <= 0:
+                row_errors.append(f"Duration (in days) '{day_value}' must be a positive number.")
+
+            if not title:
+                row_errors.append("Required field 'Topics' is missing.")
+            if title and not coverage:
+                row_errors.append("Required field 'Detailed Coverage' is missing for this topic.")
+
+            duration_minutes = None
+            if not hours_value:
+                row_errors.append("Required field 'Duration in Hours' is missing.")
+            else:
+                try:
+                    hours = float(hours_value)
+                    if hours <= 0:
+                        row_errors.append("Duration in Hours must be positive.")
+                    else:
+                        duration_minutes = int(hours * 60)
+                        if duration_minutes <= 0:
+                            row_errors.append("Duration in Hours must convert to at least one minute.")
+                except ValueError:
+                    row_errors.append(f"Duration in Hours '{hours_value}' must be numeric.")
+
+            display_order = None
+            if day_number and title:
+                display_order = sum(
+                    1 for prior in validated_rows
+                    if prior["data"].get("resolved_day_number") == day_number
+                    and prior["data"].get("topics", "").strip()
+                ) + 1
+                unit_key = (day_number, title.lower())
+                if unit_key in seen_training_units_in_file:
+                    is_duplicate = True
+                    row_errors.append(f"Duplicate topic '{title}' for day {day_number} within CSV file.")
+                seen_training_units_in_file.add(unit_key)
+
+            row["resolved_course_id"] = str(course_id)
+            row["resolved_skill"] = skill
+            row["resolved_day_value"] = day_value
+            row["resolved_day_number"] = day_number
+            row["resolved_display_order"] = display_order
+            row["resolved_duration_minutes"] = duration_minutes
 
         elif enrollment_type == "trainees":
             emp_id = row.get("employee_id", "").strip()
@@ -670,6 +766,250 @@ async def validate_csv_upload(
     }
 
 
+async def _process_training_plan_import(
+    db: AsyncSession,
+    rows: list[dict[str, Any]],
+    course_id: int,
+) -> dict[str, Any]:
+    """Import a complete training plan atomically for one existing course."""
+    await db.rollback()
+    successful_count = 0
+    duplicate_count = 0
+    results = []
+
+    try:
+        course = await db.get(Course, int(course_id))
+        if not course:
+            raise ValueError(f"Course with id {course_id} does not exist.")
+
+        invalid_rows = [
+            row for row in rows
+            if row.get("status") == "invalid"
+        ]
+        if invalid_rows:
+            details = " | ".join(
+                f"row {row.get('row_index')}: {', '.join(row.get('errors', []))}"
+                for row in invalid_rows
+            )
+            raise ValueError(f"Training plan validation failed: {details}")
+
+        for row_item in rows:
+            row_idx = row_item.get("row_index", 0)
+            if row_item.get("status") == "duplicate":
+                duplicate_count += 1
+                results.append({
+                    "row_index": row_idx,
+                    "status": "Skipped",
+                    "reason": "Duplicate training-plan row was skipped.",
+                })
+                continue
+
+            data = row_item.get("data", {})
+            day_number = data.get("resolved_day_number")
+            skill = str(data.get("resolved_skill", "")).strip()
+            title = str(data.get("topics", "")).strip()
+            description = str(data.get("detailed_coverage", "")).strip()
+            display_order = int(data.get("resolved_display_order"))
+            duration_minutes = int(data.get("resolved_duration_minutes"))
+
+            day_record = await db.scalar(
+                select(CourseDay).where(
+                    CourseDay.course_id == course.id,
+                    CourseDay.day_number == day_number,
+                )
+            )
+            if day_record is None:
+                day_record = CourseDay(
+                    course_id=course.id,
+                    day_number=day_number,
+                    title=skill,
+                    description=skill,
+                )
+                db.add(day_record)
+                await db.flush()
+            else:
+                day_record.title = skill
+                day_record.description = skill
+
+            existing_unit = await db.scalar(
+                select(LearningUnit).where(
+                    LearningUnit.day_id == day_record.id,
+                    LearningUnit.display_order == display_order,
+                )
+            )
+            if existing_unit is None:
+                existing_unit = await db.scalar(
+                    select(LearningUnit).where(
+                        LearningUnit.day_id == day_record.id,
+                        func.lower(LearningUnit.title) == title.lower(),
+                    )
+                )
+            if existing_unit is not None:
+                existing_unit.title = title
+                existing_unit.description = description
+                existing_unit.display_order = display_order
+                existing_unit.duration_minutes = duration_minutes
+                content = await db.scalar(
+                    select(Content).where(Content.learning_unit_id == existing_unit.id)
+                )
+                if content is None:
+                    db.add(Content(learning_unit_id=existing_unit.id, content_text=description))
+                else:
+                    content.content_text = description
+                successful_count += 1
+                results.append({
+                    "row_index": row_idx,
+                    "status": "Success",
+                    "reason": f"Training plan row updated in course '{course.title}' on day {day_number}.",
+                })
+                continue
+
+            learning_unit = LearningUnit(
+                day_id=day_record.id,
+                title=title,
+                description=description,
+                display_order=display_order,
+                duration_minutes=duration_minutes,
+            )
+            db.add(learning_unit)
+            await db.flush()
+            db.add(Content(
+                learning_unit_id=learning_unit.id,
+                content_text=description,
+            ))
+            successful_count += 1
+            results.append({
+                "row_index": row_idx,
+                "status": "Success",
+                "reason": f"Training plan row assigned to course '{course.title}' on day {day_number}.",
+            })
+
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    return {
+        "enrollment_type": "training_plan",
+        "total_records": len(rows),
+        "successful_count": successful_count,
+        "failed_count": 0,
+        "duplicate_count": duplicate_count,
+        "results": results,
+    }
+
+
+async def _process_mcq_import(
+    db: AsyncSession,
+    rows: list[dict[str, Any]],
+    course_id: int,
+) -> dict[str, Any]:
+    """Insert validated, curriculum-mapped MCQs atomically."""
+    results = []
+    inserted_ids: list[int] = []
+    valid_rows: list[dict[str, Any]] = []
+    try:
+        course = await db.get(Course, int(course_id))
+        if not course:
+            raise ValueError(f"Course with id {course_id} does not exist.")
+        invalid_rows = [row for row in rows if row.get("status") in {"invalid", "duplicate"}]
+        if invalid_rows:
+            details = " | ".join(
+                f"row {row.get('row_index')}: {', '.join(row.get('errors', []))}"
+                for row in invalid_rows
+            )
+            raise ValueError(f"MCQ validation failed: {details}")
+
+        valid_rows = [row for row in rows if row.get("status", "valid") == "valid"]
+        if not valid_rows:
+            raise ValueError("No validated MCQ rows were provided for import.")
+
+        for row_item in valid_rows:
+            row_idx = row_item.get("row_index", 0)
+            data = row_item.get("data") or {}
+            normalized_answers, answer_error = _normalize_mcq_answer_values(
+                str(data.get("resolved_normalized_answer") or data.get("answer") or "").strip()
+            )
+            if answer_error or not normalized_answers:
+                raise ValueError(f"Row {row_idx}: {answer_error or 'Answer is missing.'}")
+
+            unit_id_raw = data.get("resolved_learning_unit_id") or data.get("learning_unit_id")
+            unit_title = data.get("resolved_learning_unit_title")
+            if not unit_id_raw:
+                _day, unit, mapping_error = await _resolve_mcq_learning_unit(
+                    db,
+                    int(course_id),
+                    str(data.get("subject_name", "")).strip(),
+                    str(data.get("topic_name", "")).strip(),
+                )
+                if mapping_error or not unit:
+                    raise ValueError(f"Row {row_idx}: {mapping_error or 'Learning unit could not be resolved.'}")
+                unit_id_raw = unit.id
+                unit_title = unit.title
+
+            options = {
+                "A": str(data.get("ans1", "")).strip(),
+                "B": str(data.get("ans2", "")).strip(),
+                "C": str(data.get("ans3", "")).strip(),
+                "D": str(data.get("ans4", "")).strip(),
+            }
+            correct_answer = ",".join(sorted(normalized_answers))
+            correct_answer_text = ", ".join(
+                options[letter] for letter in sorted(normalized_answers) if options.get(letter)
+            )
+            question_row = MCQQuestionBank(
+                course_id=int(data.get("resolved_course_id") or course_id),
+                learning_unit_id=int(unit_id_raw),
+                category=str(data.get("subject_name", "")).strip(),
+                topic=str(data.get("topic_name", "")).strip(),
+                subtopic=str(data.get("sub_topic_name", "")).strip() or None,
+                question_text=str(data.get("question", "")).strip(),
+                option_a=options["A"],
+                option_b=options["B"],
+                option_c=options["C"],
+                option_d=options["D"],
+                correct_answer=correct_answer,
+                correct_answer_text=correct_answer_text,
+                explanation=str(data.get("explanation", "")).strip(),
+                difficulty=str(data.get("difficulty", "MEDIUM")).strip().upper(),
+                question_type="MSQ" if len(normalized_answers) > 1 else "MCQ",
+                is_active=True,
+            )
+            db.add(question_row)
+            await db.flush()
+            inserted_ids.append(question_row.id)
+            results.append({
+                "row_index": row_idx,
+                "status": "Success",
+                "reason": f"MCQ imported into course '{course.title}' and learning unit '{unit_title}'.",
+                "mcq_id": question_row.id,
+            })
+
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    persisted_ids = (
+        await db.execute(select(MCQQuestionBank.id).where(MCQQuestionBank.id.in_(inserted_ids)))
+    ).scalars().all() if inserted_ids else []
+    successful_count = len(persisted_ids)
+    if successful_count != len(inserted_ids):
+        raise ValueError(
+            f"MCQ import did not persist all rows. Inserted {successful_count} of {len(inserted_ids)}."
+        )
+
+    return {
+        "enrollment_type": "question_bank",
+        "total_records": len(valid_rows),
+        "successful_count": successful_count,
+        "failed_count": 0,
+        "duplicate_count": 0,
+        "inserted_ids": persisted_ids,
+        "results": results,
+    }
+
+
 async def process_mass_import(
     db: AsyncSession,
     enrollment_type: str,
@@ -689,6 +1029,14 @@ async def process_mass_import(
 
     if enrollment_type == "training_plan" and not course_id:
         raise ValueError("A course must be selected before importing a training plan.")
+
+    if enrollment_type == "training_plan":
+        return await _process_training_plan_import(db, rows, int(course_id))
+
+    if enrollment_type == "question_bank":
+        if not course_id:
+            raise ValueError("A course must be selected before importing MCQs.")
+        return await _process_mcq_import(db, rows, int(course_id))
 
     for row_item in rows:
         row_idx = row_item.get("row_index", 0)
@@ -755,82 +1103,6 @@ async def process_mass_import(
                     "row_index": row_idx,
                     "status": "Success",
                     "reason": f"Question bank row imported into mcq_question_bank (ID: {question_row.id}).",
-                })
-                continue
-
-            if enrollment_type == "training_plan":
-                course = await db.get(Course, int(course_id))
-                if not course:
-                    raise ValueError(f"Course with id {course_id} does not exist.")
-
-                raw_day = str(data.get("duration_in_days", "")).strip()
-                topic = str(data.get("topics", "")).strip()
-                detailed_coverage = str(data.get("detailed_coverage", "")).strip()
-                skills = str(data.get("skills", "")).strip()
-                duration_hours = str(data.get("duration_in_hours", "")).strip()
-
-                day_number = _parse_training_day_number(raw_day)
-                if day_number is None:
-                    day_number = int((await db.execute(
-                        select(func.coalesce(func.max(CourseDay.day_number), 0))
-                        .where(CourseDay.course_id == course.id)
-                    )).scalar_one())
-
-                if not topic:
-                    topic = skills or f"Module {day_number}"
-
-                day_record = await db.scalar(
-                    select(CourseDay).where(
-                        CourseDay.course_id == course.id,
-                        CourseDay.day_number == day_number,
-                    )
-                )
-                if day_record is None:
-                    day_record = CourseDay(
-                        course_id=course.id,
-                        day_number=day_number,
-                        title=skills or f"Day {day_number}",
-                        description=skills or f"Day {day_number}",
-                    )
-                    db.add(day_record)
-                    await db.flush()
-
-                existing_unit = await db.scalar(
-                    select(LearningUnit).where(
-                        LearningUnit.day_id == day_record.id,
-                        func.lower(LearningUnit.title) == topic.lower(),
-                    )
-                )
-                if existing_unit is not None:
-                    duplicate_count += 1
-                    results.append({
-                        "row_index": row_idx,
-                        "status": "Skipped",
-                        "reason": f"Training-plan topic '{topic}' already exists for course '{course.title}' on day {day_number}.",
-                    })
-                    continue
-
-                duration_minutes = _parse_training_hours(duration_hours)
-
-                learning_unit = LearningUnit(
-                    day_id=day_record.id,
-                    title=topic,
-                    description=detailed_coverage or skills or "",
-                    display_order=(await db.execute(
-                        select(func.coalesce(func.max(LearningUnit.display_order), 0)).where(LearningUnit.day_id == day_record.id)
-                    )).scalar_one() + 1,
-                    duration_minutes=duration_minutes,
-                )
-                db.add(learning_unit)
-                await db.flush()
-
-                content_text = detailed_coverage or topic
-                db.add(Content(learning_unit_id=learning_unit.id, content_text=content_text))
-                successful_count += 1
-                results.append({
-                    "row_index": row_idx,
-                    "status": "Success",
-                    "reason": f"Training plan row assigned to course '{course.title}' on day {day_number}.",
                 })
                 continue
 

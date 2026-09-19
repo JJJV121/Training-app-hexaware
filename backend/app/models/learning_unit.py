@@ -35,6 +35,7 @@ class LearningUnit(Base):
         nullable=False
     )
     duration_minutes: Mapped[int] = mapped_column(
-        Integer
+        Integer,
+        nullable=False
     )
 

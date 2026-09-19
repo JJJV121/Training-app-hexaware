@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
+from app.core.dependencies import get_optional_user
+from app.models.user import User
 from app.services.mass_enrollment_service import (
     get_csv_template,
     validate_csv_upload,
@@ -48,7 +50,10 @@ async def validate_csv(
     file: UploadFile = File(...),
     course_id: int | None = Form(None),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_optional_user),
 ):
+    if enrollment_type.lower() == "question_bank" and (current_user.role or "").upper() not in {"BATCH_COORDINATOR", "COORDINATOR"}:
+        raise HTTPException(status_code=403, detail="Only Batch Coordinators can import MCQs.")
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Invalid file type. Only CSV files are supported.")
 
@@ -72,7 +77,10 @@ async def validate_csv(
 async def execute_import(
     payload: MassImportRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_optional_user),
 ):
+    if payload.enrollment_type.lower() == "question_bank" and (current_user.role or "").upper() not in {"BATCH_COORDINATOR", "COORDINATOR"}:
+        raise HTTPException(status_code=403, detail="Only Batch Coordinators can import MCQs.")
     if not payload.rows:
         raise HTTPException(status_code=400, detail="No rows provided for import.")
 

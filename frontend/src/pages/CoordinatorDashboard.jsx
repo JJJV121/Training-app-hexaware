@@ -19,6 +19,7 @@ import CoordinatorAnnouncements from './coordinator/CoordinatorAnnouncements';
 import CoordinatorIssues from './coordinator/CoordinatorIssues';
 import CoordinatorInterventions from './coordinator/CoordinatorInterventions';
 import CoordinatorReports from './coordinator/CoordinatorReports';
+import CoordinatorMassEnrollment from './coordinator/CoordinatorMassEnrollment';
 
 export default function CoordinatorDashboard() {
   const navigate = useNavigate();
@@ -88,6 +89,8 @@ export default function CoordinatorDashboard() {
     { page: 'coordinator-trainers', icon: 'user', label: 'Trainer Allocation' },
     { page: 'coordinator-attendance', icon: 'clock', label: 'Attendance & Audit' },
     { page: 'coordinator-schedule', icon: 'calendar', label: 'Schedule & Calendar' },
+    { type: 'header', label: 'Mass Enrollment' },
+    { page: 'coordinator-mass-enrollment', icon: 'upload-cloud', label: 'MCQ' },
     { type: 'header', label: 'Evaluation & Oversight' },
     { page: 'coordinator-assignments', icon: 'file-text', label: 'Assignment Tracking' },
     { page: 'coordinator-assessments', icon: 'clipboard-check', label: 'Assessment Oversight' },
@@ -121,6 +124,8 @@ export default function CoordinatorDashboard() {
         return <CoordinatorAssessments />;
       case 'coordinator-schedule':
         return <CoordinatorSchedule />;
+      case 'coordinator-mass-enrollment':
+        return <CoordinatorMassEnrollment />;
       case 'coordinator-announcements':
         return <CoordinatorAnnouncements />;
       case 'coordinator-issues':

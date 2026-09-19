@@ -41,16 +41,27 @@ export default function PracticeMCQModal({ unitId, topicName, courseId, onClose 
   const handleSelectOption = (optionIdx) => {
     if (isSubmitted) return;
     const q = mcqs[currentIdx];
-    setSelectedAnswers(prev => ({
-      ...prev,
-      [q.id]: optionIdx
-    }));
+    const isMultiple = (q.correct_indices || []).length > 1;
+    setSelectedAnswers(prev => {
+      if (!isMultiple) return { ...prev, [q.id]: optionIdx };
+      const selected = Array.isArray(prev[q.id]) ? prev[q.id] : [];
+      return {
+        ...prev,
+        [q.id]: selected.includes(optionIdx)
+          ? selected.filter((index) => index !== optionIdx)
+          : [...selected, optionIdx].sort((a, b) => a - b)
+      };
+    });
   };
 
   const handleSubmit = () => {
     let correctCount = 0;
     mcqs.forEach(q => {
-      if (selectedAnswers[q.id] === q.correct_index) {
+      const selected = Array.isArray(selectedAnswers[q.id])
+        ? selectedAnswers[q.id]
+        : (selectedAnswers[q.id] === undefined ? [] : [selectedAnswers[q.id]]);
+      const correct = q.correct_indices || [q.correct_index];
+      if (selected.length === correct.length && selected.every((index) => correct.includes(index))) {
         correctCount++;
       }
     });
@@ -98,6 +109,7 @@ export default function PracticeMCQModal({ unitId, topicName, courseId, onClose 
 
   const currentQ = mcqs[currentIdx];
   const selectedOpt = selectedAnswers[currentQ.id];
+  const selectedOptions = Array.isArray(selectedOpt) ? selectedOpt : (selectedOpt === undefined ? [] : [selectedOpt]);
 
   return (
     <div style={overlayStyle}>
@@ -146,9 +158,10 @@ export default function PracticeMCQModal({ unitId, topicName, courseId, onClose 
         {/* Options List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
           {currentQ.options.map((optText, optIdx) => {
-            const isSelected = selectedOpt === optIdx;
-            const isCorrect = isSubmitted && currentQ.correct_index === optIdx;
-            const isWrongSelection = isSubmitted && isSelected && currentQ.correct_index !== optIdx;
+            const isSelected = selectedOptions.includes(optIdx);
+            const correctOptions = currentQ.correct_indices || [currentQ.correct_index];
+            const isCorrect = isSubmitted && correctOptions.includes(optIdx);
+            const isWrongSelection = isSubmitted && isSelected && !correctOptions.includes(optIdx);
 
             let bgColor = '#ffffff';
             let borderColor = '#cbd5e1';

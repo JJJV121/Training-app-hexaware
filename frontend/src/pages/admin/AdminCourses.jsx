@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Icon from '../../components/Icon';
 import adminCourseService from '../../services/adminCourseService';
+import massEnrollmentService from '../../services/massEnrollmentService';
 
 export default function AdminCourses() {
   const [toastMsg, setToastMsg] = useState(null);
@@ -19,6 +20,13 @@ export default function AdminCourses() {
   const [formDuration, setFormDuration] = useState('10');
   const [formSyllabus, setFormSyllabus] = useState('');
   const [formResources, setFormResources] = useState(10);
+  const [isPlanImportOpen, setIsPlanImportOpen] = useState(false);
+  const [planCourseId, setPlanCourseId] = useState('');
+  const [planFile, setPlanFile] = useState(null);
+  const [planValidation, setPlanValidation] = useState(null);
+  const [planImportResult, setPlanImportResult] = useState(null);
+  const [planImportError, setPlanImportError] = useState('');
+  const [planBusy, setPlanBusy] = useState(false);
 
   useEffect(() => {
     loadCourses();
@@ -28,7 +36,7 @@ export default function AdminCourses() {
     setLoading(true);
     setError('');
     try {
-      const data = await adminCourseService.getCourses();
+      const data = await adminCourseService.getCourses(1, 100);
       // Enrich each course with actual enrollment and completion stats from backend
       const enriched = await Promise.all(
         data.map(async (course) => {
@@ -77,6 +85,46 @@ export default function AdminCourses() {
     setFormSyllabus('');
     setFormResources(10);
     setIsModalOpen(true);
+  };
+
+  const handleOpenPlanImport = () => {
+    setPlanCourseId(courses[0] ? String(courses[0].id) : '');
+    setPlanFile(null);
+    setPlanValidation(null);
+    setPlanImportResult(null);
+    setPlanImportError('');
+    setIsPlanImportOpen(true);
+  };
+
+  const handlePlanValidate = async () => {
+    if (!planFile || !planCourseId) {
+      setPlanImportError('Select an existing course and a CSV file before validating.');
+      return;
+    }
+    setPlanBusy(true);
+    setPlanImportError('');
+    try {
+      const result = await massEnrollmentService.validateCsv('training_plan', planFile, Number(planCourseId));
+      setPlanValidation(result);
+    } catch (err) {
+      setPlanImportError(err.response?.data?.detail || 'Failed to validate the training plan CSV.');
+    } finally {
+      setPlanBusy(false);
+    }
+  };
+
+  const handlePlanImport = async () => {
+    if (!planValidation || planValidation.invalid_count > 0 || !planCourseId) return;
+    setPlanBusy(true);
+    setPlanImportError('');
+    try {
+      const result = await massEnrollmentService.importCsv('training_plan', planValidation.rows, Number(planCourseId));
+      setPlanImportResult(result);
+    } catch (err) {
+      setPlanImportError(err.response?.data?.detail || 'Training plan import failed. No rows were committed.');
+    } finally {
+      setPlanBusy(false);
+    }
   };
 
   const handleOpenEdit = (course) => {
@@ -167,6 +215,10 @@ export default function AdminCourses() {
           <button className="admin-banner-btn" onClick={handleOpenAdd}>
             <Icon name="plus" style={{ width: '16px', height: '16px' }} />
             <span>Create Course</span>
+          </button>
+          <button className="admin-banner-btn" onClick={handleOpenPlanImport}>
+            <Icon name="upload-cloud" style={{ width: '16px', height: '16px' }} />
+            <span>Import Training Plan</span>
           </button>
         </div>
       </div>
@@ -288,6 +340,67 @@ export default function AdminCourses() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isPlanImportOpen && (
+        <div className="modal-overlay">
+          <div className="modal-box" style={{ maxWidth: '760px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Import Training Plan</h3>
+              <button className="modal-close-btn" onClick={() => setIsPlanImportOpen(false)}>
+                <Icon name="plus" style={{ transform: 'rotate(45deg)', width: '20px', height: '20px' }} />
+              </button>
+            </div>
+
+            <div className="modal-form">
+              {planImportError && <div className="alert-box alert-error" style={{ padding: '10px 12px' }}>{planImportError}</div>}
+              {planImportResult ? (
+                <div className="admin-card" style={{ padding: '16px' }}>
+                  <strong>Import complete</strong>
+                  <p>{planImportResult.successful_count} created, {planImportResult.duplicate_count} skipped as duplicates.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Existing Course</label>
+                    <select className="form-input" value={planCourseId} onChange={(e) => setPlanCourseId(e.target.value)}>
+                      <option value="">Select a course</option>
+                      {courses.map((course) => <option key={course.id} value={String(course.id)}>{course.title}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Training Plan CSV</label>
+                    <input type="file" accept=".csv" onChange={(e) => {
+                      setPlanFile(e.target.files?.[0] || null);
+                      setPlanValidation(null);
+                    }} />
+                    <button type="button" className="action-btn-secondary" style={{ marginTop: '8px' }} onClick={() => massEnrollmentService.downloadTemplate('training_plan')}>
+                      <Icon name="download" /> Download Sample CSV
+                    </button>
+                  </div>
+                  {planValidation && (
+                    <div style={{ maxHeight: '240px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '8px' }}>
+                      <p><strong>{planValidation.valid_count}</strong> valid, <strong>{planValidation.invalid_count}</strong> invalid, <strong>{planValidation.duplicate_count}</strong> duplicate rows.</p>
+                      {planValidation.rows.filter((row) => row.errors?.length).map((row) => (
+                        <p key={row.row_index} style={{ color: '#B91C1C', fontSize: '12px' }}>
+                          Row {row.row_index}: {row.errors.join(' ')}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <div className="modal-footer">
+                    <button type="button" className="action-btn-secondary" onClick={handlePlanValidate} disabled={planBusy || !planFile || !planCourseId}>
+                      {planBusy ? 'Working...' : 'Validate CSV'}
+                    </button>
+                    <button type="button" className="action-btn-primary" onClick={handlePlanImport} disabled={planBusy || !planValidation || planValidation.invalid_count > 0}>
+                      Import to Course
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

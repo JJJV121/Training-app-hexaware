@@ -278,7 +278,7 @@ function AppRoutes() {
         <Route 
           path="/batch-coordinator/*" 
           element={
-            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR', 'ADMIN']}>
+            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR']}>
             <CoordinatorDashboard />
             </ProtectedRoute>
           } 
@@ -286,7 +286,7 @@ function AppRoutes() {
         <Route 
           path="/batch-coordinator" 
           element={
-            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR', 'ADMIN']}>
+            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR']}>
             <CoordinatorDashboard />
             </ProtectedRoute>
           } 
@@ -296,7 +296,7 @@ function AppRoutes() {
         <Route 
           path="/coordinator-dashboard/*" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR']}>
               <CoordinatorDashboard />
             </ProtectedRoute>
           } 
@@ -304,7 +304,7 @@ function AppRoutes() {
         <Route 
           path="/coordinator-dashboard" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR']}>
               <CoordinatorDashboard />
             </ProtectedRoute>
           } 
@@ -312,7 +312,7 @@ function AppRoutes() {
         <Route 
           path="/coordinator/*" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['BATCH_COORDINATOR', 'COORDINATOR']}>
               <CoordinatorDashboard />
             </ProtectedRoute>
           } 

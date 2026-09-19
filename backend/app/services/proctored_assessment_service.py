@@ -21,7 +21,7 @@ from app.models.assessment import (
 from app.services.code_execution_service import execute_code_against_testcases
 from app.database.seed_data.training_plan_questions import TRAINING_PLAN_QUESTIONS
 from app.services.question_bank_policy import (
-    get_verified_question_pool,
+    get_question_pool,
     normalize_question_text,
 )
 from app.models.enrollment import Enrollment
@@ -255,10 +255,93 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
             assessment.title = test_title
             await db.flush()
 
-    # Ensure coding questions exist
+    # Ensure questions exist
     q_check_stmt = select(AssessmentQuestion).where(AssessmentQuestion.assessment_id == assessment.id)
     q_check_res = await db.execute(q_check_stmt)
     existing_questions = q_check_res.scalars().all()
+
+    if not existing_questions:
+        if (assessment.assessment_type or "").upper() == "MCQ":
+            unit_ids = [unit.id for unit in units]
+            topic_names = [unit.title for unit in units if unit.title]
+            if course_day.title:
+                topic_names.append(course_day.title)
+            pool = await get_question_pool(
+                db,
+                course_id=course_day.course_id,
+                learning_unit_ids=unit_ids or None,
+                topic_names=topic_names or None,
+                difficulties=["MEDIUM", "HARD"],
+            )
+            required_count = 10
+            if len(pool) < required_count:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Insufficient questions available. "
+                        f"This graded assessment needs {required_count} MEDIUM/HARD questions "
+                        f"mapped to the current course/topic/learning units, but only {len(pool)} were found."
+                    ),
+                )
+            import random
+            selected = random.sample(pool, required_count)
+            for index, bank_q in enumerate(selected, start=1):
+                question_obj = AssessmentQuestion(
+                    assessment_id=assessment.id,
+                    question_number=index,
+                    question_text=bank_q.question_text,
+                    question_type="msq" if "," in (bank_q.correct_answer or "") else "mcq",
+                    points=1,
+                    difficulty=(bank_q.difficulty or "MEDIUM").capitalize(),
+                    explanation=bank_q.explanation or "",
+                )
+                db.add(question_obj)
+                await db.flush()
+                opts_map = {"A": bank_q.option_a, "B": bank_q.option_b, "C": bank_q.option_c, "D": bank_q.option_d}
+                correct_answers = {
+                    answer.strip() for answer in (bank_q.correct_answer or "A").upper().split(",") if answer.strip()
+                }
+                correct_texts = [opts_map[answer] for answer in sorted(correct_answers) if answer in opts_map]
+                shuffled_options = [bank_q.option_a, bank_q.option_b, bank_q.option_c, bank_q.option_d]
+                random.shuffle(shuffled_options)
+                correct_indices = [
+                    opt_idx for opt_idx, opt_text in enumerate(shuffled_options)
+                    if opt_text in correct_texts
+                ]
+                for opt_idx, opt_text in enumerate(shuffled_options):
+                    db.add(AssessmentOption(
+                        question_id=question_obj.id,
+                        option_text=opt_text,
+                        is_correct=(opt_idx in correct_indices),
+                    ))
+        else:
+            coding_q_list = get_default_coding_questions_for_day(course_day.day_number, topic_title)
+            for i, q_data in enumerate(coding_q_list, start=1):
+                db.add(AssessmentQuestion(
+                    assessment_id=assessment.id,
+                    question_number=i,
+                    question_text=q_data["question_text"],
+                    question_type="coding",
+                    points=q_data.get("points", 33),
+                    title=q_data["title"],
+                    input_format=q_data.get("input_format", ""),
+                    output_format=q_data.get("output_format", ""),
+                    constraints=q_data.get("constraints", ""),
+                    sample_input=q_data.get("sample_input", ""),
+                    sample_output=q_data.get("sample_output", ""),
+                    difficulty="Medium",
+                    allowed_language=q_data.get("allowed_language", "python"),
+                    starter_code=q_data.get("starter_code", "def solution():\n    pass"),
+                    test_cases=q_data.get("test_cases", []),
+                    explanation=q_data.get("explanation", ""),
+                ))
+
+        await db.commit()
+        res = await db.execute(stmt)
+        assessment = res.scalar_one_or_none()
+
+    return assessment
+
 
 async def ensure_grading_assessment_questions(db: AsyncSession, assessment: Assessment):
     """
@@ -302,10 +385,28 @@ async def ensure_grading_assessment_questions(db: AsyncSession, assessment: Asse
         await db.commit()
         return
 
-    verified_pool = await get_verified_question_pool(
+    day_units = []
+    if assessment.course_day_id:
+        day_units = (
+            await db.execute(select(LearningUnit).where(LearningUnit.day_id == assessment.course_day_id))
+        ).scalars().all()
+    course_unit_ids = []
+    if assessment_course_id:
+        course_unit_ids = (
+            await db.execute(
+                select(LearningUnit.id)
+                .join(CourseDay, LearningUnit.day_id == CourseDay.id)
+                .where(CourseDay.course_id == assessment_course_id)
+            )
+        ).scalars().all()
+
+    verified_pool = await get_question_pool(
         db,
         categories=config["categories"],
         course_id=assessment_course_id,
+        learning_unit_ids=course_unit_ids or [unit.id for unit in day_units] or None,
+        topic_names=[unit.title for unit in day_units if unit.title] or None,
+        difficulties=["MEDIUM", "HARD"],
     )
 
     existing_texts = {
@@ -321,8 +422,9 @@ async def ensure_grading_assessment_questions(db: AsyncSession, assessment: Asse
         raise HTTPException(
             status_code=409,
             detail=(
-                f"{assessment.title} needs {missing_count} additional verified mapped questions, "
-                f"but only {len(available_pool)} unused questions are available. "
+                "Insufficient questions available. "
+                f"{assessment.title} needs {missing_count} additional MEDIUM/HARD questions "
+                f"from the mapped course/topic/learning units, but only {len(available_pool)} unused questions are available. "
                 "Existing assessment questions were preserved."
             ),
         )
@@ -335,7 +437,7 @@ async def ensure_grading_assessment_questions(db: AsyncSession, assessment: Asse
             assessment_id=assessment.id,
             question_number=i,
             question_text=bank_q.question_text,
-            question_type="mcq",
+            question_type="msq" if "," in (bank_q.correct_answer or "") else "mcq",
             points=1,
             difficulty=(bank_q.difficulty or "MEDIUM").capitalize(),
             explanation=bank_q.explanation or ""
@@ -345,24 +447,27 @@ async def ensure_grading_assessment_questions(db: AsyncSession, assessment: Asse
 
         # Options map & correct text
         opts_map = {"A": bank_q.option_a, "B": bank_q.option_b, "C": bank_q.option_c, "D": bank_q.option_d}
-        correct_text = opts_map.get((bank_q.correct_answer or "A").upper().strip(), bank_q.option_a)
+        correct_answers = {
+            answer.strip() for answer in (bank_q.correct_answer or "A").upper().split(",") if answer.strip()
+        }
+        correct_texts = [opts_map[answer] for answer in sorted(correct_answers) if answer in opts_map]
+        correct_text = ", ".join(correct_texts)
         if bank_q.correct_answer_text and bank_q.correct_answer_text.strip():
             correct_text = bank_q.correct_answer_text.strip()
 
         shuffled_options = [bank_q.option_a, bank_q.option_b, bank_q.option_c, bank_q.option_d]
         random.shuffle(shuffled_options)
 
-        try:
-            correct_idx = shuffled_options.index(correct_text)
-        except ValueError:
-            shuffled_options[0] = correct_text
-            correct_idx = 0
+        correct_indices = [
+            index for index, option in enumerate(shuffled_options)
+            if option in correct_texts
+        ]
 
         for opt_idx, opt_text in enumerate(shuffled_options):
             db.add(AssessmentOption(
                 question_id=question_obj.id,
                 option_text=opt_text,
-                is_correct=(opt_idx == correct_idx)
+                is_correct=(opt_idx in correct_indices)
             ))
 
     await db.commit()
