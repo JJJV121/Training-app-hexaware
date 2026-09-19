@@ -186,7 +186,7 @@ function AdminApp() {
 
 import Leaderboard from './pages/Leaderboard';
 import Badges from './pages/Badges';
-import CoordinatorDashboard from './pages/coordinator/CoordinatorDashboard';
+import CoordinatorDashboard from './pages/CoordinatorDashboard';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const hasAuthToken = Boolean(
