@@ -100,8 +100,6 @@ async def create_trainee(
 ):
     from app.core.security import hash_password
     from app.models.enrollment import Enrollment
-    from app.models.course import Course
-    from app.services.email_service import send_student_welcome_email
 
     existing_user = await db.scalar(
         select(User).where(User.email == trainee_data.email)
@@ -138,24 +136,21 @@ async def create_trainee(
 
     course_ids = list(dict.fromkeys([int(cid) for cid in raw_course_ids if cid is not None]))
 
-    course_names = []
     for cid in course_ids:
         enrollment = Enrollment(
             user_id=user.id,
             course_id=cid,
         )
         db.add(enrollment)
-        
-        c = await db.get(Course, cid)
-        if c:
-            course_names.append(c.title)
 
     await db.commit()
     await db.refresh(user)
 
-    # Trigger welcome email upon successful creation
+    # Send the same activation email used by the standard account flow.
     try:
-        await send_student_welcome_email(user.email, user.name or "Student", course_names)
+        token_obj = await generate_activation_token(db, user.id)
+        activation_link = build_activation_link(token_obj.token, user.email)
+        await send_activation_email(user.email, activation_link, user.name)
     except Exception as e:
         print("Notice: email trigger log:", e)
 

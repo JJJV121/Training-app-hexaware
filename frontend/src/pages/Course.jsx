@@ -9,6 +9,9 @@ import { caseStudyService } from '../services/caseStudyService';
 import { proctoredTestService } from '../services/proctoredTestService';
 import ProctoredTestView from './ProctoredTestView';
 import { useCopyProtection, requestFullScreenMode, exitFullScreenMode } from '../utils/copyProtection';
+import PracticeMCQModal from '../components/PracticeMCQModal';
+import apiClient from '../services/apiClient';
+
 
 // 🌟 Prop Injection: Accept courseId dynamically from DashBoard parent component shell
 export default function Course({ courseId, onLockChange }) {
@@ -33,6 +36,29 @@ export default function Course({ courseId, onLockChange }) {
   const [subView, setSubView] = useState('outline'); 
   const [activeHorizontalTab, setActiveHorizontalTab] = useState('Videos');
   const [selectedLesson, setSelectedLesson] = useState(null);
+  const [practiceModalData, setPracticeModalData] = useState({ isOpen: false, unitId: null, topicName: '' });
+  const [proctoredAssessmentId, setProctoredAssessmentId] = useState(null);
+
+  const handleLaunchGradingAssessment = async (assessmentTitle) => {
+    try {
+      const listRes = await apiClient.get('/assessments/grading-list');
+      const gradingList = listRes.data || [];
+      const match = gradingList.find(a => 
+        a.title.toLowerCase().includes(assessmentTitle.toLowerCase()) || 
+        assessmentTitle.toLowerCase().includes(a.title.toLowerCase())
+      );
+      if (match) {
+        onLockChange?.(true);
+        setProctoredAssessmentId(match.assessment_id);
+      } else {
+        alert("Grading assessment is being initialized. Please try again in a moment.");
+      }
+    } catch (err) {
+      console.error("Error launching grading assessment:", err);
+      alert("Could not load grading assessment details.");
+    }
+  };
+
 
   // Video Player & Playlist States
   const [unitVideos, setUnitVideos] = useState([]);
@@ -362,6 +388,19 @@ const handleSeeking = (e) => {
   if (error) return <div className="course-viewport-centered-fallback"><h3 className="error-headline-text">{error}</h3></div>;
   if (!course) return null; 
 
+  if (proctoredAssessmentId) {
+    return (
+      <ProctoredTestView
+        assessmentId={proctoredAssessmentId}
+        onBack={() => {
+          setProctoredAssessmentId(null);
+          onLockChange?.(false);
+        }}
+      />
+    );
+  }
+
+
   if (subView === 'outline') {
     return (
       <div className="course-main-viewport">
@@ -556,6 +595,24 @@ const handleSeeking = (e) => {
                                           <Icon name="file-text" style={{ marginRight: '4px', width: '14px', height: '14px' }} />
                                           <span>Notes</span>
                                         </button>
+                                        <button 
+                                          className="action-pill-btn variant-blue-play" 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isLessonLocked) {
+                                              setPracticeModalData({
+                                                isOpen: true,
+                                                unitId: lesson.id,
+                                                topicName: lesson.title
+                                              });
+                                            }
+                                          }}
+                                          disabled={isLessonLocked}
+                                          style={{ opacity: isLessonLocked ? 0.6 : 1, backgroundColor: '#0284c7' }}
+                                        >
+                                          <Icon name="help-circle" style={{ marginRight: '4px', width: '14px', height: '14px' }} />
+                                          <span>Practice MCQ</span>
+                                        </button>
                                       </>
                                     );
                                   })()}
@@ -573,6 +630,60 @@ const handleSeeking = (e) => {
                             </div>
                           );
                         });
+                      })()}
+
+                      {/* Grading Assessment Checkpoint Card */}
+                      {(() => {
+                        const dayNum = Number(module.dayNumber || module.id);
+                        const checkpointMap = {
+                          10: {
+                            title: "Problem Solving + Agile + MySQL Grading Assessment",
+                            meta: "65 Questions | 75 Minutes | 75% Pass Score | Medium + Hard Difficulty",
+                            desc: "Curriculum Checkpoint 1: Evaluation covering Problem Solving, Agile & Scrum, and MySQL 8.4 LTS."
+                          },
+                          16: {
+                            title: "Java + JUnit Grading Assessment",
+                            meta: "55 Questions | 70 Minutes | 75% Pass Score | Medium + Hard Difficulty",
+                            desc: "Curriculum Checkpoint 2: Comprehensive evaluation covering Core Java (JDK 25 LTS) and JUnit/Mockito."
+                          },
+                          20: {
+                            title: "Git + Cloud Grading Assessment",
+                            meta: "35 Questions | 50 Minutes | 75% Pass Score | Medium + Hard Difficulty",
+                            desc: "Curriculum Checkpoint 3: Evaluation covering Git Version Control and AWS/Azure Cloud & Containers."
+                          },
+                          23: {
+                            title: "Generative AI & Prompt Engineering Grading Assessment",
+                            meta: "20 Questions | 30 Minutes | 75% Pass Score | Medium + Hard Difficulty",
+                            desc: "Curriculum Checkpoint 4: Final evaluation covering Generative AI, Prompt Engineering, Agentic SDLC, and MCP."
+                          }
+                        };
+
+                        const chk = checkpointMap[dayNum];
+                        if (!chk) return null;
+
+                        return (
+                          <div style={{ margin: '16px 0 0 0', padding: '18px 22px', borderRadius: '12px', background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: '#ffffff', boxShadow: '0 4px 14px rgba(49, 46, 129, 0.25)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                              <div>
+                                <span style={{ fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px', background: 'rgba(255,255,255,0.15)', padding: '3px 8px', borderRadius: '6px', color: '#c7d2fe' }}>
+                                  Grading Assessment Checkpoint
+                                </span>
+                                <h4 style={{ margin: '6px 0 2px 0', fontSize: '1.1rem', fontWeight: 800, color: '#ffffff' }}>{chk.title}</h4>
+                                <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#a5b4fc' }}>{chk.desc}</p>
+                                <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '6px', fontWeight: 600 }}>{chk.meta}</div>
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleLaunchGradingAssessment(chk.title);
+                                }}
+                                style={{ padding: '10px 20px', borderRadius: '8px', background: '#38bdf8', color: '#0f172a', fontWeight: 800, border: 'none', cursor: 'pointer', fontSize: '0.88rem', boxShadow: '0 2px 8px rgba(56,189,248,0.3)' }}
+                              >
+                                Start Grading Assessment
+                              </button>
+                            </div>
+                          </div>
+                        );
                       })()}
                     </div>
                   )}
@@ -627,9 +738,18 @@ const handleSeeking = (e) => {
             </div>
           )}
         </div>
+        {practiceModalData.isOpen && (
+          <PracticeMCQModal
+            unitId={practiceModalData.unitId}
+            topicName={practiceModalData.topicName}
+            courseId={activeCourseId}
+            onClose={() => setPracticeModalData({ isOpen: false, unitId: null, topicName: '' })}
+          />
+        )}
       </div>
     );
   }
+
 
   return (
     <div className="course-main-viewport">

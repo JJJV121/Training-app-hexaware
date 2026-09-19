@@ -7,6 +7,7 @@ from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.models.course_day_qa import CourseDayQA
 from app.models.course_day import CourseDay
+from app.models.learning_unit import LearningUnit
 from app.schemas.course_day_qa_schemas import (
     CourseDayQACreate,
     CourseDayQAUpdate,
@@ -116,26 +117,27 @@ async def get_day_mcqs(
         # Fallback fetch by day_id
         day = await db.scalar(select(CourseDay).where(CourseDay.id == day_id))
 
-    day_title = day.title if day else f"Day {day_id}"
-    day_desc = day.description if day else ""
+    if not day:
+        raise HTTPException(status_code=404, detail="Course day not found for this course.")
 
-    from app.models.course import Course
-    c_res = await db.execute(select(Course).where(Course.id == course_id))
-    c = c_res.scalars().first()
-    course_title = c.title if c else "Java Training"
+    unit_ids = (
+        await db.execute(
+            select(LearningUnit.id)
+            .where(LearningUnit.day_id == day_id)
+            .order_by(LearningUnit.display_order)
+        )
+    ).scalars().all()
 
-    from app.services.mcq_generator_service import generate_25_mcqs_for_day
-    mcqs = generate_25_mcqs_for_day(course_title, day_title, day_desc)
+    from app.services.practice_mcq_service import get_topic_practice_mcqs
+    res = await get_topic_practice_mcqs(
+        db,
+        unit_ids=unit_ids,
+        course_id=course_id,
+    )
+    res["course_id"] = course_id
+    res["day_id"] = day_id
+    return res
 
-    return {
-        "course_id": course_id,
-        "day_id": day_id,
-        "total_mcqs": len(mcqs),
-        "low_count": len([m for m in mcqs if m["difficulty"] == "low"]),
-        "medium_count": len([m for m in mcqs if m["difficulty"] == "medium"]),
-        "hard_count": len([m for m in mcqs if m["difficulty"] == "hard"]),
-        "mcqs": mcqs
-    }
 
 
 # Update Q&A (Admin Only)

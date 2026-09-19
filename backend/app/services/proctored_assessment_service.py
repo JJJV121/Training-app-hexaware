@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from fastapi import HTTPException
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -20,6 +20,12 @@ from app.models.assessment import (
 )
 from app.services.code_execution_service import execute_code_against_testcases
 from app.database.seed_data.training_plan_questions import TRAINING_PLAN_QUESTIONS
+from app.services.question_bank_policy import (
+    get_verified_question_pool,
+    normalize_question_text,
+)
+from app.models.enrollment import Enrollment
+from app.models.progress import Progress
 
 
 def sanitize_name(name: str) -> str:
@@ -30,6 +36,57 @@ def sanitize_name(name: str) -> str:
     # Clean special characters
     cleaned = "".join([c if (c.isalnum() or c == "_") else "" for c in cleaned])
     return cleaned
+
+
+def grading_prerequisite_day(title: str) -> int | None:
+    title_lower = title.lower()
+    if "problem solving" in title_lower or "mysql" in title_lower:
+        return 10
+    if "java" in title_lower and "junit" in title_lower:
+        return 16
+    if "git" in title_lower or "cloud" in title_lower:
+        return 20
+    if "generative" in title_lower or "prompt" in title_lower or "genai" in title_lower:
+        return 23
+    return None
+
+
+async def is_grading_assessment_unlocked(
+    db: AsyncSession,
+    assessment: Assessment,
+    user_id: int | None,
+) -> bool:
+    required_day = grading_prerequisite_day(assessment.title)
+    if required_day is None or user_id is None:
+        return False
+
+    course_id = await db.scalar(
+        select(Enrollment.course_id).where(Enrollment.user_id == user_id).limit(1)
+    )
+    if course_id is None:
+        return False
+
+    required_units = (
+        await db.execute(
+            select(LearningUnit.id)
+            .join(CourseDay, LearningUnit.day_id == CourseDay.id)
+            .where(
+                CourseDay.course_id == course_id,
+                CourseDay.day_number <= required_day,
+            )
+        )
+    ).scalars().all()
+    if not required_units:
+        return False
+
+    completed_count = await db.scalar(
+        select(func.count(Progress.id)).where(
+            Progress.user_id == user_id,
+            Progress.learning_unit_id.in_(required_units),
+            Progress.is_completed.is_(True),
+        )
+    )
+    return completed_count == len(required_units)
 
 
 def get_default_coding_questions_for_day(day_number: int, topic_title: str) -> list[dict]:
@@ -203,61 +260,116 @@ async def get_or_create_day_assessment(db: AsyncSession, course_day_id: int) -> 
     q_check_res = await db.execute(q_check_stmt)
     existing_questions = q_check_res.scalars().all()
 
-    if not existing_questions:
-        if assessment.assessment_type == "MCQ":
-            from app.services.mcq_generator_service import generate_25_mcqs_for_day
-            mcq_list = generate_25_mcqs_for_day(course_name, course_day.title, course_day.description or "")[:10]
-            for i, q_data in enumerate(mcq_list, start=1):
-                question_obj = AssessmentQuestion(
-                    assessment_id=assessment.id,
-                    question_number=i,
-                    question_text=q_data["question"],
-                    question_type="mcq",
-                    points=1,
-                    difficulty=q_data.get("difficulty", "Medium"),
-                    explanation=q_data.get("explanation", "")
-                )
-                db.add(question_obj)
-                await db.flush()
-                for option_index, option_text in enumerate(q_data.get("options", [])):
-                    db.add(AssessmentOption(
-                        question_id=question_obj.id,
-                        option_text=option_text,
-                        is_correct=option_index == q_data.get("correct_index")
-                    ))
-        else:
-            coding_q_list = get_default_coding_questions_for_day(course_day.day_number, topic_title)
+async def ensure_grading_assessment_questions(db: AsyncSession, assessment: Assessment):
+    """
+    Ensures that for any of the 4 Grading Assessments, questions are dynamically generated from
+    the MCQQuestionBank matching the specific mapped course categories.
+    """
+    import random
 
-            for i, q_data in enumerate(coding_q_list, start=1):
-                db.add(AssessmentQuestion(
-                    assessment_id=assessment.id,
-                    question_number=i,
-                    question_text=q_data["question_text"],
-                    question_type="coding",
-                    points=q_data.get("points", 33),
-                    title=q_data["title"],
-                    input_format=q_data.get("input_format", ""),
-                    output_format=q_data.get("output_format", ""),
-                    constraints=q_data.get("constraints", ""),
-                    sample_input=q_data.get("sample_input", ""),
-                    sample_output=q_data.get("sample_output", ""),
-                    difficulty="Medium",
-                    allowed_language=q_data.get("allowed_language", "python"),
-                    starter_code=q_data.get("starter_code", "def solution():\n    pass"),
-                    test_cases=q_data.get("test_cases", []),
-                    explanation=q_data.get("explanation", "")
-                ))
+    title_lower = assessment.title.lower()
 
+    config = None
+    if "problem solving" in title_lower or "mysql" in title_lower:
+        config = {"count": 65, "categories": ["dsa", "agile", "mysql"], "duration": 75, "total_marks": 65, "passing": 49}
+    elif "java" in title_lower and "junit" in title_lower:
+        config = {"count": 55, "categories": ["java", "junit"], "duration": 70, "total_marks": 55, "passing": 42}
+    elif "git" in title_lower or "cloud" in title_lower:
+        config = {"count": 35, "categories": ["git", "cloud"], "duration": 50, "total_marks": 35, "passing": 27}
+    elif "generative" in title_lower or "prompt" in title_lower or "genai" in title_lower:
+        config = {"count": 20, "categories": ["genai"], "duration": 30, "total_marks": 20, "passing": 15}
+
+    if not config:
+        return
+
+    # Update assessment settings
+    assessment.duration_minutes = config["duration"]
+    assessment.total_marks = config["total_marks"]
+    assessment.passing_marks = config["passing"]
+    assessment.assessment_type = "MCQ"
+
+    # Check existing questions
+    q_check_stmt = select(AssessmentQuestion).where(AssessmentQuestion.assessment_id == assessment.id)
+    existing = (await db.execute(q_check_stmt)).scalars().all()
+
+    assessment_course_id = None
+    if assessment.course_day_id:
+        assessment_course_id = await db.scalar(
+            select(CourseDay.course_id).where(CourseDay.id == assessment.course_day_id)
+        )
+
+    if len(existing) >= config["count"]:
         await db.commit()
+        return
 
-        # Reload assessment with questions
-        res = await db.execute(stmt)
-        assessment = res.scalar_one_or_none()
+    verified_pool = await get_verified_question_pool(
+        db,
+        categories=config["categories"],
+        course_id=assessment_course_id,
+    )
 
-    return assessment
+    existing_texts = {
+        normalize_question_text(question.question_text)
+        for question in existing
+    }
+    available_pool = [
+        question for question in verified_pool
+        if normalize_question_text(question.question_text) not in existing_texts
+    ]
+    missing_count = config["count"] - len(existing)
+    if len(available_pool) < missing_count:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"{assessment.title} needs {missing_count} additional verified mapped questions, "
+                f"but only {len(available_pool)} unused questions are available. "
+                "Existing assessment questions were preserved."
+            ),
+        )
+
+    selected_pool = random.sample(available_pool, missing_count)
+    random.shuffle(selected_pool)
+
+    for i, bank_q in enumerate(selected_pool, start=len(existing) + 1):
+        question_obj = AssessmentQuestion(
+            assessment_id=assessment.id,
+            question_number=i,
+            question_text=bank_q.question_text,
+            question_type="mcq",
+            points=1,
+            difficulty=(bank_q.difficulty or "MEDIUM").capitalize(),
+            explanation=bank_q.explanation or ""
+        )
+        db.add(question_obj)
+        await db.flush()
+
+        # Options map & correct text
+        opts_map = {"A": bank_q.option_a, "B": bank_q.option_b, "C": bank_q.option_c, "D": bank_q.option_d}
+        correct_text = opts_map.get((bank_q.correct_answer or "A").upper().strip(), bank_q.option_a)
+        if bank_q.correct_answer_text and bank_q.correct_answer_text.strip():
+            correct_text = bank_q.correct_answer_text.strip()
+
+        shuffled_options = [bank_q.option_a, bank_q.option_b, bank_q.option_c, bank_q.option_d]
+        random.shuffle(shuffled_options)
+
+        try:
+            correct_idx = shuffled_options.index(correct_text)
+        except ValueError:
+            shuffled_options[0] = correct_text
+            correct_idx = 0
+
+        for opt_idx, opt_text in enumerate(shuffled_options):
+            db.add(AssessmentOption(
+                question_id=question_obj.id,
+                option_text=opt_text,
+                is_correct=(opt_idx == correct_idx)
+            ))
+
+    await db.commit()
 
 
 async def get_assessments_by_day(db: AsyncSession, course_day_id: int) -> list[dict]:
+
     day = await db.get(CourseDay, course_day_id)
     if not day:
         raise HTTPException(status_code=404, detail="Course day not found.")
@@ -266,46 +378,6 @@ async def get_assessments_by_day(db: AsyncSession, course_day_id: int) -> list[d
     stmt = select(Assessment).where(Assessment.course_day_id == course_day_id).order_by(Assessment.id)
     result = await db.execute(stmt)
     assessments = result.scalars().all()
-
-    if day.day_number == 6 and not any(item.assessment_type == "MCQ" for item in assessments):
-        course = await db.get(Course, day.course_id)
-        course_name = course.title if course else "Course"
-        mcq_assessment = Assessment(
-            course_day_id=course_day_id,
-            title=f"{sanitize_name(course_name)}_Day_6_MySQL_MCQ",
-            description="MySQL, Agile, and Problem Solving MCQ assessment.",
-            instructions="Answer all multiple-choice questions before the assessment timer expires.",
-            created_by=1,
-            assessment_type="MCQ",
-            duration_minutes=30,
-            total_marks=100,
-            passing_marks=70,
-        )
-        db.add(mcq_assessment)
-        await db.flush()
-        from app.services.mcq_generator_service import generate_25_mcqs_for_day
-        mcq_list = generate_25_mcqs_for_day(course_name, day.title, day.description or "")[:10]
-        for index, q_data in enumerate(mcq_list, start=1):
-            question = AssessmentQuestion(
-                assessment_id=mcq_assessment.id,
-                question_number=index,
-                question_text=q_data["question"],
-                question_type="mcq",
-                points=1,
-                difficulty=q_data.get("difficulty", "Medium"),
-                explanation=q_data.get("explanation", ""),
-            )
-            db.add(question)
-            await db.flush()
-            for option_index, option_text in enumerate(q_data.get("options", [])):
-                db.add(AssessmentOption(
-                    question_id=question.id,
-                    option_text=option_text,
-                    is_correct=option_index == q_data.get("correct_index"),
-                ))
-        await db.commit()
-        result = await db.execute(stmt)
-        assessments = result.scalars().all()
 
     return [{
         "assessment_id": item.id,
@@ -350,6 +422,15 @@ async def get_proctored_assessment_trainee_view(
 
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")
+
+    if not await is_grading_assessment_unlocked(db, assessment, user_id):
+        raise HTTPException(status_code=403, detail="Complete the required learning units before accessing this assessment.")
+
+    await ensure_grading_assessment_questions(db, assessment)
+    db.expire(assessment, ["questions"])
+    res = await db.execute(stmt)
+    assessment = res.scalar_one_or_none()
+
 
     course_name = "Course"
     day_number = 1
@@ -457,6 +538,14 @@ async def create_or_get_active_attempt(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found.")
 
+    if not await is_grading_assessment_unlocked(db, assessment, user_id):
+        raise HTTPException(status_code=403, detail="Complete the required learning units before starting this assessment.")
+
+    await ensure_grading_assessment_questions(db, assessment)
+    res = await db.execute(stmt)
+    assessment = res.scalar_one_or_none()
+
+
     att_stmt = (
         select(AssessmentAttempt)
         .options(selectinload(AssessmentAttempt.answers))
@@ -486,41 +575,64 @@ async def create_or_get_active_attempt(
                 and_(
                     AssessmentAttempt.assessment_id == assessment_id,
                     AssessmentAttempt.user_id == user_id,
-                    AssessmentAttempt.status == AttemptStatus.SUBMITTED.value
+                    AssessmentAttempt.status.in_([
+                        AttemptStatus.SUBMITTED.value,
+                        AttemptStatus.EXPIRED.value,
+                    ])
                 )
             )
+            .order_by(AssessmentAttempt.submitted_at.desc(), AssessmentAttempt.started_at.desc())
         )
         sub_res = await db.execute(sub_stmt)
-        sub_attempt = sub_res.scalar_one_or_none()
-        if sub_attempt:
-            # Already submitted — return AttemptResponse-compatible dict
-            trainee_view = await get_proctored_assessment_trainee_view(db, assessment_id, user_id)
-            saved_answers_sub = {}
-            for ans in (sub_attempt.answers or []):
-                saved_answers_sub[ans.question_id] = {
-                    "selected_option_ids": ans.selected_option_ids or [],
-                    "answer_text": ans.answer_text or "",
-                    "code": ans.code or "",
-                    "language": ans.language or "python",
-                    "status": ans.status or "Attempted"
+        historical_attempts = sub_res.scalars().all()
+        latest_attempt = historical_attempts[0] if historical_attempts else None
+        submitted_attempts = [
+            item for item in historical_attempts
+            if item.status == AttemptStatus.SUBMITTED.value
+        ]
+        if any(item.passed for item in submitted_attempts):
+            sub_attempt = latest_attempt
+            if sub_attempt:
+                trainee_view = await get_proctored_assessment_trainee_view(db, assessment_id, user_id)
+                return {
+                    "attempt_id": sub_attempt.id, "assessment_id": assessment_id,
+                    "test_name": trainee_view["test_name"], "course": trainee_view["course"],
+                    "day": trainee_view["day"], "topic": trainee_view["topic"],
+                    "duration_minutes": assessment.duration_minutes, "status": sub_attempt.status,
+                    "started_at": sub_attempt.started_at, "expires_at": sub_attempt.expires_at,
+                    "submitted_at": sub_attempt.submitted_at, "current_question": sub_attempt.current_question,
+                    "saved_answers": {ans.question_id: {"selected_option_ids": ans.selected_option_ids or [], "answer_text": ans.answer_text or "", "code": ans.code or "", "language": ans.language or "python", "status": ans.status or "Attempted"} for ans in (sub_attempt.answers or [])},
+                    "remaining_seconds": 0,
                 }
-            return {
-                "attempt_id": sub_attempt.id,
-                "assessment_id": assessment_id,
-                "test_name": trainee_view["test_name"],
-                "course": trainee_view["course"],
-                "day": trainee_view["day"],
-                "topic": trainee_view["topic"],
-                "duration_minutes": assessment.duration_minutes,
-                "status": sub_attempt.status,
-                "started_at": sub_attempt.started_at,
-                "expires_at": sub_attempt.expires_at,
-                "submitted_at": sub_attempt.submitted_at,
-                "current_question": sub_attempt.current_question,
-                "saved_answers": saved_answers_sub,
-                "remaining_seconds": 0,
-            }
-
+        if len(historical_attempts) >= 2:
+            sub_attempt = latest_attempt
+            if sub_attempt:
+                trainee_view = await get_proctored_assessment_trainee_view(db, assessment_id, user_id)
+                return {
+                    "attempt_id": sub_attempt.id, "assessment_id": assessment_id,
+                    "test_name": trainee_view["test_name"], "course": trainee_view["course"],
+                    "day": trainee_view["day"], "topic": trainee_view["topic"],
+                    "duration_minutes": assessment.duration_minutes, "status": sub_attempt.status,
+                    "started_at": sub_attempt.started_at, "expires_at": sub_attempt.expires_at,
+                    "submitted_at": sub_attempt.submitted_at, "current_question": sub_attempt.current_question,
+                    "saved_answers": {}, "remaining_seconds": 0,
+                }
+        if submitted_attempts:
+            last_attempt = submitted_attempts[0]
+            retry_after = (last_attempt.submitted_at or last_attempt.started_at) + timedelta(hours=24)
+            if now < retry_after:
+                sub_attempt = latest_attempt
+                if sub_attempt:
+                    trainee_view = await get_proctored_assessment_trainee_view(db, assessment_id, user_id)
+                    return {
+                        "attempt_id": sub_attempt.id, "assessment_id": assessment_id,
+                        "test_name": trainee_view["test_name"], "course": trainee_view["course"],
+                        "day": trainee_view["day"], "topic": trainee_view["topic"],
+                        "duration_minutes": assessment.duration_minutes, "status": sub_attempt.status,
+                        "started_at": sub_attempt.started_at, "expires_at": sub_attempt.expires_at,
+                        "submitted_at": sub_attempt.submitted_at, "current_question": sub_attempt.current_question,
+                        "saved_answers": {}, "remaining_seconds": 0,
+                    }
         expires_at = now + timedelta(minutes=assessment.duration_minutes)
         attempt = AssessmentAttempt(
             user_id=user_id,

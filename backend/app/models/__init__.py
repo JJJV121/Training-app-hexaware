@@ -60,5 +60,7 @@ from app.models.attendance_followup import (
     SystemSetting,
     FollowupStage,
 )
+from app.models.mcq_bank import MCQQuestionBank
+
 
 
