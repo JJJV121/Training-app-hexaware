@@ -61,6 +61,8 @@ from app.models.attendance_followup import (
     FollowupStage,
 )
 from app.models.mcq_bank import MCQQuestionBank
+from app.models.notification import Notification
+from app.models.candidate_issue import CandidateIssue
 
 
 

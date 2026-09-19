@@ -93,6 +93,29 @@ async def require_trainee(
     return current_user
 
 
+async def require_coordinator(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    if not current_user.role or current_user.role.upper() not in ["BATCH_COORDINATOR", "COORDINATOR"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Batch Coordinator role required."
+        )
+    return current_user
+
+
+async def require_coordinator_or_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    if not current_user.role or current_user.role.upper() not in ["BATCH_COORDINATOR", "COORDINATOR", "ADMIN"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Batch Coordinator or Admin role required."
+        )
+    return current_user
+
+
+get_current_coordinator = require_coordinator
 get_current_trainer = require_trainer
 get_current_admin = require_admin
 get_current_trainee = require_trainee

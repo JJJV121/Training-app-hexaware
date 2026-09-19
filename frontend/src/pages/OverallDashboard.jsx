@@ -13,6 +13,9 @@ import CommunityConnect from './trainee/CommunityConnect';
 import Leaderboard from './Leaderboard';
 import Badges from './Badges';
 import Schedule from './Schedule';
+import NotificationBell from '../components/NotificationBell';
+import RaiseIssueModal from '../components/RaiseIssueModal';
+import CandidateIssuesList from '../components/CandidateIssuesList';
 import '../styles/overallDashboard.css';
 
 
@@ -77,6 +80,7 @@ export default function OverallDashboard() {
   const [error, setError] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [animateChart, setAnimateChart] = useState(false);
+  const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
 
   useEffect(() => {
     if (currentTab === 'performance') {
@@ -167,9 +171,31 @@ export default function OverallDashboard() {
         return (
           <div className="overall-tab-panel">
             {/* Banner */}
-            <div className="overall-banner">
-              <h2 className="overall-banner-title">{getGreeting()}, {name}! 😊</h2>
-              <span className="overall-banner-subtitle">Welcome back to your Hexaware Learning workspace. Here's your overall progress summary.</span>
+            <div className="overall-banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h2 className="overall-banner-title">{getGreeting()}, {name}! 😊</h2>
+                <span className="overall-banner-subtitle">Welcome back to your Hexaware Learning workspace. Here's your overall progress summary.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <NotificationBell />
+                <button
+                  type="button"
+                  onClick={() => setIsRaiseModalOpen(true)}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: '10px',
+                    backgroundColor: '#ffffff',
+                    color: '#0061fe',
+                    border: 'none',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                  }}
+                >
+                  + Raise an Issue
+                </button>
+              </div>
             </div>
 
             {/* Stats Grid */}
@@ -477,6 +503,13 @@ export default function OverallDashboard() {
       case 'profile':
         return <Profile />;
 
+      case 'issues':
+        return (
+          <div className="overall-tab-panel">
+            <CandidateIssuesList onRaiseNewIssue={() => setIsRaiseModalOpen(true)} />
+          </div>
+        );
+
       default:
         return null;
     }
@@ -484,6 +517,7 @@ export default function OverallDashboard() {
 
   const navItems = [
     { page: 'home', icon: 'home', label: 'Dashboard' },
+    { page: 'issues', icon: 'help-circle', label: 'My Issues' },
     { page: 'courses', icon: 'book-open', label: 'My Courses' },
     { page: 'schedule', icon: 'clock', label: 'Schedule' },
     { page: 'mentor-connect', icon: 'message-square', label: 'Mentor Connect' },
@@ -560,6 +594,14 @@ export default function OverallDashboard() {
       <main className="overall-content-area" id="app-content">
         {renderTabContent()}
       </main>
+
+      {/* Raise Issue Modal */}
+      <RaiseIssueModal
+        isOpen={isRaiseModalOpen}
+        onClose={() => setIsRaiseModalOpen(false)}
+        onSuccess={() => setCurrentTab('issues')}
+      />
     </div>
   );
 }
+

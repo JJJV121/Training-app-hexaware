@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     MAIL_PASSWORD: str
     MAIL_FROM: str
     JUDGE0_URL: str
+    ADMIN_EMAIL: str = "admin@company.com"
     class Config:
         env_file = ".env"
 

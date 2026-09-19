@@ -22,6 +22,8 @@ from app.services.email_service import (
     send_discontinuation_email,
     send_cr_notification_email,
 )
+from app.services.notification_service import send_notification
+from app.core.config import settings
 
 CR_TEAM_EMAIL = "cr_team@hexaware.com"
 FRONTEND_BASE_URL = "http://localhost:5173"
@@ -261,16 +263,59 @@ async def process_attendance_event(
         if not followup.reminder_1_sent_at:
             followup.current_stage = FollowupStage.REMINDER_1_SENT.value
             followup.reminder_1_sent_at = datetime.utcnow()
-            await send_attendance_reminder_1_email(
-                email=candidate.email,
-                name=candidate.name or candidate.employee_id,
-                batch_name=batch_name,
-                course_name=course_name,
+            
+            day1_email_html = f"""
+            <html>
+              <body style="margin: 0; padding: 24px; background-color: #f4f7fb; font-family: Arial, sans-serif; color: #0f172a;">
+                <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px;">
+                  <h2 style="margin: 0 0 16px; color: #1e3a8a;">[Hexaware LMS] Attendance Reminder - Day 1</h2>
+                  <p style="margin: 0 0 16px; font-size: 16px;">Dear {candidate.name or candidate.employee_id},</p>
+                  <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6;">
+                    We noticed that you were marked <strong>ABSENT</strong> for Day 1 in <strong>{course_name}</strong> ({batch_name}) on {session_obj.start_time.strftime('%Y-%m-%d') if session_obj.start_time else 'today'}.
+                  </p>
+                  <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #475569;">
+                    This is a reminder to attend all upcoming scheduled training sessions promptly to stay on track.
+                  </p>
+                  <p style="margin: 24px 0 0; font-size: 14px; color: #64748b;">Best regards,<br/>Hexaware Training Team</p>
+                </div>
+              </body>
+            </html>
+            """
+            
+            # Send Notification + Email to Candidate (Day 1)
+            await send_notification(
+                db=db,
+                user_id=trainee_id,
+                notification_type="ATTENDANCE_DAY1",
+                title="[Hexaware LMS] Attendance Reminder - Day 1",
+                message=f"You were marked absent for Day 1 training in {course_name} ({batch_name}). Please join upcoming sessions.",
+                channel="ALL",
+                priority="LOW",
+                reference_type="ATTENDANCE",
+                reference_id=followup.id,
+                email_recipient=candidate.email,
+                email_subject="[Hexaware LMS] Attendance Reminder - Day 1",
+                email_body_html=day1_email_html,
             )
+
+            # Send Notification to Batch Coordinator (Trainer/SPOC)
+            if batch_obj.trainer_id:
+                await send_notification(
+                    db=db,
+                    user_id=batch_obj.trainer_id,
+                    notification_type="ATTENDANCE_DAY1",
+                    title=f"Day 1 Absence Notice: {candidate.name or candidate.employee_id}",
+                    message=f"Candidate {candidate.name or candidate.employee_id} ({candidate.employee_id}) was absent for Day 1 in batch '{batch_name}'.",
+                    channel="IN_APP",
+                    priority="LOW",
+                    reference_type="ATTENDANCE",
+                    reference_id=followup.id,
+                )
+
             await log_audit_event(
                 db, followup.id, trainee_id,
                 event_type="REMINDER_1_SENT",
-                description="Day 1 Reminder email sent to candidate.",
+                description="Day 1 Reminder email & notification sent to candidate and coordinator.",
                 actor_id=actor_id, actor_role="SYSTEM"
             )
 
@@ -292,102 +337,150 @@ async def process_attendance_event(
                 actor_id=actor_id, actor_role="SYSTEM"
             )
 
-    # STAGE 3: Day 3 (Absence count = 3)
+    # STAGE 3: Day 3 (Absence count = 3) -> ESCALATED
     elif consecutive_absences == 3:
         if not followup.warning_sent_at:
-            if followup.current_stage not in [FollowupStage.REASON_SUBMITTED.value, FollowupStage.REASON_APPROVED.value]:
-                followup.current_stage = FollowupStage.WARNING_SENT.value
+            followup.current_stage = "ESCALATED"
             followup.warning_sent_at = datetime.utcnow()
+            
             sub_link = f"{FRONTEND_BASE_URL}/#submit-absence-reason?followup_id={followup.id}"
-            await send_attendance_warning_email(
-                email=candidate.email,
-                name=candidate.name or candidate.employee_id,
-                batch_name=batch_name,
-                course_name=course_name,
-                submission_link=sub_link,
-            )
-            await log_audit_event(
-                db, followup.id, trainee_id,
-                event_type="WARNING_SENT",
-                description="Day 3 Warning email sent with absence submission link.",
-                actor_id=actor_id, actor_role="SYSTEM"
-            )
-
-    # STAGE 4: Day 4 (Absence count = 4)
-    elif consecutive_absences == 4:
-        # Keep candidate in warning/escalation state without sending duplicate emails
-        if followup.current_stage not in [FollowupStage.REASON_SUBMITTED.value, FollowupStage.REASON_APPROVED.value, FollowupStage.REASON_REJECTED.value]:
-            followup.current_stage = FollowupStage.WARNING_SENT.value
-        await log_audit_event(
-            db, followup.id, trainee_id,
-            event_type="ABSENCE_RECORDED",
-            description="Day 4 absence recorded. Candidate remains in warning/escalation state.",
-            actor_id=actor_id, actor_role="SYSTEM"
-        )
-
-    # STAGE 5: Day 5 (Absence count >= 5) -> Discontinuation
-    elif consecutive_absences >= 5:
-        # Check if candidate reason is APPROVED -> Do not discontinue!
-        if followup.current_stage == FollowupStage.REASON_APPROVED.value or followup.spoc_decision == "APPROVED":
-            await log_audit_event(
-                db, followup.id, trainee_id,
-                event_type="ABSENCE_RECORDED",
-                description=f"Candidate absent for session (count: {consecutive_absences}), but absence reason is APPROVED. Discontinuation skipped.",
-                actor_id=actor_id, actor_role="SYSTEM"
-            )
-        elif followup.current_stage != FollowupStage.DISCONTINUED.value:
-            # Execute Discontinuation
-            followup.current_stage = FollowupStage.DISCONTINUED.value
-            followup.discontinued_at = datetime.utcnow()
-
-            # Update BatchTrainee status
-            bt_stmt = select(BatchTrainee).where(
-                BatchTrainee.trainee_id == trainee_id,
-                BatchTrainee.batch_id == batch_id
-            )
-            bt_res = await db.execute(bt_stmt)
-            bt_obj = bt_res.scalar_one_or_none()
-            if bt_obj:
-                bt_obj.status = "DISCONTINUED"
-
-            # Send Email 4: Discontinuation Email to candidate
-            await send_discontinuation_email(
-                email=candidate.email,
-                name=candidate.name or candidate.employee_id,
-                batch_name=batch_name,
-                course_name=course_name,
-                reason="5 consecutive session absences without approved reason"
+            
+            # Candidate Email & In-App Notification
+            cand_email_html = f"""
+            <html>
+              <body style="margin: 0; padding: 24px; background-color: #f4f7fb; font-family: Arial, sans-serif; color: #0f172a;">
+                <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #fca5a5; border-radius: 12px; padding: 32px;">
+                  <h2 style="margin: 0 0 16px; color: #dc2626;">[Hexaware LMS] Attendance Escalation - Day 3</h2>
+                  <p style="margin: 0 0 16px; font-size: 16px;">Dear {candidate.name or candidate.employee_id},</p>
+                  <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6;">
+                    You have reached <strong>3 consecutive absences</strong> in <strong>{course_name}</strong> ({batch_name}). Your attendance status has been escalated to Administration.
+                  </p>
+                  <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #1e293b;">
+                    Please submit a formal absence reason documentation through the portal immediately.
+                  </p>
+                  <div style="text-align: center; margin-bottom: 24px;">
+                    <a href="{sub_link}" style="display: inline-block; background-color: #dc2626; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 700;">Submit Absence Reason</a>
+                  </div>
+                </div>
+              </body>
+            </html>
+            """
+            
+            await send_notification(
+                db=db,
+                user_id=trainee_id,
+                notification_type="ATTENDANCE_DAY3_ESCALATION",
+                title="[Hexaware LMS] Attendance Escalation - Day 3",
+                message=f"You have 3 consecutive absences in {course_name} ({batch_name}). Case escalated to Admin.",
+                channel="ALL",
+                priority="HIGH",
+                reference_type="ATTENDANCE",
+                reference_id=followup.id,
+                email_recipient=candidate.email,
+                email_subject=f"[Hexaware LMS] Attendance Escalation - Day 3",
+                email_body_html=cand_email_html,
             )
 
-            # Send Email 5: CR Notification Email to Campus Recruitment Team
-            if not followup.cr_notified_at:
-                followup.cr_notified_at = datetime.utcnow()
-                absence_str = ", ".join([d.strftime("%Y-%m-%d") for d in absence_dates])
-                cr_info = {
-                    "candidate_name": candidate.name or candidate.employee_id,
-                    "employee_id": candidate.employee_id,
-                    "candidate_email": candidate.email,
-                    "batch_name": batch_name,
-                    "course_name": course_name,
-                    "absence_count": consecutive_absences,
-                    "absence_dates": absence_str,
-                    "discontinued_at": followup.discontinued_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-                    "response_status": followup.spoc_decision or followup.current_stage,
-                }
-                await send_cr_notification_email(CR_TEAM_EMAIL, cr_info)
-                await log_audit_event(
-                    db, followup.id, trainee_id,
-                    event_type="CR_NOTIFICATION_SENT",
-                    description=f"Campus Recruitment notification sent to {CR_TEAM_EMAIL}.",
-                    actor_id=actor_id, actor_role="SYSTEM"
+            # Admin Email & In-App Notification (Day 3 Escalation)
+            admin_email = settings.ADMIN_EMAIL or "admin@company.com"
+            admin_stmt = select(User).where(User.role == "ADMIN")
+            admin_res = await db.execute(admin_stmt)
+            admin_users = admin_res.scalars().all()
+            admin_user_ids = [u.id for u in admin_users] if admin_users else [1]
+
+            absence_dates_str = ", ".join([d.strftime("%Y-%m-%d") for d in absence_dates])
+            last_date_str = absence_dates[-1].strftime("%Y-%m-%d") if absence_dates else "N/A"
+
+            admin_email_html = f"""
+            <html>
+              <body style="margin: 0; padding: 24px; background-color: #f4f7fb; font-family: Arial, sans-serif; color: #0f172a;">
+                <div style="max-width: 650px; margin: 0 auto; background: #ffffff; border: 1px solid #fca5a5; border-radius: 12px; padding: 32px;">
+                  <h2 style="margin: 0 0 16px; color: #dc2626;">[Hexaware LMS] Attendance Escalation - {candidate.name or candidate.employee_id}</h2>
+                  <p style="margin: 0 0 16px; font-size: 15px;">The following candidate has accumulated <strong>3 consecutive absences</strong> and requires administrative oversight:</p>
+                  <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 14px;">
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; width: 35%;">Candidate Name</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{candidate.name or candidate.employee_id}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Employee ID</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{candidate.employee_id}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Batch</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{batch_name}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Training Program</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{course_name}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Day 1 Attendance</td><td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626;">ABSENT</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Day 2 Attendance</td><td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626;">ABSENT</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Day 3 Attendance</td><td style="padding: 8px; border: 1px solid #e2e8f0; color: #dc2626;">ABSENT</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Total Absence Count</td><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #dc2626;">{consecutive_absences} Consecutive Sessions</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Last Absence Date</td><td style="padding: 8px; border: 1px solid #e2e8f0;">{last_date_str}</td></tr>
+                    <tr><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold;">Current Status</td><td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #dc2626;">ESCALATED</td></tr>
+                  </table>
+                </div>
+              </body>
+            </html>
+            """
+
+            for idx, a_id in enumerate(admin_user_ids):
+                send_channel = "ALL" if idx == 0 else "IN_APP"
+                await send_notification(
+                    db=db,
+                    user_id=a_id,
+                    notification_type="ATTENDANCE_DAY3_ESCALATION",
+                    title=f"Attendance Escalation: {candidate.name or candidate.employee_id}",
+                    message=f"Candidate {candidate.name or candidate.employee_id} ({candidate.employee_id}) has reached 3 consecutive absences in batch '{batch_name}'. Status: ESCALATED.",
+                    channel=send_channel,
+                    priority="HIGH",
+                    reference_type="ATTENDANCE",
+                    reference_id=followup.id,
+                    email_recipient=admin_email if send_channel == "ALL" else None,
+                    email_subject=f"[Hexaware LMS] Attendance Escalation - {candidate.name or candidate.employee_id}" if send_channel == "ALL" else None,
+                    email_body_html=admin_email_html if send_channel == "ALL" else None,
+                )
+
+            # Coordinator In-App Notification
+            if batch_obj.trainer_id:
+                await send_notification(
+                    db=db,
+                    user_id=batch_obj.trainer_id,
+                    notification_type="ATTENDANCE_DAY3_ESCALATION",
+                    title=f"Attendance Escalated: {candidate.name or candidate.employee_id}",
+                    message=f"Candidate {candidate.name or candidate.employee_id} reached Day 3 absence in batch '{batch_name}'. Case escalated to Admin.",
+                    channel="IN_APP",
+                    priority="HIGH",
+                    reference_type="ATTENDANCE",
+                    reference_id=followup.id,
                 )
 
             await log_audit_event(
                 db, followup.id, trainee_id,
-                event_type="DISCONTINUED",
-                description="Candidate marked DISCONTINUED due to 5 consecutive session absences.",
+                event_type="DAY3_ESCALATED",
+                description="Day 3 Escalation triggered. Email and notification dispatched to Admin & Coordinator.",
                 actor_id=actor_id, actor_role="SYSTEM"
             )
+
+    # STAGE 4: POST DAY 3 (Absence count > 3) -> High Priority Admin Action Required
+    elif consecutive_absences > 3:
+        followup.current_stage = "ESCALATED"
+        
+        admin_stmt = select(User).where(User.role == "ADMIN")
+        admin_res = await db.execute(admin_stmt)
+        admin_users = admin_res.scalars().all()
+        admin_user_ids = [u.id for u in admin_users] if admin_users else [1]
+
+        for a_id in admin_user_ids:
+            await send_notification(
+                db=db,
+                user_id=a_id,
+                notification_type="ATTENDANCE_ADMIN_ACTION_REQUIRED",
+                title=f"Admin Action Required: {candidate.name or candidate.employee_id}",
+                message=f"Candidate requires administrative action due to continued absence ({consecutive_absences} consecutive absences in '{batch_name}').",
+                channel="IN_APP",
+                priority="HIGH",
+                reference_type="ATTENDANCE",
+                reference_id=followup.id,
+            )
+
+
+        await log_audit_event(
+            db, followup.id, trainee_id,
+            event_type="ADMIN_ACTION_REQUIRED",
+            description=f"Continued absence (count: {consecutive_absences}). High priority notification generated for Admin.",
+            actor_id=actor_id, actor_role="SYSTEM"
+        )
 
     await db.commit()
     await db.refresh(followup)
@@ -537,3 +630,148 @@ async def run_attendance_followup_automation(db: AsyncSession) -> int:
                 processed_count += 1
 
     return processed_count
+
+
+# --------------------------------------------------
+# Admin Action Post Day 3 Handler (Requirements 6 & 17)
+# --------------------------------------------------
+
+async def handle_admin_candidate_action(
+    db: AsyncSession,
+    admin_user: User,
+    candidate_id: int,
+    batch_id: int,
+    action_type: str,  # KEEP_ACTIVE, CONTACT, REMOVE_FROM_BATCH, DEACTIVATE
+    comments: str | None = None,
+) -> dict:
+    """
+    Executes manual administrative action on escalated candidates after Day 3 absence.
+    Actions supported:
+    - KEEP_ACTIVE: Keep candidate active in batch.
+    - CONTACT: Log contact action.
+    - REMOVE_FROM_BATCH: Remove candidate from batch membership.
+    - DEACTIVATE: Deactivate user account & batch membership.
+    """
+    action_upper = action_type.upper()
+    valid_actions = ["KEEP_ACTIVE", "CONTACT", "REMOVE_FROM_BATCH", "DEACTIVATE"]
+    if action_upper not in valid_actions:
+        raise HTTPException(status_code=400, detail=f"Invalid action type. Must be one of {valid_actions}")
+
+    # Fetch User & BatchTrainee
+    user_stmt = select(User).where(User.id == candidate_id)
+    user_res = await db.execute(user_stmt)
+    candidate = user_res.scalar_one_or_none()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found.")
+
+    bt_stmt = select(BatchTrainee).where(
+        BatchTrainee.trainee_id == candidate_id,
+        BatchTrainee.batch_id == batch_id
+    )
+    bt_res = await db.execute(bt_stmt)
+    bt_record = bt_res.scalar_one_or_none()
+
+    # Find followup record if existing
+    followup_stmt = select(AttendanceFollowupRecord).where(
+        AttendanceFollowupRecord.candidate_id == candidate_id,
+        AttendanceFollowupRecord.batch_id == batch_id
+    ).order_by(AttendanceFollowupRecord.id.desc())
+    f_res = await db.execute(followup_stmt)
+    followup = f_res.scalars().first()
+
+    followup_id = followup.id if followup else 0
+
+    result_msg = ""
+    if action_upper == "KEEP_ACTIVE":
+        if followup:
+            followup.current_stage = FollowupStage.ACTIVE.value
+            followup.spoc_comments = comments
+        result_msg = f"Candidate {candidate.name or candidate.employee_id} retained as ACTIVE."
+        if followup_id:
+            await log_audit_event(
+                db, followup_id, candidate_id,
+                event_type="ADMIN_ACTION_KEEP_ACTIVE",
+                description=f"Admin retained candidate as ACTIVE. Comments: {comments or 'None'}",
+                actor_id=admin_user.id, actor_role="ADMIN"
+            )
+
+    elif action_upper == "CONTACT":
+        result_msg = f"Contact action logged for candidate {candidate.name or candidate.employee_id}."
+        if followup_id:
+            await log_audit_event(
+                db, followup_id, candidate_id,
+                event_type="ADMIN_ACTION_CONTACT",
+                description=f"Admin recorded candidate contact attempt. Comments: {comments or 'None'}",
+                actor_id=admin_user.id, actor_role="ADMIN"
+            )
+
+    elif action_upper == "REMOVE_FROM_BATCH":
+        if bt_record:
+            bt_record.status = "REMOVED"
+        if followup:
+            followup.current_stage = "REMOVED"
+        
+        result_msg = f"Candidate {candidate.name or candidate.employee_id} removed from batch."
+        
+        # Send Candidate Notification & Email
+        await send_notification(
+            db=db,
+            user_id=candidate_id,
+            notification_type="CANDIDATE_REMOVED",
+            title="Training Program Status Update",
+            message=f"You have been removed from your assigned training batch by Administration.",
+            channel="ALL",
+            priority="HIGH",
+            email_recipient=candidate.email,
+            email_subject="[Hexaware LMS] Training Program Status Update",
+            email_body_html=f"<p>Hi {candidate.name or candidate.employee_id},</p><p>You have been removed from your training batch due to attendance policy enforcement.</p>"
+        )
+
+        if followup_id:
+            await log_audit_event(
+                db, followup_id, candidate_id,
+                event_type="ADMIN_ACTION_REMOVE_BATCH",
+                description=f"Admin removed candidate from batch. Comments: {comments or 'None'}",
+                actor_id=admin_user.id, actor_role="ADMIN"
+            )
+
+    elif action_upper == "DEACTIVATE":
+        candidate.is_active = False
+        if bt_record:
+            bt_record.status = "DEACTIVATED"
+        if followup:
+            followup.current_stage = "DEACTIVATED"
+
+        result_msg = f"Candidate account {candidate.name or candidate.employee_id} deactivated."
+
+        await send_notification(
+            db=db,
+            user_id=candidate_id,
+            notification_type="CANDIDATE_REMOVED",
+            title="Account Status Deactivated",
+            message=f"Your candidate account has been deactivated by Administration.",
+            channel="ALL",
+            priority="HIGH",
+            email_recipient=candidate.email,
+            email_subject="[Hexaware LMS] Account Deactivation Notice",
+            email_body_html=f"<p>Hi {candidate.name or candidate.employee_id},</p><p>Your Hexaware LMS account has been deactivated.</p>"
+        )
+
+        if followup_id:
+            await log_audit_event(
+                db, followup_id, candidate_id,
+                event_type="ADMIN_ACTION_DEACTIVATE",
+                description=f"Admin deactivated candidate account. Comments: {comments or 'None'}",
+                actor_id=admin_user.id, actor_role="ADMIN"
+            )
+
+    await db.commit()
+
+    return {
+        "status": "success",
+        "action": action_upper,
+        "message": result_msg,
+        "candidate_id": candidate_id,
+        "batch_id": batch_id,
+    }
+

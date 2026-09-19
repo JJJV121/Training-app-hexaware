@@ -23,9 +23,11 @@ export default function LoginScreen() {
       try {
         const user = JSON.parse(userStr);
         if (user && user.role) {
-          const role = user.role.toLowerCase();
+          const role = (user.role || '').toLowerCase();
           if (role === 'admin') {
             navigate('/admin');
+          } else if (role === 'batch_coordinator' || role === 'coordinator') {
+            navigate('/batch-coordinator');
           } else if (role === 'trainer') {
             navigate('/trainer-dashboard');
           } else {
@@ -67,9 +69,11 @@ export default function LoginScreen() {
         localStorage.setItem('logged_in_user_id', user.id);
       }
       if (user && user.role) {
-        const role = user.role.toLowerCase();
+        const role = (user.role || '').toLowerCase();
         if (role === 'admin') {
           navigate('/admin');
+        } else if (role === 'batch_coordinator' || role === 'coordinator') {
+          navigate('/batch-coordinator');
         } else if (role === 'trainer') {
           navigate('/trainer-dashboard');
         } else {
